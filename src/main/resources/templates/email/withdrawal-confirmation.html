@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<body style="margin:0; padding:0; background-color:#000000;">
+
+<table th:replace="~{email/layout.html :: header}"></table>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#000000;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background-color:#111111;
+                          border-left: 1px solid RGBA(255,255,255,0.2);
+                          border-right: 1px solid RGBA(255,255,255,0.2);">
+                <tr>
+                    <td style="padding: 40px; font-family:Arial,sans-serif;">
+
+                        <h2 style="color:#ffffff; font-size:20px; font-weight:bold; margin:0 0 14px 0;">
+                            Hello, <span th:text="${firstName}">User</span>!
+                        </h2>
+
+                        <p style="color:RGBA(255,255,255,0.6); font-size:15px; line-height:1.7; margin:0 0 28px 0;">
+                            Your withdrawal has been processed successfully.
+                        </p>
+
+                        <!-- Amount card -->
+                        <div style="background-color:RGBA(255,255,255,0.05);
+                                    border:1px solid RGBA(255,255,255,0.15);
+                                    border-radius:8px;
+                                    padding:28px;
+                                    text-align:center;
+                                    margin:0 0 28px 0;">
+                            <p style="color:RGBA(255,255,255,0.45); font-size:13px; margin:0 0 10px 0;
+                                      font-family:Arial,sans-serif; text-transform:uppercase;
+                                      letter-spacing:0.5px;">
+                                Amount withdrawn
+                            </p>
+                            <p style="color:#f97316; font-size:36px; font-weight:bold; margin:0;
+                                      font-family:Arial,sans-serif;">
+                                -<span th:text="${amount}">0.00</span> RON
+                            </p>
+                        </div>
+
+                        <p style="color:RGBA(255,255,255,0.45); font-size:13px; margin:0;
+                                  font-family:Arial,sans-serif; line-height:1.6;">
+                            Your balance has been updated accordingly.
+                        </p>
+
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<table th:replace="~{email/layout.html :: footer}"></table>
+
+</body>
+</html>

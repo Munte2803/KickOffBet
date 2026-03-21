@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<body>
+
+<!-- ===== HEADER FRAGMENT ===== -->
+<table th:fragment="header" width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#000000; padding: 40px 0 0 0;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background-color:#111111;
+                          border-radius: 12px 12px 0 0;
+                          border-top: 1px solid RGBA(255,255,255,0.2);
+                          border-left: 1px solid RGBA(255,255,255,0.2);
+                          border-right: 1px solid RGBA(255,255,255,0.2);
+                          overflow: hidden;">
+                <tr>
+                    <td style="background-color:#000000;
+                               padding: 22px 32px;
+                               border-bottom: 1px solid RGBA(255,255,255,0.2);">
+                        <span style="color:#ffffff; font-size:22px; font-weight:bold;
+                                     font-family:Arial,sans-serif; letter-spacing:0.5px;">
+                            Kick Off Bet
+                        </span>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<!-- ===== FOOTER FRAGMENT ===== -->
+<table th:fragment="footer" width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#000000; padding: 0 0 40px 0;">
+    <tr>
+        <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0"
+                   style="background-color:#111111;
+                          border-radius: 0 0 12px 12px;
+                          border-bottom: 1px solid RGBA(255,255,255,0.2);
+                          border-left: 1px solid RGBA(255,255,255,0.2);
+                          border-right: 1px solid RGBA(255,255,255,0.2);
+                          overflow: hidden;">
+                <tr>
+                    <td style="background-color:#000000;
+                               padding: 18px 32px;
+                               border-top: 1px solid RGBA(255,255,255,0.2);
+                               text-align: center;
+                               font-family: Arial, sans-serif;">
+                        <p style="color:RGBA(255,255,255,0.35); font-size:12px; margin:0;">
+                            &copy; 2026 Kick Off Bet. All rights reserved.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
