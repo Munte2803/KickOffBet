@@ -92,4 +92,13 @@ public class AdminTransactionController {
         return ResponseEntity.ok(transactionService.getUserTransactionSummary(userId, start, end));
     }
 
+    @GetMapping("users/{userId}")
+    public ResponseEntity<Page<TransactionDto>> getUserTransactions(
+            @PathVariable UUID userId,
+            @PageableDefault(sort="createdAt") Pageable pageable
+    ){
+        PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
+        return ResponseEntity.ok(transactionService.getTransactionsForUser(userId, pageable).map(transactionMapper::toDto));
+    }
+
 }
