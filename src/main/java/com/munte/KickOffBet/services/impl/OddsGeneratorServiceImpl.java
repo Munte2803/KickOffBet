@@ -77,8 +77,11 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
             final TeamMatchMetrics awayMetrics = metricsMap.getOrDefault(
                     match.getAwayTeam().getId(), defaultMetrics());
 
-            if (homeMetrics == awayMetrics) {
+            if (homeMetrics.getTeamId() == null && awayMetrics.getTeamId() == null) {
                 log.warn("Using default metrics for match: {} vs {}",
+                        match.getHomeTeam().getName(), match.getAwayTeam().getName());
+            } else if (homeMetrics.getTeamId() == null || awayMetrics.getTeamId() == null) {
+                log.warn("Using partial default metrics for match: {} vs {}",
                         match.getHomeTeam().getName(), match.getAwayTeam().getName());
             }
                 generateAndApplyOdds(match, homeMetrics, awayMetrics);

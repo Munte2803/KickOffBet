@@ -9,12 +9,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,6 +26,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Bucket> emailBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Instant> emailLastAccess = new ConcurrentHashMap<>();
+    private final Map<String, Instant> authLastAccess = new ConcurrentHashMap<>();
 
     @Value("${rate-limit.email.capacity:1}")
     private int emailCapacity;
@@ -38,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private int authRefillHours;
 
     private Bucket resolveEmailBucket(String key) {
+        emailLastAccess.put(key, Instant.now());
         return emailBuckets.computeIfAbsent(key, k -> Bucket.builder()
                 .addLimit(Bandwidth.builder()
                         .capacity(emailCapacity)
@@ -47,6 +52,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket resolveAuthBucket(String key) {
+        authLastAccess.put(key, Instant.now());
         return authBuckets.computeIfAbsent(key, k -> Bucket.builder()
                 .addLimit(Bandwidth.builder()
                         .capacity(authCapacity)
@@ -81,6 +87,33 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    @Scheduled(fixedRate = 3600000)
+    public void evictStaleBuckets() {
+        Instant emailThreshold = Instant.now().minus(Duration.ofMinutes(emailRefillMinutes).multipliedBy(2));
+        Instant authThreshold = Instant.now().minus(Duration.ofHours(authRefillHours).multipliedBy(2));
+
+        int emailRemoved = evict(emailBuckets, emailLastAccess, emailThreshold);
+        int authRemoved = evict(authBuckets, authLastAccess, authThreshold);
+
+        if (emailRemoved + authRemoved > 0) {
+            log.debug("Evicted {} email and {} auth rate-limit buckets.", emailRemoved, authRemoved);
+        }
+    }
+
+    private int evict(Map<String, Bucket> buckets, Map<String, Instant> lastAccess, Instant threshold) {
+        int count = 0;
+        var it = lastAccess.entrySet().iterator();
+        while (it.hasNext()) {
+            var entry = it.next();
+            if (entry.getValue().isBefore(threshold)) {
+                it.remove();
+                buckets.remove(entry.getKey());
+                count++;
+            }
+        }
+        return count;
+    }
+
     private boolean isEmailPath(String path) {
         return path.contains("/api/auth/forgot-password") ||
                 path.contains("/api/auth/resend-verification");
@@ -94,7 +127,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private void sendTooManyRequestsResponse(HttpServletResponse response) throws IOException {
         response.setStatus(429);
         response.setContentType("application/json");
-        response.getWriter().write("{\"message\":\"Too many requests. Please try again later.\"}");
+        response.getWriter().write("{\"errorCode\":\"RATE_LIMITED\",\"error\":\"Too many requests. Please try again later.\"}");
     }
 
     private String getClientIp(HttpServletRequest request) {

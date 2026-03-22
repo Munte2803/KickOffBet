@@ -9,11 +9,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AmlServiceImpl implements AmlService {
 
     private final TransactionRepository transactionRepository;
@@ -66,7 +69,7 @@ public class AmlServiceImpl implements AmlService {
         LocalDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
 
         BigDecimal totalStakes = transactionRepository
-                .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.BET, LocalDateTime.now().minusDays(30), LocalDateTime.now(), TransactionStatus.COMPLETED);
+                .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.BET, monthAgo, now, TransactionStatus.COMPLETED);
 
         BigDecimal totalDeposited = transactionRepository
                 .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.DEPOSIT,

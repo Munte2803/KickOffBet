@@ -25,6 +25,7 @@ public class VerificationToken {
     @ManyToOne
     private User user;
 
+    @Column(unique = true)
     private String token;
 
     @Enumerated(EnumType.STRING)

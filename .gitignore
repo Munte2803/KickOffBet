@@ -18,3 +18,5 @@ Thumbs.db
 *.log
 logs/
 spring-shell.log
+
+HELP.md
