@@ -67,7 +67,7 @@ public class User implements UserDetails {
     private boolean idCardVerified = false;
 
     @Version
-    private Long version;
+    private Long version = 0L;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

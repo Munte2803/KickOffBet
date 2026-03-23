@@ -81,6 +81,7 @@ public class AdminTransactionController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             @PageableDefault Pageable pageable) {
+        PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         return ResponseEntity.ok(transactionService.getTopDepositors(start, end, pageable));
     }
 
@@ -92,7 +93,7 @@ public class AdminTransactionController {
         return ResponseEntity.ok(transactionService.getUserTransactionSummary(userId, start, end));
     }
 
-    @GetMapping("users/{userId}")
+    @GetMapping("/users/{userId}")
     public ResponseEntity<Page<TransactionDto>> getUserTransactions(
             @PathVariable UUID userId,
             @PageableDefault(sort="createdAt") Pageable pageable

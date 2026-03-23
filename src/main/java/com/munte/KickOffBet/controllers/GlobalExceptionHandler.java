@@ -2,6 +2,7 @@ package com.munte.KickOffBet.controllers;
 
 import com.munte.KickOffBet.domain.dto.api.response.ErrorDto;
 import com.munte.KickOffBet.exceptions.*;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,14 @@ public class GlobalExceptionHandler {
         log.warn("Locked account login attempt");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorDto("ACCOUNT_LOCKED", "Account is locked. Please try again later."));
+    }
+
+    @ExceptionHandler(OptimisticLockException.class)
+    public ResponseEntity<ErrorDto> handleOptimisticLock(OptimisticLockException ex) {
+        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorDto("CONCURRENT_MODIFICATION",
+                        "Account was modified concurrently, please try again"));
     }
 
     @ExceptionHandler(StorageException.class)

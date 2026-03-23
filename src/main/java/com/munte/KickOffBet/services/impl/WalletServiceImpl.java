@@ -13,8 +13,8 @@ import com.munte.KickOffBet.repository.TransactionRepository;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.services.AmlService;
 import com.munte.KickOffBet.services.AuthService;
+import com.munte.KickOffBet.services.EmailService;
 import com.munte.KickOffBet.services.WalletService;
-import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +30,7 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionRepository transactionRepository;
     private final AuthService authService;
     private final AmlService amlService;
+    private final EmailService emailService;
 
 
     @Override
@@ -52,9 +53,13 @@ public class WalletServiceImpl implements WalletService {
 
         user.setBalance(user.getBalance().add(request.getAmount()));
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
 
-        return transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
+
+        emailService.sendDepositConfirmation(user, request.getAmount());
+
+        return saved;
     }
 
     @Override
@@ -78,11 +83,16 @@ public class WalletServiceImpl implements WalletService {
         }
 
         transaction.setStatus(TransactionStatus.COMPLETED);
+
         user.setBalance(user.getBalance().subtract(request.getAmount()));
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
 
-        return transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
+
+        emailService.sendWithdrawalConfirmation(user, request.getAmount());
+
+        return saved;
 
     }
 
@@ -105,7 +115,7 @@ public class WalletServiceImpl implements WalletService {
 
         user.setBalance(user.getBalance().subtract(amount));
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
 
         return transactionRepository.save(transaction);
     }
@@ -114,8 +124,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public Transaction payout(UUID userId, BigDecimal amount, UUID ticketId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = this.getActiveUserById(userId);
 
         Transaction transaction = new Transaction();
         transaction.setUser(user);
@@ -126,7 +135,7 @@ public class WalletServiceImpl implements WalletService {
 
         user.setBalance(user.getBalance().add(amount));
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
 
         return transactionRepository.save(transaction);
     }
@@ -135,8 +144,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public Transaction refund(UUID userId, BigDecimal amount) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = this.getActiveUserById(userId);
 
         Transaction transaction = new Transaction();
         transaction.setUser(user);
@@ -146,7 +154,7 @@ public class WalletServiceImpl implements WalletService {
 
         user.setBalance(user.getBalance().add(amount));
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
 
         return transactionRepository.save(transaction);
     }
@@ -162,7 +170,7 @@ public class WalletServiceImpl implements WalletService {
             throw new BusinessException("Transaction is not pending");
         }
 
-        User user = transaction.getUser();
+        User user = this.getActiveUserById(transaction.getUser().getId());
 
         if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
             user.setBalance(user.getBalance().add(transaction.getAmount()));
@@ -175,9 +183,16 @@ public class WalletServiceImpl implements WalletService {
 
         transaction.setStatus(TransactionStatus.COMPLETED);
 
-        this.saveUserWithLock(user);
+        userRepository.save(user);
+        Transaction saved = transactionRepository.save(transaction);
 
-        return transactionRepository.save(transaction);
+        if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
+            emailService.sendDepositConfirmation(user, transaction.getAmount());
+        } else if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
+            emailService.sendWithdrawalConfirmation(user, transaction.getAmount());
+        }
+
+        return saved;
     }
 
     @Override
@@ -204,11 +219,14 @@ public class WalletServiceImpl implements WalletService {
         return user;
     }
 
-    private void saveUserWithLock(User user) {
-        try {
-            userRepository.save(user);
-        } catch (OptimisticLockException e) {
-            throw new BusinessException("Account was modified concurrently, please try again");
+    private User getActiveUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!user.getStatus().equals(UserStatus.ACTIVE)) {
+            throw new BusinessException("User account is not active");
         }
+        return user;
     }
+
+
 }
