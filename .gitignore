@@ -10,8 +10,6 @@ application-local.properties
 *.ipr
 out/
 
-.claude/
-
 .DS_Store
 Thumbs.db
 
