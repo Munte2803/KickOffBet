@@ -5,9 +5,8 @@ import com.munte.KickOffBet.domain.dto.api.request.CreateTeamRequest;
 import com.munte.KickOffBet.domain.dto.api.request.UpdateTeamRequest;
 import com.munte.KickOffBet.domain.dto.api.response.TeamDto;
 import com.munte.KickOffBet.domain.dto.api.response.TeamListDto;
-import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.mapper.TeamMapper;
-import com.munte.KickOffBet.services.TeamService;
+import com.munte.KickOffBet.services.sports.TeamService;
 import com.munte.KickOffBet.util.PageableValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +14,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Set;
 import java.util.UUID;
@@ -31,10 +32,12 @@ public class AdminTeamController {
     private final TeamService teamService;
     private final TeamMapper teamMapper;
 
-    @PostMapping
-    public ResponseEntity<TeamDto> createTeam(@Valid @RequestBody CreateTeamRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<TeamDto> createTeam(
+            @Valid @RequestPart("data") CreateTeamRequest request,
+            @RequestPart(required = false) MultipartFile emblem) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(teamMapper.toDto(teamService.createTeam(request)));
+                .body(teamMapper.toDto(teamService.createTeam(request, emblem)));
     }
 
     @GetMapping
@@ -53,8 +56,9 @@ public class AdminTeamController {
     @PutMapping("/{id}")
     public ResponseEntity<TeamDto> updateTeam(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateTeamRequest request) {
-        return ResponseEntity.ok(teamMapper.toDto(teamService.updateTeam(id, request)));
+            @Valid @RequestPart("data") UpdateTeamRequest request,
+            @RequestPart(required = false) MultipartFile emblem) {
+        return ResponseEntity.ok(teamMapper.toDto(teamService.updateTeam(id, request, emblem)));
     }
 
     @PatchMapping("/{id}/switch-active")

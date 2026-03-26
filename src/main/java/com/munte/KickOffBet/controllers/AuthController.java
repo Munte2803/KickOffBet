@@ -5,7 +5,7 @@ import com.munte.KickOffBet.domain.dto.api.request.LoginRequest;
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.dto.api.request.ResetPasswordRequest;
 import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
-import com.munte.KickOffBet.services.AuthService;
+import com.munte.KickOffBet.services.users.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,32 +1,20 @@
 package com.munte.KickOffBet.controllers;
 
-import com.munte.KickOffBet.domain.dto.api.request.CreateMatchRequest;
 import com.munte.KickOffBet.domain.dto.api.request.MatchSearchRequest;
-import com.munte.KickOffBet.domain.dto.api.request.UpdateMarketOfferRequest;
-import com.munte.KickOffBet.domain.dto.api.request.UpdateMatchRequest;
-import com.munte.KickOffBet.domain.dto.api.response.MarketOfferDto;
 import com.munte.KickOffBet.domain.dto.api.response.MatchDto;
 import com.munte.KickOffBet.domain.dto.api.response.MatchListDto;
-import com.munte.KickOffBet.domain.entity.MarketOffer;
-import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
-import com.munte.KickOffBet.mapper.MarketOfferMapper;
 import com.munte.KickOffBet.mapper.MatchMapper;
-import com.munte.KickOffBet.services.MarketOfferService;
-import com.munte.KickOffBet.services.MatchService;
+import com.munte.KickOffBet.services.sports.MatchService;
 import com.munte.KickOffBet.util.PageableValidator;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 

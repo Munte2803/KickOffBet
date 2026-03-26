@@ -20,6 +20,13 @@ import org.springframework.web.client.UnknownContentTypeException;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(TicketPlacementException.class)
+    public ResponseEntity<ErrorDto> handleTicketPlacement(TicketPlacementException ex) {
+        log.warn("Ticket placement failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorDto("TICKET_PLACEMENT_ERROR", ex.getMessage()));
+    }
+
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ErrorDto> handleLocked(LockedException ex) {
         log.warn("Locked account login attempt");

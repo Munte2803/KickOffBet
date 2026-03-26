@@ -58,16 +58,22 @@ public class MarketOffer {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-
     @Override
     public boolean equals(Object o) {
+        if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MarketOffer that = (MarketOffer) o;
-        return Objects.equals(id, that.id);
+        return Objects.equals(marketType, that.marketType) &&
+                Objects.equals(option, that.option) &&
+
+                ((line == null && that.line == null) ||
+                        (line != null && that.line != null && line.compareTo(that.line) == 0)) &&
+                Objects.equals(match != null ? match.getId() : null,
+                        that.match != null ? that.match.getId() : null);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(marketType, option, line, match != null ? match.getId() : null);
     }
 }

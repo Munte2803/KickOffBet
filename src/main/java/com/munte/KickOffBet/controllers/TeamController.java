@@ -1,19 +1,14 @@
 package com.munte.KickOffBet.controllers;
 
-import com.munte.KickOffBet.domain.dto.api.request.CreateTeamRequest;
-import com.munte.KickOffBet.domain.dto.api.request.UpdateTeamRequest;
 import com.munte.KickOffBet.domain.dto.api.response.TeamDto;
 import com.munte.KickOffBet.domain.dto.api.response.TeamListDto;
-import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.mapper.TeamMapper;
-import com.munte.KickOffBet.services.TeamService;
+import com.munte.KickOffBet.services.sports.TeamService;
 import com.munte.KickOffBet.util.PageableValidator;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

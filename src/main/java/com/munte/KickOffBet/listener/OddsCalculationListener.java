@@ -1,20 +1,20 @@
 package com.munte.KickOffBet.listener;
 
 import com.munte.KickOffBet.domain.entity.Match;
-import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.events.Match.*;
 import com.munte.KickOffBet.repository.MatchRepository;
-import com.munte.KickOffBet.services.OddsGeneratorService;
+import com.munte.KickOffBet.services.odds.OddsGeneratorService;
 import lombok.RequiredArgsConstructor;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,6 +30,7 @@ public class OddsCalculationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesScheduled(MatchesScheduledEvent event) {
         log.info("RECEIVED: MatchesScheduledEvent for {} matches. Starting odds generation...", event.matches().size());
         oddsGeneratorService.processMatches(event.matches()
@@ -43,6 +44,7 @@ public class OddsCalculationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesFinished(MatchesFinishedEvent event) {
         Set<UUID> teamIds = event.matches().stream()
                 .flatMap(m -> Stream.of(m.getHomeTeam().getId(), m.getAwayTeam().getId()))
@@ -68,18 +70,21 @@ public class OddsCalculationListener {
     }
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesStarted(MatchesStartedEvent event) {
         deactivateOffers(event.matches());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesDelayed(MatchesDelayedEvent event) {
         deactivateOffers(event.matches());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesCanceled(MatchesCanceledEvent event) {
         deactivateOffers(event.matches());
     }

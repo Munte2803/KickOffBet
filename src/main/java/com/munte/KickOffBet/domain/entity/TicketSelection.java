@@ -2,8 +2,11 @@ package com.munte.KickOffBet.domain.entity;
 
 
 import com.munte.KickOffBet.domain.enums.BetOption;
+import com.munte.KickOffBet.domain.enums.MarketType;
+import com.munte.KickOffBet.domain.enums.TicketSelectionStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -37,8 +40,18 @@ public class TicketSelection {
     private BigDecimal oddsAtPlacement;
 
     @Enumerated(EnumType.STRING)
+    @Column(name="market_type", nullable = false, length = 32)
+    private MarketType marketType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "selected_option", nullable = false, length = 32)
     private BetOption selectedOption;
+
+    @Column(precision = 5, scale = 1)
+    private BigDecimal line;
+
+    @Enumerated(EnumType.STRING)
+    private TicketSelectionStatus status;
 
     @Override
     public boolean equals(Object o) {

@@ -2,11 +2,9 @@ package com.munte.KickOffBet.controllers;
 
 import com.munte.KickOffBet.domain.dto.api.response.LeagueDto;
 import com.munte.KickOffBet.domain.dto.api.response.LeagueListDto;
-import com.munte.KickOffBet.domain.entity.League;
 import com.munte.KickOffBet.mapper.LeagueMapper;
-import com.munte.KickOffBet.services.LeagueService;
+import com.munte.KickOffBet.services.sports.LeagueService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

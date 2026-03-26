@@ -1,6 +1,6 @@
 package com.munte.KickOffBet.controllers.admin;
 
-import com.munte.KickOffBet.services.DataImportService;
+import com.munte.KickOffBet.services.sports.DataImportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

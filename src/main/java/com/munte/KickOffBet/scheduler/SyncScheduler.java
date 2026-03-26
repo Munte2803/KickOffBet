@@ -1,10 +1,8 @@
 package com.munte.KickOffBet.scheduler;
 
-import com.munte.KickOffBet.services.DataImportService;
+import com.munte.KickOffBet.services.sports.DataImportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +13,7 @@ public class SyncScheduler {
 
     private final DataImportService dataImportService;
 
-    @Scheduled(fixedDelay = 120000)
+    @Scheduled(fixedDelay = 120000, initialDelay = 240000)
     public void runQuickMatchSync() {
         dataImportService.syncMatchesInRange();
     }

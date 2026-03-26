@@ -23,9 +23,6 @@ public class CreateLeagueRequest {
     @Size(min=2, max=5, message="Code must be between 2 and 5 characters")
     private String code;
 
-    @URL(message="Emblem URL must be a valid URL")
-    private String emblemUrl;
-
     private Set<UUID> teamIds=new HashSet<>();
 
 }

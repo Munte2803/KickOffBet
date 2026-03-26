@@ -4,5 +4,6 @@ public enum TicketSelectionStatus {
     WON,
     LOST,
     PENDING,
+    CANCELLED
 
 }

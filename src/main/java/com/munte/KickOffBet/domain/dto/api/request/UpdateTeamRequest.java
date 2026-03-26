@@ -27,10 +27,6 @@ public class UpdateTeamRequest {
     @Size(min=1,max=5)
     private String tla;
 
-    @URL
-    private String crestUrl;
-
-
     private Set<UUID> leagueIds= new HashSet<>();
 
 }

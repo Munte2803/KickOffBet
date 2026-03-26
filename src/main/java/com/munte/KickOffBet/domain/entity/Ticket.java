@@ -4,6 +4,7 @@ package com.munte.KickOffBet.domain.entity;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -44,6 +45,7 @@ public class Ticket {
     private TicketStatus status;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<TicketSelection> selections = new ArrayList<>();
 
     @CreatedDate

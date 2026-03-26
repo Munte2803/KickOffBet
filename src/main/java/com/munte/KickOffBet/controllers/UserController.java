@@ -1,7 +1,7 @@
 package com.munte.KickOffBet.controllers;
 
 import com.munte.KickOffBet.domain.dto.api.response.UserDto;
-import com.munte.KickOffBet.services.UserService;
+import com.munte.KickOffBet.services.users.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

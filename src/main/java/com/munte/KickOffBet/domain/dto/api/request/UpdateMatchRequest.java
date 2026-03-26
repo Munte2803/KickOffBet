@@ -12,8 +12,5 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateMatchRequest {
-    private MatchStatus status;
-    private Integer ftHome;
-    private Integer ftAway;
     private List<UpdateMarketOfferRequest> availableOffers= new ArrayList<>();
 }

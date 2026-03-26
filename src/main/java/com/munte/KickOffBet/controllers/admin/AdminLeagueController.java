@@ -4,14 +4,15 @@ import com.munte.KickOffBet.domain.dto.api.request.CreateLeagueRequest;
 import com.munte.KickOffBet.domain.dto.api.request.UpdateLeagueRequest;
 import com.munte.KickOffBet.domain.dto.api.response.LeagueDto;
 import com.munte.KickOffBet.domain.dto.api.response.LeagueListDto;
-import com.munte.KickOffBet.domain.entity.League;
 import com.munte.KickOffBet.mapper.LeagueMapper;
-import com.munte.KickOffBet.services.LeagueService;
+import com.munte.KickOffBet.services.sports.LeagueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,10 +24,12 @@ public class AdminLeagueController {
     private final LeagueService leagueService;
     private final LeagueMapper leagueMapper;
 
-    @PostMapping
-    public ResponseEntity<LeagueDto> createLeague(@Valid @RequestBody CreateLeagueRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<LeagueDto> createLeague(
+            @Valid @RequestPart("data") CreateLeagueRequest request,
+            @RequestPart(required = false) MultipartFile emblem) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(leagueMapper.toDto(leagueService.createLeague(request)));
+                .body(leagueMapper.toDto(leagueService.createLeague(request, emblem)));
     }
 
     @GetMapping
@@ -45,8 +48,10 @@ public class AdminLeagueController {
     @PutMapping("/{code}")
     public ResponseEntity<LeagueDto> updateLeague(
             @PathVariable String code,
-            @Valid @RequestBody UpdateLeagueRequest request) {
-        return ResponseEntity.ok(leagueMapper.toDto(leagueService.updateLeague(request, code)));
+            @Valid @RequestPart UpdateLeagueRequest request,
+            @RequestPart(required = false) MultipartFile emblem
+    ) {
+        return ResponseEntity.ok(leagueMapper.toDto(leagueService.updateLeague(request, code, emblem)));
     }
 
     @PatchMapping("/{code}/switch-active")

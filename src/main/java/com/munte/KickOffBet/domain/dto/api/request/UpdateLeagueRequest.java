@@ -19,9 +19,6 @@ public class UpdateLeagueRequest {
     @NotBlank(message="Name is required")
     private String name;
 
-    @URL(message="Emblem URL must be a valid URL")
-    private String emblemUrl;
-
     private Set<UUID> teamIds = new HashSet<>();
 
 }

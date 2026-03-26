@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -15,8 +17,11 @@ import java.util.UUID;
 public class MatchSearchRequest {
 
     private String leagueCode;
+
     private MatchStatus status;
+
     private UUID teamId;
+
     private Boolean active;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -24,4 +29,11 @@ public class MatchSearchRequest {
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
+
+    private Boolean manualUpdate;
+
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private LocalDateTime startTimeBefore;
+
+
 }

@@ -48,12 +48,22 @@ public class MatchSpecifications {
                                 request.getStartDate().atStartOfDay())
                 );
             }
+
             if (request.getEndDate() != null) {
                 predicates.add(
                         cb.lessThanOrEqualTo(root.get("startTime"),
                                 request.getEndDate().atTime(LocalTime.MAX))
                 );
             }
+
+            if (request.getManualUpdate() != null) {
+                predicates.add(cb.equal(root.get("manualUpdate"), request.getManualUpdate()));
+            }
+
+            if (request.getStartTimeBefore() != null) {
+                predicates.add(cb.lessThan(root.get("startTime"), request.getStartTimeBefore()));
+            }
+
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

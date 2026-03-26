@@ -6,8 +6,8 @@ import com.munte.KickOffBet.domain.dto.api.response.UserDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserListDto;
 import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.mapper.UserMapper;
-import com.munte.KickOffBet.services.AuthService;
-import com.munte.KickOffBet.services.UserService;
+import com.munte.KickOffBet.services.users.AuthService;
+import com.munte.KickOffBet.services.users.UserService;
 import com.munte.KickOffBet.util.PageableValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +62,6 @@ public class AdminUserController {
     @GetMapping("/pending-verification")
     public ResponseEntity<Page<UserListDto>> getPendingVerification(
             @PageableDefault Pageable pageable) {
-        // fără PageableValidator — sort-ul e fix în repository, nu vine din frontend
         return ResponseEntity.ok(
                 userService.getPendingVerification(pageable).map(userMapper::toListDto));
     }

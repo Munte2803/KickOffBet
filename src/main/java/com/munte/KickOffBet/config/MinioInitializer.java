@@ -1,6 +1,6 @@
 package com.munte.KickOffBet.config;
 
-import com.munte.KickOffBet.services.StorageService;
+import com.munte.KickOffBet.services.users.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;

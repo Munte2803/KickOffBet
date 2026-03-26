@@ -1,11 +1,9 @@
 package com.munte.KickOffBet.repository;
 
 import com.munte.KickOffBet.domain.entity.Match;
+import jakarta.persistence.LockModeType;
 import lombok.NonNull;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -42,6 +40,7 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             "LEFT JOIN FETCH m.awayTeam " +
             "WHERE m.status = 'SCHEDULED'" +
             "AND (m.homeTeam.id IN :teamIds OR m.awayTeam.id IN :teamIds)")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<Match> findScheduledMatchesByTeamIds(@Param("teamIds") Set<UUID> teamIds);
 }
 
