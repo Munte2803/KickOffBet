@@ -5,6 +5,7 @@ import com.munte.KickOffBet.domain.dto.api.request.LoginRequest;
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.dto.api.request.ResetPasswordRequest;
 import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
+import com.munte.KickOffBet.domain.dto.api.response.RefreshTokenDto;
 import com.munte.KickOffBet.domain.entity.User;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,5 +26,9 @@ public interface AuthService {
     void forgotPassword(EmailRequest email);
 
     void resetPassword(String token, ResetPasswordRequest request);
+
+    RefreshTokenDto refreshToken();
+
+    void logout();
 
 }

@@ -86,6 +86,9 @@ public class User implements UserDetails {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    @Column(name = "last_activity")
+    private OffsetDateTime lastActivity;
+
     @Override
     @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {

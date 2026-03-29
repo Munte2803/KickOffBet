@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserRole } from '@/shared/types/enums'
+import api from '@/api/axios'
 
 export interface AuthUser {
   email: string
@@ -10,8 +11,8 @@ export interface AuthUser {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(localStorage.getItem('token'))
-  const user = ref<AuthUser | null>(JSON.parse(localStorage.getItem('authUser') ?? 'null'))
+  const token = ref<string | null>(sessionStorage.getItem('accessToken'))
+  const user = ref<AuthUser | null>(JSON.parse(sessionStorage.getItem('authUser') ?? 'null'))
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
@@ -22,16 +23,36 @@ export const useAuthStore = defineStore('auth', () => {
   function setAuth(newToken: string, newUser: AuthUser) {
     token.value = newToken
     user.value = newUser
-    localStorage.setItem('token', newToken)
-    localStorage.setItem('authUser', JSON.stringify(newUser))
+    sessionStorage.setItem('accessToken', newToken)
+    sessionStorage.setItem('authUser', JSON.stringify(newUser))
+  }
+
+  async function logout() {
+    try {
+      // Notify backend of logout
+      await api.post('/api/auth/logout')
+    } catch (error) {
+      console.warn('Logout notification failed:', error)
+    }
+    
+    clearAuth()
   }
 
   function clearAuth() {
     token.value = null
     user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('authUser')
+    sessionStorage.removeItem('accessToken')
+    sessionStorage.removeItem('authUser')
   }
 
-  return { token, user, isAuthenticated, isAdmin, fullName, setAuth, clearAuth }
+  return { 
+    token, 
+    user, 
+    isAuthenticated, 
+    isAdmin, 
+    fullName, 
+    setAuth, 
+    logout,
+    clearAuth 
+  }
 })

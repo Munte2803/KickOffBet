@@ -21,6 +21,9 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    @Value("${jwt.refresh-expiration:604800000}")
+    private long refreshExpiration;
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
@@ -34,18 +37,35 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateRefreshToken(UserDetails userDetails) {
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + refreshExpiration))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        return extractUsername(token).equals(userDetails.getUsername())
-                && !isTokenExpired(token)
-                && userDetails.isAccountNonLocked();
+        try {
+            return extractUsername(token).equals(userDetails.getUsername())
+                    && !isTokenExpired(token)
+                    && userDetails.isAccountNonLocked();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
+        try {
+            return extractClaim(token, Claims::getExpiration).before(new Date());
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

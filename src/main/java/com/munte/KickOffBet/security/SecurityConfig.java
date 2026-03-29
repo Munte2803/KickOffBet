@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,24 +33,36 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final RateLimitFilter rateLimitFilter;
 
+    @Value("${app.cors.allowed-origins}")
+    private String corsAllowedOrigins;
+
+    @Value("${springdoc.swagger-ui.enabled:false}")
+    private boolean swaggerEnabled;
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        http
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        var authConfigurer = http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/api/auth/**").permitAll();
+                    
+                    if (!swaggerEnabled) {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").denyAll();
+                    } else {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll();
+                    }
+                    
+                    auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated();
+                })
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitFilter, JwtAuthFilter.class);
 
-        return http.build();
+        return authConfigurer.build();
     }
 
     @Bean
@@ -71,7 +85,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(Arrays.asList(corsAllowedOrigins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

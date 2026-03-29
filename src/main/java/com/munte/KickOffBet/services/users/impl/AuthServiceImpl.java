@@ -5,6 +5,7 @@ import com.munte.KickOffBet.domain.dto.api.request.LoginRequest;
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.dto.api.request.ResetPasswordRequest;
 import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
+import com.munte.KickOffBet.domain.dto.api.response.RefreshTokenDto;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.entity.VerificationToken;
 import com.munte.KickOffBet.domain.enums.TokenType;
@@ -306,6 +307,44 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendPasswordChangedNotification(user);
 
         log.info("Password reset for user: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public RefreshTokenDto refreshToken() {
+        User user = getCurrentUser();
+        
+        // Update last activity to track active users
+        user.setLastActivity(OffsetDateTime.now());
+        userRepository.save(user);
+
+        String token = jwtService.generateToken(user);
+
+        return RefreshTokenDto.builder()
+                .token(token)
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .role(user.getRole())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void logout() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null && authentication.isAuthenticated()) {
+            String email = authentication.getName();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+      
+            user.setLastActivity(OffsetDateTime.now());
+            userRepository.save(user);
+            
+            SecurityContextHolder.clearContext();
+            log.info("User logged out: {}", email);
+        }
     }
 
 }

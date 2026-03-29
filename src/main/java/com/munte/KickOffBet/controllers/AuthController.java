@@ -5,6 +5,7 @@ import com.munte.KickOffBet.domain.dto.api.request.LoginRequest;
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.dto.api.request.ResetPasswordRequest;
 import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
+import com.munte.KickOffBet.domain.dto.api.response.RefreshTokenDto;
 import com.munte.KickOffBet.services.users.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,17 @@ public class AuthController {
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request.getToken(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<RefreshTokenDto> refreshToken() {
+        return ResponseEntity.ok(authService.refreshToken());
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        authService.logout();
         return ResponseEntity.noContent().build();
     }
 }
