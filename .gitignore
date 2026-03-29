@@ -18,3 +18,9 @@ logs/
 spring-shell.log
 
 HELP.md
+
+# Frontend
+node_modules/
+dist/
+.env.local
+.env.*.local

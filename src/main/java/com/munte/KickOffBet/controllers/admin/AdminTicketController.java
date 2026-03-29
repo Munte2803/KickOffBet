@@ -46,7 +46,7 @@ public class AdminTicketController {
 
     @GetMapping("/users/{id}")
     private ResponseEntity<Page<TicketDto>> getTicketsForUser(
-            @PathVariable UUID userId,
+            @PathVariable("id") UUID userId,
             @PageableDefault(sort = "createdAt") Pageable pageable
     ) {
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);

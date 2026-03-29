@@ -12,7 +12,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", indexes = {
+    @Index(name = "idx_transactions_user_id", columnList = "user_id"),
+    @Index(name = "idx_transactions_type_status_created", columnList = "transaction_type, status, created_at"),
+    @Index(name = "idx_transactions_status", columnList = "status"),
+    @Index(name = "idx_transactions_user_type_created", columnList = "user_id, transaction_type, created_at")
+})
 @Getter
 @Setter
 @NoArgsConstructor

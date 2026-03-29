@@ -19,7 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_status", columnList = "status"),
+    @Index(name = "idx_users_status_idcard", columnList = "status, id_card_verified")
+})
 @Getter
 @Setter
 @NoArgsConstructor

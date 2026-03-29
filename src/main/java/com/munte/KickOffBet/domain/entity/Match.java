@@ -11,9 +11,18 @@ import java.time.OffsetDateTime;
 import java.util.*;
 
 @Entity
-@Table(name="matches", uniqueConstraints = {
+@Table(name = "matches",
+    uniqueConstraints = {
         @UniqueConstraint(name = "uk_match_external_id", columnNames = {"external_provider", "external_id"})
-})
+    },
+    indexes = {
+        @Index(name = "idx_matches_status", columnList = "status"),
+        @Index(name = "idx_matches_league_id", columnList = "league_id"),
+        @Index(name = "idx_matches_start_time", columnList = "start_time"),
+        @Index(name = "idx_matches_home_team", columnList = "home_team_id"),
+        @Index(name = "idx_matches_away_team", columnList = "away_team_id")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
