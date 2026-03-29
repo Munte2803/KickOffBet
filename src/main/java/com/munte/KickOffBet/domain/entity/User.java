@@ -13,7 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -71,17 +71,17 @@ public class User implements UserDetails {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
 
     @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
+    private OffsetDateTime lockedUntil;
 
     @Override
     @NonNull
@@ -99,7 +99,7 @@ public class User implements UserDetails {
     public boolean isAccountNonLocked() {
         if (status == UserStatus.SUSPENDED
                 || status == UserStatus.DEACTIVATED) return false;
-        return lockedUntil == null || !lockedUntil.isAfter(LocalDateTime.now());
+        return lockedUntil == null || !lockedUntil.isAfter(OffsetDateTime.now());
     }
 
     @Override

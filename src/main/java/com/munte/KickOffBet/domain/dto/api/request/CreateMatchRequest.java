@@ -8,7 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.LocalDateTime;
+
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +22,7 @@ public class CreateMatchRequest {
     @NotNull(message = "Start time is required")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     @Future(message = "Start time must be in the future")
-    private LocalDateTime startTime;
+    private OffsetDateTime startTime;
 
     @NotNull(message = "League is required")
     private UUID leagueId;

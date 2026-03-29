@@ -2,12 +2,12 @@ package com.munte.KickOffBet.domain.dto.footballdata;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record FdMatchDto(
         Long id,
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-        LocalDateTime utcDate,
+        OffsetDateTime utcDate,
         String status,
         String group,
         FdSeasonDto season,

@@ -7,8 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -33,7 +32,7 @@ public class MatchSearchRequest {
     private Boolean manualUpdate;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private LocalDateTime startTimeBefore;
+    private OffsetDateTime startTimeBefore;
 
 
 }

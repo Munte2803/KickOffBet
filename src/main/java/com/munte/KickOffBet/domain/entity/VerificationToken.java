@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -31,6 +31,6 @@ public class VerificationToken {
     @Enumerated(EnumType.STRING)
     private TokenType type;
 
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
     private boolean used;
 }

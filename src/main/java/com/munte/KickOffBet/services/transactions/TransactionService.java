@@ -8,7 +8,7 @@ import com.munte.KickOffBet.domain.entity.Transaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface TransactionService {
@@ -23,11 +23,11 @@ public interface TransactionService {
 
     Transaction getMyTransactionById(UUID id);
 
-    UserTransactionSummaryDto getUserTransactionSummary(UUID userId, LocalDateTime start, LocalDateTime end);
+    UserTransactionSummaryDto getUserTransactionSummary(UUID userId, OffsetDateTime start, OffsetDateTime end);
 
-    TransactionReportDto getTransactionReport(LocalDateTime start, LocalDateTime end);
+    TransactionReportDto getTransactionReport(OffsetDateTime start, OffsetDateTime end);
 
-    Page<UserDepositSummaryDto> getTopDepositors(LocalDateTime start, LocalDateTime end, Pageable pageable);
+    Page<UserDepositSummaryDto> getTopDepositors(OffsetDateTime start, OffsetDateTime end, Pageable pageable);
 
     Page<Transaction> getPendingTransactions(Pageable pageable);
 

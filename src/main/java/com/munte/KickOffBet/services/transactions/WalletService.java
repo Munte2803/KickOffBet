@@ -13,11 +13,11 @@ public interface WalletService {
 
     Transaction withdraw(WithdrawRequest request);
 
-    Transaction stake(BigDecimal amount, UUID ticketId);
+    void stake(BigDecimal amount, UUID ticketId);
 
-    Transaction payout(UUID userId, BigDecimal amount, UUID ticketId);
+    void payout(UUID userId, BigDecimal amount, UUID ticketId);
 
-    Transaction refund(UUID userId, BigDecimal amount);
+    void refund(UUID userId, BigDecimal amount);
 
     Transaction approveTransaction(UUID transactionId);
 

@@ -98,7 +98,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public Transaction stake(BigDecimal amount, UUID ticketId) {
+    public void stake(BigDecimal amount, UUID ticketId) {
 
         User user = this.getActiveCurrentUser();
 
@@ -117,12 +117,12 @@ public class WalletServiceImpl implements WalletService {
 
         userRepository.save(user);
 
-        return transactionRepository.save(transaction);
+        transactionRepository.save(transaction);
     }
 
     @Override
     @Transactional
-    public Transaction payout(UUID userId, BigDecimal amount, UUID ticketId) {
+    public void payout(UUID userId, BigDecimal amount, UUID ticketId) {
 
         User user = this.getActiveUserById(userId);
 
@@ -137,12 +137,12 @@ public class WalletServiceImpl implements WalletService {
 
         userRepository.save(user);
 
-        return transactionRepository.save(transaction);
+        transactionRepository.save(transaction);
     }
 
     @Override
     @Transactional
-    public Transaction refund(UUID userId, BigDecimal amount) {
+    public void refund(UUID userId, BigDecimal amount) {
 
         User user = this.getActiveUserById(userId);
 
@@ -156,7 +156,7 @@ public class WalletServiceImpl implements WalletService {
 
         userRepository.save(user);
 
-        return transactionRepository.save(transaction);
+        transactionRepository.save(transaction);
     }
 
     @Override

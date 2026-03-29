@@ -16,7 +16,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Repository
@@ -28,8 +28,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
             "AND t.createdAt BETWEEN :start AND :end")
     BigDecimal sumByTypeAndPeriod(
             @Param("type") TransactionType type,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end,
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end,
             @Param("status") TransactionStatus status
     );
 
@@ -48,8 +48,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     )
     Page<UserDepositSummaryDto> findTopDepositors(
             @Param("type") TransactionType type,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end,
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end,
             @Param("status") TransactionStatus status,
             Pageable pageable
     );
@@ -61,8 +61,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
             "AND t.createdAt BETWEEN :start AND :end")
     BigDecimal sumByUserIdAndTypeAndPeriod(@Param("userId") UUID userId,
                                            @Param("type") TransactionType type,
-                                           @Param("start") LocalDateTime start,
-                                           @Param("end") LocalDateTime end,
+                                           @Param("start") OffsetDateTime start,
+                                           @Param("end") OffsetDateTime end,
                                            @Param("status") TransactionStatus status);
 
     @EntityGraph(attributePaths = "user")
@@ -84,7 +84,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     long countRecentTransactions(
             @Param("userId") UUID userId,
             @Param("type") TransactionType type,
-            @Param("since") LocalDateTime since,
+            @Param("since") OffsetDateTime since,
             @Param("status") TransactionStatus status
     );
 

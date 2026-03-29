@@ -21,7 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -85,7 +85,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserTransactionSummaryDto getUserTransactionSummary(UUID userId, LocalDateTime start, LocalDateTime end) {
+    public UserTransactionSummaryDto getUserTransactionSummary(UUID userId, OffsetDateTime start, OffsetDateTime end) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -108,7 +108,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public TransactionReportDto getTransactionReport(LocalDateTime start, LocalDateTime end) {
+    public TransactionReportDto getTransactionReport(OffsetDateTime start, OffsetDateTime end) {
 
         TransactionReportDto transactionReportDto = new TransactionReportDto();
 
@@ -126,7 +126,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserDepositSummaryDto> getTopDepositors(LocalDateTime start, LocalDateTime end, Pageable pageable) {
+    public Page<UserDepositSummaryDto> getTopDepositors(OffsetDateTime start, OffsetDateTime end, Pageable pageable) {
         return transactionRepository.findTopDepositors(TransactionType.DEPOSIT, start, end, TransactionStatus.COMPLETED, pageable);
     }
 

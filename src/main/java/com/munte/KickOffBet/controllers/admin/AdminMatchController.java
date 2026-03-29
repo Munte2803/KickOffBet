@@ -19,7 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -96,7 +96,7 @@ public class AdminMatchController {
     @PatchMapping("/{id}/time")
     public ResponseEntity<MatchDto> updateMatchTime(
             @PathVariable UUID id,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startTime) {
         return ResponseEntity.ok(matchMapper.toDto(matchService.updateMatchTime(id, startTime)));
     }
 

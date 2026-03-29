@@ -24,8 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -43,11 +42,7 @@ public class DataImportServiceImpl implements DataImportService {
     private final MatchRepository matchRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ApplicationContext applicationContext;
-    private static final ZoneId ZONE_UTC = ZoneId.of("UTC");
-    private static final ZoneId ZONE_ROMANIA = ZoneId.of("Europe/Bucharest");
-
-    private static final String EXTERNAL_PROVIDER = "FOOTBALL_DATA";
-    private final AtomicReference<LocalDateTime> lastSuccess = new AtomicReference<>(LocalDateTime.MIN);
+    private final AtomicReference<OffsetDateTime> lastSuccess = new AtomicReference<>(OffsetDateTime.now());
     private final AtomicReference<Team> cachedTbdTeam = new AtomicReference<>();
 
     @Value("${sync.api-delay-ms:6500}")
@@ -61,6 +56,8 @@ public class DataImportServiceImpl implements DataImportService {
 
     @Value("${sync.cooldown-seconds:50}")
     private long cooldownSeconds;
+
+    private static final String EXTERNAL_PROVIDER = "FOOTBALL_DATA";
 
     private Team getTbdTeam() {
         final Team existing = cachedTbdTeam.get();
@@ -180,7 +177,7 @@ public class DataImportServiceImpl implements DataImportService {
     @Transactional
     @Async("threadPoolTaskExecutor")
     public void syncMatchesInRange() {
-        if (Duration.between(lastSuccess.get(), LocalDateTime.now()).toSeconds() < cooldownSeconds) {
+        if (Duration.between(lastSuccess.get(), OffsetDateTime.now()).toSeconds() < cooldownSeconds) {
             log.debug("Skipping range sync, last success was less than 50s ago.");
             return;
         }
@@ -198,7 +195,7 @@ public class DataImportServiceImpl implements DataImportService {
                 .collect(Collectors.toMap(League::getCode, Function.identity(), (a, b) -> a));
 
         processAndSaveMatches(apiMatches, leaguesMap);
-        lastSuccess.set(LocalDateTime.now());
+        lastSuccess.set(OffsetDateTime.now());
     }
 
     private void processAndSaveMatches(List<FdMatchDto> apiMatches, Map<String, League> leaguesMap) {
@@ -230,6 +227,8 @@ public class DataImportServiceImpl implements DataImportService {
                     final boolean isNew = (existingMatch == null);
                     final Match match = isNew ? new Match() : existingMatch;
 
+                    if (match == null) return null;
+
                     final MatchStatus oldStatus = match.getStatus();
                     final MatchStatus newStatus = MatchStatus.fromString(dto.status());
 
@@ -237,12 +236,7 @@ public class DataImportServiceImpl implements DataImportService {
                         match.setExternalId(dto.id());
                         match.setExternalProvider(EXTERNAL_PROVIDER);
                         if (dto.utcDate() != null) {
-                            LocalDateTime localRomaniaTime = dto.utcDate()
-                                    .atZone(ZONE_UTC)
-                                    .withZoneSameInstant(ZONE_ROMANIA)
-                                    .toLocalDateTime();
-
-                            match.setStartTime(localRomaniaTime);
+                            match.setStartTime(OffsetDateTime.parse(dto.utcDate().toString()));
                         }
                         match.setStatus(newStatus);
                         match.setLeague(league);
@@ -286,6 +280,7 @@ public class DataImportServiceImpl implements DataImportService {
                 case FINISHED -> eventPublisher.publishEvent(new MatchesFinishedEvent(matches));
                 case SUSPENDED, POSTPONED -> eventPublisher.publishEvent(new MatchesDelayedEvent(matches));
                 case CANCELLED -> eventPublisher.publishEvent(new MatchesCanceledEvent(matches));
+                case UNKNOWN -> log.warn("Skipping event publishing for matches with unknown status");
             }
         });
     }
@@ -314,7 +309,7 @@ public class DataImportServiceImpl implements DataImportService {
             }
         }
         log.info("### FULL SYNC COMPLETED ###");
-        lastSuccess.set(LocalDateTime.now());
+        lastSuccess.set(OffsetDateTime.now());
     }
 
     @Override
@@ -335,6 +330,6 @@ public class DataImportServiceImpl implements DataImportService {
             }
         }
         log.info("### ALL MATCHES SYNC COMPLETED ###");
-        lastSuccess.set(LocalDateTime.now());
+        lastSuccess.set(OffsetDateTime.now());
     }
 }

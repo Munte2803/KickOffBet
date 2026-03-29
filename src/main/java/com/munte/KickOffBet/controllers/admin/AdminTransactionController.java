@@ -17,7 +17,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -71,15 +71,15 @@ public class AdminTransactionController {
 
     @GetMapping("/reports")
     public ResponseEntity<TransactionReportDto> getTransactionReport(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end) {
         return ResponseEntity.ok(transactionService.getTransactionReport(start, end));
     }
 
     @GetMapping("/top-depositors")
     public ResponseEntity<Page<UserDepositSummaryDto>> getTopDepositors(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end,
             @PageableDefault Pageable pageable) {
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         return ResponseEntity.ok(transactionService.getTopDepositors(start, end, pageable));
@@ -88,8 +88,8 @@ public class AdminTransactionController {
     @GetMapping("/users/{userId}/summary")
     public ResponseEntity<UserTransactionSummaryDto> getUserTransactionSummary(
             @PathVariable UUID userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime end) {
         return ResponseEntity.ok(transactionService.getUserTransactionSummary(userId, start, end));
     }
 

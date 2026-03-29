@@ -5,7 +5,6 @@ import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Ticket;
 import com.munte.KickOffBet.events.Match.MatchesCanceledEvent;
 import com.munte.KickOffBet.events.Match.MatchesFinishedEvent;
-import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.services.tickets.TicketSelectionSettlementService;
 import com.munte.KickOffBet.services.tickets.TicketService;
 import lombok.RequiredArgsConstructor;

@@ -6,7 +6,6 @@ import com.munte.KickOffBet.domain.enums.MarketType;
 import com.munte.KickOffBet.domain.enums.TicketSelectionStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.util.Objects;

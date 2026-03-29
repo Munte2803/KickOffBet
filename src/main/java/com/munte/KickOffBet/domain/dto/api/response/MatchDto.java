@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +30,7 @@ public class MatchDto {
     private String awayTeamLogo;
     private String awayTeamName;
 
-    public LocalDateTime startTime;
+    public OffsetDateTime startTime;
 
     private MatchStatus status;
 
@@ -40,9 +40,9 @@ public class MatchDto {
     
     private boolean active;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     private List<MarketOfferDto> availableOffers = new ArrayList<>();
 

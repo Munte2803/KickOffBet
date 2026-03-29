@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static com.munte.KickOffBet.domain.enums.MatchStatus.LIVE;
@@ -34,7 +34,7 @@ public class ManualMatchScheduler {
         request.setManualUpdate(true);
         request.setActive(true);
         request.setStatus(SCHEDULED);
-        request.setStartTimeBefore(LocalDateTime.now());
+        request.setStartTimeBefore(OffsetDateTime.now());
 
         List<Match> matches = matchRepository.findAll(MatchSpecifications.withCriteria(request));
 

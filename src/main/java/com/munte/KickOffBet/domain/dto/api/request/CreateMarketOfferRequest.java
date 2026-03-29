@@ -1,12 +1,11 @@
 package com.munte.KickOffBet.domain.dto.api.request;
 
-import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MarketType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

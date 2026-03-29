@@ -1,6 +1,5 @@
 package com.munte.KickOffBet.services.users.impl;
 
-import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.UserRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;

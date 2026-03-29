@@ -5,19 +5,18 @@ import com.munte.KickOffBet.domain.dto.api.request.MatchSearchRequest;
 import com.munte.KickOffBet.domain.dto.api.request.UpdateMatchRequest;
 import com.munte.KickOffBet.domain.dto.api.request.UpdateMatchStatusRequest;
 import com.munte.KickOffBet.domain.entity.Match;
-import com.munte.KickOffBet.domain.enums.MatchStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
+
+import java.time.OffsetDateTime;
+
 import java.util.List;
 import java.util.UUID;
 
 public interface MatchService {
 
     Match createMatch(CreateMatchRequest request);
-
 
     Page<Match> searchMatches(MatchSearchRequest request, Pageable pageable);
 
@@ -27,7 +26,7 @@ public interface MatchService {
 
     Match updateMatchStatus(UUID matchId, UpdateMatchStatusRequest request);
 
-    Match updateMatchTime(UUID matchId, LocalDateTime startTime);
+    Match updateMatchTime(UUID matchId, OffsetDateTime startTime);
 
     void switchMatchActive(UUID matchId, boolean active);
 

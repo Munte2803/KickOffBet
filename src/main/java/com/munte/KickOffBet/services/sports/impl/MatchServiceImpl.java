@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -126,8 +126,8 @@ public class MatchServiceImpl implements MatchService {
         switch (request.getStatus()) {
             case SCHEDULED -> eventPublisher.publishEvent(new MatchesScheduledEvent(matchForEvent));
             case LIVE -> {
-                if (match.getStartTime().isAfter(LocalDateTime.now())) {
-                    match.setStartTime(LocalDateTime.now());
+                if (match.getStartTime().isAfter(OffsetDateTime.now())) {
+                    match.setStartTime(OffsetDateTime.now());
                 }
                 eventPublisher.publishEvent(new MatchesStartedEvent(matchForEvent));
             }
@@ -152,7 +152,7 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
-    public Match updateMatchTime(UUID matchId, LocalDateTime startTime) {
+    public Match updateMatchTime(UUID matchId, OffsetDateTime startTime) {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Match not found"));
 
@@ -186,7 +186,7 @@ public class MatchServiceImpl implements MatchService {
         MatchSearchRequest request = new MatchSearchRequest();
         request.setManualUpdate(true);
         request.setActive(true);
-        request.setStartTimeBefore(LocalDateTime.now().minusMinutes(90));
+        request.setStartTimeBefore(OffsetDateTime.from(OffsetDateTime.now().minusMinutes(90)));
         request.setStatus(LIVE);
         return matchRepository.findAll(MatchSpecifications.withCriteria(request));
     }

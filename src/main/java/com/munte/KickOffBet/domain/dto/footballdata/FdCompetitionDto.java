@@ -1,7 +1,6 @@
 package com.munte.KickOffBet.domain.dto.footballdata;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.Data;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)

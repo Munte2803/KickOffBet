@@ -1,13 +1,11 @@
 package com.munte.KickOffBet.domain.dto.api.response;
 
 import com.munte.KickOffBet.domain.enums.MatchStatus;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -29,7 +27,7 @@ public class MatchListDto {
     private String awayTeamLogo;
     private String awayTeamName;
 
-    public LocalDateTime startTime;
+    public OffsetDateTime startTime;
 
     private MatchStatus status;
 

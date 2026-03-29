@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -38,9 +38,9 @@ public class AmlServiceImpl implements AmlService {
     @Override
     public boolean susDeposit(User user, BigDecimal amount) {
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime monthAgo = now.minusDays(30);
-        LocalDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime monthAgo = now.minusDays(30);
+        OffsetDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
 
         BigDecimal totalAmount = transactionRepository
                 .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.DEPOSIT,
@@ -64,9 +64,9 @@ public class AmlServiceImpl implements AmlService {
     @Override
     public boolean susWithdrawal(User user, BigDecimal amount) {
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime monthAgo = now.minusDays(30);
-        LocalDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime monthAgo = now.minusDays(30);
+        OffsetDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
 
         BigDecimal totalStakes = transactionRepository
                 .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.BET, monthAgo, now, TransactionStatus.COMPLETED);

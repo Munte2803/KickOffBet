@@ -34,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -91,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUser(user);
         verificationToken.setToken(token);
         verificationToken.setType(TokenType.EMAIL_VERIFICATION);
-        verificationToken.setExpiresAt(LocalDateTime.now().plusHours(24));
+        verificationToken.setExpiresAt(OffsetDateTime.now().plusHours(24));
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
@@ -149,7 +149,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(OffsetDateTime.now())) {
             throw new BusinessException("Account is temporarily locked. Try again later.");
         }
 
@@ -164,7 +164,7 @@ public class AuthServiceImpl implements AuthService {
             user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
 
             if (user.getFailedLoginAttempts() >= 10) {
-                user.setLockedUntil(LocalDateTime.now().plusHours(1));
+                user.setLockedUntil(OffsetDateTime.now().plusHours(1));
                 user.setFailedLoginAttempts(0);
                 userRepository.save(user);
                 throw new BusinessException("Account locked for 1 hour due to too many failed attempts.");
@@ -214,7 +214,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("Token already used");
         }
 
-        if (verificationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (verificationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new BusinessException("Token has expired");
         }
 
@@ -248,7 +248,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUser(user);
         verificationToken.setToken(token);
         verificationToken.setType(TokenType.EMAIL_VERIFICATION);
-        verificationToken.setExpiresAt(LocalDateTime.now().plusHours(24));
+        verificationToken.setExpiresAt(OffsetDateTime.now().plusHours(24));
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
@@ -270,7 +270,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUser(user);
         verificationToken.setToken(token);
         verificationToken.setType(TokenType.PASSWORD_RESET);
-        verificationToken.setExpiresAt(LocalDateTime.now().plusHours(1));
+        verificationToken.setExpiresAt(OffsetDateTime.now().plusHours(1));
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
@@ -293,7 +293,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("Token already used");
         }
 
-        if (verificationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (verificationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new BusinessException("Token has expired");
         }
 

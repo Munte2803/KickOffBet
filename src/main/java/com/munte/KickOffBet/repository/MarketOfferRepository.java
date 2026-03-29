@@ -1,16 +1,12 @@
 package com.munte.KickOffBet.repository;
 
-
 import com.munte.KickOffBet.domain.entity.MarketOffer;
-import com.munte.KickOffBet.domain.enums.BetOption;
-import com.munte.KickOffBet.domain.enums.MarketType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -167,7 +167,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
                 if (offer.getOdds() == null || offer.getOdds().compareTo(newOdds) != 0) {
                     offer.setOdds(newOdds);
                     offer.setActive(true);
-                    offer.setUpdatedAt(LocalDateTime.now());
+                    offer.setUpdatedAt(OffsetDateTime.now());
                 }
             }
         } else {

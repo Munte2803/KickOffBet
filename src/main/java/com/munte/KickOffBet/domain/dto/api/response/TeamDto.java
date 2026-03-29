@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,8 +18,8 @@ public class TeamDto {
     private String shortName;
     private String tla;
     private String crestUrl;
-    private String createdAt;
-    private String updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
     private boolean active;
     private List<LeagueListDto> leagues;
 

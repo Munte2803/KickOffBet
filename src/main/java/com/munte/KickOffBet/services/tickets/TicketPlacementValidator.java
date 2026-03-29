@@ -9,7 +9,8 @@ import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.exceptions.TicketPlacementException;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,7 +52,7 @@ public class TicketPlacementValidator {
                 );
             }
 
-            if (!match.getStartTime().isAfter(LocalDateTime.now())){
+            if (!match.getStartTime().isAfter(OffsetDateTime.now())){
                 throw new TicketPlacementException(
                         String.format("Match %s has already started", matchId)
                 );

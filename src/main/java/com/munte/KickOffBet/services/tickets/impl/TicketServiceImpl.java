@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -181,7 +181,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         ticket.getSelections().forEach(ticketSelection -> {
-            if (ticketSelection.getMatch().getStartTime().isBefore(LocalDateTime.now())) {
+            if (ticketSelection.getMatch().getStartTime().isBefore(OffsetDateTime.now())) {
                 throw new BusinessException("Ticket Matches already started");
             }
             ticketSelection.setStatus(TicketSelectionStatus.CANCELLED);
