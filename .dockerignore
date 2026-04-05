@@ -1,0 +1,11 @@
+target/
+.git/
+.idea/
+.vscode/
+.cursor/
+*.iml
+*.log
+mvnw.cmd
+node_modules/
+Kickoffbet-ui/
+.env

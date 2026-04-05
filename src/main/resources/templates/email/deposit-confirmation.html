@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="ro" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <meta name="x-apple-disable-message-reformatting" />
+</head>
+<body bgcolor="#f4f7fb" style="margin:0; padding:0; background-color:#f4f7fb; color:#111827;">
+
+<table th:replace="~{email/layout :: header}"></table>
+
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f7fb" style="background-color:#f4f7fb;">
+    <tr>
+        <td align="center">
+            <table width="620" cellpadding="0" cellspacing="0"
+                   bgcolor="#ffffff"
+                   style="background-color:#ffffff;
+                          border-left:1px solid #dbe3ee;
+                          border-right:1px solid #dbe3ee;">
+                <tr>
+                    <td style="padding:40px 32px; font-family:Arial,sans-serif;">
+                        <p style="margin:0 0 12px 0; color:#64748b; font-size:12px; letter-spacing:0.24em; text-transform:uppercase;">
+                            Actualizare portofel
+                        </p>
+                        <h2 style="margin:0 0 16px 0; color:#0f172a; font-size:28px; line-height:1.2; font-weight:800;">
+                            Salut, <span th:text="${firstName}">Utilizator</span>.
+                        </h2>
+                        <p style="margin:0 0 28px 0; color:#475569; font-size:15px; line-height:1.8;">
+                            Depunerea ta a fost procesata cu succes, iar soldul portofelului a fost deja actualizat.
+                        </p>
+
+                        <table width="100%" cellpadding="0" cellspacing="0"
+                               bgcolor="#f0fdf4"
+                               style="margin:0 0 28px 0; border:1px solid #bbf7d0; border-radius:18px; background-color:#f0fdf4;">
+                            <tr>
+                                <td style="padding:26px 24px; text-align:center;">
+                                    <p style="margin:0 0 10px 0; color:#64748b; font-size:12px; letter-spacing:0.22em; text-transform:uppercase;">
+                                        Suma depusa
+                                    </p>
+                                    <p style="margin:0; color:#16a34a; font-size:38px; line-height:1; font-weight:800;">
+                                        +<span th:text="${amount}">0.00</span> RON
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin:0; color:#64748b; font-size:13px; line-height:1.8;">
+                            Poti folosi imediat soldul actualizat in aplicatia KickOffBet.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<table th:replace="~{email/layout :: footer}"></table>
+
+</body>
+</html>
