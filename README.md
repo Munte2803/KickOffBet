@@ -174,12 +174,6 @@ Compilare:
 ./mvnw -DskipTests compile
 ```
 
-Teste:
-
-```bash
-./mvnw test
-```
-
 ### Frontend
 
 Dezvoltare:
@@ -200,7 +194,7 @@ Regulile actuale de acces sunt:
 
 - `/api/auth/**` este public
 - `/api/admin/**` este accesibil doar administratorilor
-- restul endpointurilor necesita autentificare
+- restul endpointurilor necesita autentificare, sau chiar validarea contului
 - Swagger este disponibil doar cand este activat din configurare
 
 ## Zone functionale
