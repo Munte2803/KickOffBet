@@ -2,13 +2,11 @@
 const props = withDefaults(defineProps<{
   src?: string | null
   alt?: string
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'card'
-  shape?: 'circle' | 'rounded'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'card' | 'cardLeague'
 }>(), {
   src: null,
   alt: '',
   size: 'md',
-  shape: 'circle',
 })
 
 const sizeClasses: Record<NonNullable<typeof props.size>, string> = {
@@ -18,23 +16,20 @@ const sizeClasses: Record<NonNullable<typeof props.size>, string> = {
   lg: 'h-12 w-12 p-[4px]',
   xl: 'h-14 w-14 p-[4px]',
   card: 'h-6 w-6 p-[2px] sm:h-8 sm:w-8 sm:p-[3px] lg:h-10 lg:w-10 lg:p-[3px]',
+  cardLeague: 'h-5 w-5 p-[2px] sm:h-6 sm:w-6 sm:p-[2px]',
 }
 </script>
 
 <template>
   <div
     v-if="src"
-    class="flex flex-shrink-0 items-center justify-center overflow-hidden border border-white/80 bg-white shadow-[0_12px_28px_rgba(0,0,0,0.28)]"
-    :class="[
-      sizeClasses[size],
-      shape === 'rounded' ? 'rounded-xl' : 'rounded-full',
-    ]"
+    class="flex flex-shrink-0 items-center justify-center"
+    :class="sizeClasses[size]"
   >
     <img
       :src="src"
       :alt="alt"
-      class="h-full w-full object-contain"
-      :class="shape === 'rounded' ? 'rounded-[10px]' : 'rounded-full'"
+      class="logo-outline h-full w-full object-contain"
     >
   </div>
 </template>

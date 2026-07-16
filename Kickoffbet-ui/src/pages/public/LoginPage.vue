@@ -41,7 +41,6 @@ const onSubmit = handleSubmit(async (values) => {
       const profile = await getProfile()
       authStore.hydrateProfile(profile)
     } catch {
-      // Keep the auth session even if profile hydration fails.
     }
 
     toastStore.showSuccess('Autentificare reusita.')

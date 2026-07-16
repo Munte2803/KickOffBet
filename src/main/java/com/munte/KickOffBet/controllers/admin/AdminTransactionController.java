@@ -1,14 +1,17 @@
 package com.munte.KickOffBet.controllers.admin;
 
 import com.munte.KickOffBet.domain.dto.api.request.TransactionSearchRequest;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.TransactionDto;
 import com.munte.KickOffBet.domain.dto.api.response.TransactionReportDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDepositSummaryDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserTransactionSummaryDto;
+import com.munte.KickOffBet.domain.enums.TransactionType;
 import com.munte.KickOffBet.mapper.TransactionMapper;
 import com.munte.KickOffBet.services.transactions.TransactionService;
 import com.munte.KickOffBet.services.transactions.WalletService;
 import com.munte.KickOffBet.util.PageableValidator;
+import com.munte.KickOffBet.util.TimeSeriesRangeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -100,6 +104,15 @@ public class AdminTransactionController {
     ){
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         return ResponseEntity.ok(transactionService.getTransactionsForUser(userId, pageable).map(transactionMapper::toDto));
+    }
+
+    @GetMapping("/timeseries")
+    public ResponseEntity<List<TimeSeriesPointDto>> getTransactionsTimeSeries(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam TransactionType type) {
+        TimeSeriesRangeValidator.validate(start, end);
+        return ResponseEntity.ok(transactionService.getDailyTransactionsTimeSeries(start, end, type));
     }
 
 }

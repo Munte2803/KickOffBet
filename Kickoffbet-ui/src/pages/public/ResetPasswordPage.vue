@@ -41,7 +41,6 @@ const onSubmit = handleSubmit(async (values) => {
     await resetPassword({
       token: values.token,
       password: values.newPassword,
-      newPassword: values.newPassword,
       confirmPassword: values.confirmPassword,
     })
     resetCompleted.value = true

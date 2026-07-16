@@ -17,6 +17,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -89,6 +90,24 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
             @Param("type") TransactionType type,
             @Param("since") LocalDateTime since,
             @Param("status") TransactionStatus status
+    );
+
+    @Query(value = """
+            SELECT DATE(t.created_at) AS day,
+                   COUNT(*) AS cnt,
+                   COALESCE(SUM(t.amount), 0) AS total
+            FROM transactions t
+            WHERE t.transaction_type = :type
+              AND t.status = :status
+              AND t.created_at BETWEEN :start AND :end
+            GROUP BY DATE(t.created_at)
+            ORDER BY DATE(t.created_at)
+            """, nativeQuery = true)
+    List<Object[]> aggregateDailyByType(
+            @Param("type") String type,
+            @Param("status") String status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
     );
 
 }

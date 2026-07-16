@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/vue-query'
 import FormInput from '@/components/FormInput.vue'
 import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { searchUsers } from '@/api/admin-users.api'
 import type { UserList } from '@/types/admin-user.types'
 
@@ -15,7 +16,7 @@ const props = withDefaults(defineProps<{
   resultsTitle?: string
 }>(), {
   placeholder: 'utilizator@exemplu.com',
-  emptyMessage: 'Introdu cel putin 2 caractere pentru a cauta useri.',
+  emptyMessage: 'Introdu cel putin 2 caractere pentru a cauta utilizatori.',
   resultsTitle: 'Rezultate cautare',
 })
 
@@ -25,7 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const emailSearch = ref('')
-const pagination = usePagination(5)
+const pagination = usePagination(PAGE_SIZES.NORMAL)
 
 const usersQuery = useQuery({
   queryKey: ['admin-user-search-picker', props.title, emailSearch, pagination.request],
@@ -84,7 +85,7 @@ function handleSelection(value: string | string[]) {
       :page="usersQuery.data.value?.number ?? 0"
       :total-pages="usersQuery.data.value?.totalPages ?? 0"
       :loading="usersQuery.isLoading.value"
-      empty-message="Nu exista useri pentru emailul introdus."
+      empty-message="Nu exista utilizatori pentru emailul introdus."
       @update:model-value="handleSelection"
       @change-page="pagination.setPage"
     />

@@ -66,7 +66,9 @@ export function useTicketActions() {
       return ticket
     } catch (error) {
       toastStore.showError(error instanceof Error ? error.message : 'Nu am putut plasa biletul.')
+      await router.push({ name: 'wallet', query: { ref: route.fullPath } })
       return null
+      
     } finally {
       placingTicket.value = false
     }

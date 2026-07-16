@@ -2,6 +2,7 @@ package com.munte.KickOffBet.controllers.admin;
 
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserListDto;
 import com.munte.KickOffBet.domain.enums.UserStatus;
@@ -10,11 +11,13 @@ import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.domain.dto.api.response.StoredFile;
 import com.munte.KickOffBet.services.users.UserService;
 import com.munte.KickOffBet.util.PageableValidator;
+import com.munte.KickOffBet.util.TimeSeriesRangeValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,6 +26,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -117,6 +122,14 @@ public class AdminUserController {
     public ResponseEntity<Void> activateUser(@PathVariable UUID id) {
         userService.activateUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/timeseries")
+    public ResponseEntity<List<TimeSeriesPointDto>> getUsersTimeSeries(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        TimeSeriesRangeValidator.validate(start, end);
+        return ResponseEntity.ok(userService.getDailyNewUsersTimeSeries(start, end));
     }
 
     private MediaType resolveMediaType(String contentType) {

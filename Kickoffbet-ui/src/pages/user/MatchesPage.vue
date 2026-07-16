@@ -1,51 +1,64 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
+import { getMatchesByDay } from '@/api/matches.api'
+import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
+import { groupByLocalDay, parseUtcDate } from '@/utils/date.utils'
 import MatchCard from '@/components/MatchCard.vue'
-import AppButton from '@/components/AppButton.vue'
+import MatchDayGrid from '@/components/MatchDayGrid.vue'
 import PageHeader from '@/components/PageHeader.vue'
-import SectionHeader from '@/components/SectionHeader.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
-import { useLazyDays } from '@/composables/useLazyDays'
+import LoadingState from '@/components/AppLoadingState.vue'
+import AppPagination from '@/components/AppPagination.vue'
 
-const { visibleDays, allEmpty, lastBatchEmpty, loading, loadNextDays, loadInitial } = useLazyDays({
-  direction: 'forward',
-  filters: {
-    status: 'SCHEDULED',
-  },
+const pagination = usePagination(PAGE_SIZES.LARGE)
+const pageRequest = computed(() => ({
+  ...pagination.request.value,
+  sort: 'startTime,asc',
+}))
+
+const matchesQuery = useQuery({
+  queryKey: ['matches-scheduled', pageRequest],
+  queryFn: () => getMatchesByDay('SCHEDULED', pageRequest.value),
 })
 
-onMounted(() => {
-  loadInitial()
+const groupedByDay = computed(() => {
+  const now = Date.now()
+  const matches = (matchesQuery.data.value?.content ?? []).filter((m) => parseUtcDate(m.startTime).getTime() > now)
+  return groupByLocalDay(matches, (m) => m.startTime)
 })
 </script>
 
 <template>
-  <div>
+  <div data-list-top>
     <PageHeader title="Meciuri disponibile" />
 
-    <div class="space-y-6">
-      <template v-for="day in visibleDays" :key="day.dateStr">
-        <section v-if="day.loading || day.matches.length">
-          <SectionHeader :title="day.label" />
-          <div v-if="day.loading" class="grid grid-cols-3 gap-1.5 sm:gap-3">
-            <div v-for="index in 3" :key="index" class="h-36 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-          </div>
-          <div v-else class="grid grid-cols-3 gap-1.5 sm:gap-3">
-            <MatchCard v-for="match in day.matches" :key="match.id" :match="match" />
-          </div>
-        </section>
-      </template>
-    </div>
+    <LoadingState v-if="matchesQuery.isLoading.value" message="Se incarca meciurile..." />
 
-    <div class="mt-8 flex justify-center">
-      <AppButton variant="outline" :loading="loading" @click="loadNextDays()">
-        Incarca zilele urmatoare
-      </AppButton>
-    </div>
+    <template v-else>
+      <Transition name="page-fade" mode="out-in" appear>
+        <MatchDayGrid :key="matchesQuery.data.value?.number ?? 0" :days="groupedByDay">
+          <template #default="{ match }">
+            <MatchCard :match="match" />
+          </template>
+        </MatchDayGrid>
+      </Transition>
 
-    <div v-if="allEmpty || lastBatchEmpty" class="mt-6">
-      <EmptyState message="Nu exista meciuri in zilele selectate." />
-    </div>
+      <EmptyState
+        v-if="!groupedByDay.length"
+        class="mt-6"
+        message="Nu s-au gasit meciuri programate."
+      />
+
+      <AppPagination
+        v-if="(matchesQuery.data.value?.totalElements ?? 0) > 0"
+        :page="matchesQuery.data.value?.number ?? 0"
+        :total-pages="matchesQuery.data.value?.totalPages ?? 0"
+        :total-elements="matchesQuery.data.value?.totalElements"
+        scroll-on-change
+        @change="pagination.setPage"
+      />
+    </template>
   </div>
 </template>
-

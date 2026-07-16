@@ -29,11 +29,11 @@ public class MatchController {
     private final MatchService matchService;
     private final MatchMapper matchMapper;
 
-    @GetMapping("/day/{from}/{to}/{matchStatus}")
+    @GetMapping("/day/{matchStatus}")
     public ResponseEntity<Page<MatchListDto>> getMatchesByDay(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PathVariable MatchStatus matchStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PageableDefault(sort = "startTime") Pageable pageable) {
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         MatchSearchRequest request = new MatchSearchRequest();
@@ -45,12 +45,12 @@ public class MatchController {
                 matchService.searchMatches(request, pageable).map(matchMapper::toListDto));
     }
 
-    @GetMapping("/team/{teamId}/{from}/{to}/{matchStatus}")
+    @GetMapping("/team/{teamId}/{matchStatus}")
     public ResponseEntity<Page<MatchListDto>> getMatchesByTeam(
             @PathVariable UUID teamId,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PathVariable MatchStatus matchStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PageableDefault(sort = "startTime") Pageable pageable) {
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         MatchSearchRequest request = new MatchSearchRequest();
@@ -63,12 +63,12 @@ public class MatchController {
                 matchService.searchMatches(request, pageable).map(matchMapper::toListDto));
     }
 
-    @GetMapping("/league/{leagueCode}/{from}/{to}/{matchStatus}")
+    @GetMapping("/league/{leagueCode}/{matchStatus}")
     public ResponseEntity<Page<MatchListDto>> getMatchesByLeague(
             @PathVariable String leagueCode,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PathVariable MatchStatus matchStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PageableDefault(sort = "startTime") Pageable pageable) {
         PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         MatchSearchRequest request = new MatchSearchRequest();

@@ -1,5 +1,7 @@
 package com.munte.KickOffBet.controllers.admin;
 
+import com.munte.KickOffBet.domain.dto.api.response.SeedResultDto;
+import com.munte.KickOffBet.services.admin.SeedService;
 import com.munte.KickOffBet.services.sports.DataImportService;
 import com.munte.KickOffBet.services.sports.MatchService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ public class AdminSyncController {
 
     private final DataImportService dataImportService;
     private final MatchService matchService;
+    private final SeedService seedService;
 
     @PostMapping("/full")
     public ResponseEntity<Void> triggerFullSync() {
@@ -38,5 +41,10 @@ public class AdminSyncController {
     public ResponseEntity<Void> triggerAutomaticOddsRecalculation() {
         matchService.recalculateScheduledAutomaticOdds();
         return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/seed")
+    public ResponseEntity<SeedResultDto> triggerSeed() {
+        return ResponseEntity.ok(seedService.runSeed());
     }
 }

@@ -8,6 +8,7 @@ import { getLeaguePage } from '@/api/leagues.admin.api'
 import { createTeam, getAllTeams } from '@/api/teams.admin.api'
 import { teamSchema } from '@/validation/forms'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useToastStore } from '@/stores/toast.store'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
@@ -20,14 +21,17 @@ import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import FileInputField from '@/components/FileInputField.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import type { ExportColumn } from '@/utils/export.utils'
+import type { TeamList } from '@/types/team.types'
 
 const toastStore = useToastStore()
 const router = useRouter()
 const sortBy = ref('name,asc')
 const createEmblem = ref<File | null>(null)
 const createFileVersion = ref(0)
-const listPagination = usePagination(8)
-const createLeaguesPagination = usePagination(6)
+const listPagination = usePagination(PAGE_SIZES.LIST)
+const createLeaguesPagination = usePagination(PAGE_SIZES.MEDIUM)
 const teamsPageRequest = computed(() => ({
   ...listPagination.request.value,
   sort: sortBy.value,
@@ -77,6 +81,19 @@ const createLeagueItems = computed(() =>
 
 function onCreateFile(file: File | null) {
   createEmblem.value = file
+}
+
+const exportColumns: ExportColumn<TeamList>[] = [
+  { header: 'ID', accessor: (r) => r.id },
+  { header: 'Nume', accessor: (r) => r.name },
+  { header: 'Nume scurt', accessor: (r) => r.shortName },
+  { header: 'TLA', accessor: (r) => r.tla },
+  { header: 'Activa', accessor: (r) => (r.active ? 'Da' : 'Nu') },
+]
+
+async function fetchAllTeamsForExport(): Promise<TeamList[]> {
+  const data = await getAllTeams({ page: 0, size: 10000, sort: sortBy.value })
+  return data.content
 }
 
 const submitCreate = createForm.handleSubmit(async (values) => {
@@ -141,26 +158,39 @@ const submitCreate = createForm.handleSubmit(async (values) => {
           <div class="w-48">
             <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
           </div>
+          <ExportButton
+            :fetch-all="fetchAllTeamsForExport"
+            :columns="exportColumns"
+            filename="echipe"
+            title="Echipe"
+            :disabled="!(teamsQuery.data.value?.content?.length ?? 0)"
+          />
         </div>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <RouterLink
-          v-for="team in teamsQuery.data.value?.content ?? []"
-          :key="team.id"
-          :to="{ name: 'admin-team-detail', params: { id: team.id } }"
-          class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:border-blue-700"
+      <Transition name="page-fade" mode="out-in" appear>
+        <div
+          v-if="teamsQuery.data.value?.content?.length"
+          :key="teamsQuery.data.value?.number ?? 0"
+          class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
-          <div class="flex min-w-0 items-center gap-3">
-            <LogoFrame v-if="team.crestUrl" :src="team.crestUrl" size="md" />
-            <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-white">{{ team.name }}</p>
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ team.tla }}</p>
+          <RouterLink
+            v-for="team in teamsQuery.data.value?.content ?? []"
+            :key="team.id"
+            :to="{ name: 'admin-team-detail', params: { id: team.id } }"
+            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:border-blue-600"
+          >
+            <div class="flex min-w-0 items-center gap-3">
+              <LogoFrame v-if="team.crestUrl" :src="team.crestUrl" size="md" />
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-white">{{ team.name }}</p>
+                <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ team.tla }}</p>
+              </div>
             </div>
-          </div>
-          <StatusBadge :status="team.active ? 'ACTIVE' : 'DEACTIVATED'" />
-        </RouterLink>
-      </div>
+            <StatusBadge :status="team.active ? 'ACTIVE' : 'DEACTIVATED'" />
+          </RouterLink>
+        </div>
+      </Transition>
 
       <EmptyState
         v-if="!(teamsQuery.data.value?.content?.length ?? 0)"
@@ -169,9 +199,10 @@ const submitCreate = createForm.handleSubmit(async (values) => {
       />
 
       <AppPagination
-        v-if="(teamsQuery.data.value?.totalPages ?? 0) > 1"
+        v-if="(teamsQuery.data.value?.totalElements ?? 0) > 0"
         :page="teamsQuery.data.value?.number ?? 0"
         :total-pages="teamsQuery.data.value?.totalPages ?? 0"
+        :total-elements="teamsQuery.data.value?.totalElements"
         @change="listPagination.setPage"
       />
     </Panel>

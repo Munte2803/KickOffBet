@@ -22,7 +22,7 @@ defineEmits<{ click: [] }>()
       inactive
         ? 'cursor-not-allowed border-white/5 bg-white/5 text-white/35 line-through opacity-60'
         : selected
-          ? 'scale-[1.02] border-blue-500 bg-blue-800 text-white shadow-lg'
+          ? 'scale-[1.02] border-blue-500 bg-blue-600 text-white shadow-lg'
           : 'cursor-pointer border-transparent bg-white/5 text-white/90 hover:border-white/10 hover:bg-white/10',
     ]"
   >

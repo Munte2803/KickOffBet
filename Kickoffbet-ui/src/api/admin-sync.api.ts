@@ -11,3 +11,13 @@ export const quickSyncMatches = (): Promise<void> =>
 
 export const recalculateAutomaticOdds = (): Promise<void> =>
   api.post('/api/admin/sync/recalculate-automatic-odds').then(() => {})
+
+export interface SeedResult {
+  usersCreated: number
+  ticketsCreated: number
+  transactionsCreated: number
+  durationMs: number
+}
+
+export const triggerSeed = (): Promise<SeedResult> =>
+  api.post('/api/admin/sync/seed').then((res) => res.data)

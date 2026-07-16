@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { useRouter } from 'vue-router'
 import { resendConfirmationEmail } from '@/api/auth.api'
-import { deactivateAccount, getIdCard, getProfile, uploadIdCard } from '@/api/profile.api'
+import { getIdCard, getProfile, uploadIdCard } from '@/api/profile.api'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -14,16 +13,11 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import FilePreviewModal from '@/components/FilePreviewModal.vue'
 import FileInputField from '@/components/FileInputField.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
-import { useConfirmDialog } from '@/composables/useConfirmDialog'
-import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 
-const authStore = useAuthStore()
 const toastStore = useToastStore()
-const { confirm } = useConfirmDialog()
-const router = useRouter()
 
 const selectedFile = ref<File | null>(null)
 const fileInputVersion = ref(0)
@@ -132,29 +126,6 @@ async function handleResendVerificationEmail() {
   }
 }
 
-async function handleDeactivate() {
-  const confirmed = await confirm({
-    title: 'Dezactivare cont',
-    message: 'Sunteti sigur ca vreti sa va dezactivati contul?',
-    description: 'Aceasta actiune va inchide sesiunea curenta si va bloca accesul pana la reactivare.',
-    confirmLabel: 'Dezactiveaza contul',
-    cancelLabel: 'Pastreaza contul',
-    variant: 'danger',
-  })
-
-  if (!confirmed) {
-    return
-  }
-
-  try {
-    await deactivateAccount()
-    authStore.clearAuth()
-    await router.push({ name: 'login' })
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut dezactiva contul.')
-  }
-}
-
 onBeforeUnmount(() => {
   cleanupPreview()
 })
@@ -164,7 +135,7 @@ onBeforeUnmount(() => {
   <LoadingState v-if="profileQuery.isLoading.value" message="Se incarca profilul..." />
 
   <div v-else-if="profile" class="space-y-6">
-    <PageHeader title="Profil" subtitle="Date personale, verificare si acces rapid catre portofel" />
+    <PageHeader title="Profil" subtitle="Date personale, verificare si acces rapid" />
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
       <Panel no-hover>
@@ -210,15 +181,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="mt-6 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-bold text-white">Dezactiveaza contul</h3>
-              <p class="mt-1 text-xs text-gray-400">Aceasta actiune iti blocheaza accesul pana la reactivare.</p>
-            </div>
-            <AppButton variant="danger" @click="handleDeactivate">Dezactiveaza contul</AppButton>
-          </div>
-        </div>
       </Panel>
 
       <div class="space-y-6">

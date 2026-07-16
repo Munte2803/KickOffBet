@@ -6,7 +6,7 @@ export const adminTopTabs: Array<{ resource: AdminResource; label: string; to: R
   { resource: 'matches', label: 'Meciuri', to: { name: 'admin-matches' } },
   { resource: 'leagues', label: 'Ligi', to: { name: 'admin-leagues' } },
   { resource: 'teams', label: 'Echipe', to: { name: 'admin-teams' } },
-  { resource: 'users', label: 'Useri', to: { name: 'admin-users' } },
+  { resource: 'users', label: 'Utilizatori', to: { name: 'admin-users' } },
   { resource: 'transactions', label: 'Tranzactii', to: { name: 'admin-transactions' } },
   { resource: 'tickets', label: 'Bilete', to: { name: 'admin-tickets' } },
   { resource: 'sync', label: 'Sincronizare', to: { name: 'admin-sync' } },

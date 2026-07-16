@@ -21,8 +21,6 @@ public class ResetPasswordRequest {
     )
     private String password;
 
-    private String newPassword;
-
     @NotBlank
     private String confirmPassword;
 }

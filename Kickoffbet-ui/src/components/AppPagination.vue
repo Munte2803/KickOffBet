@@ -1,12 +1,34 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
-const props = defineProps<{
-  page: number
-  totalPages: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    page: number
+    totalPages: number
+    totalElements?: number
+    scrollTarget?: string
+    scrollOnChange?: boolean
+  }>(),
+  { scrollOnChange: false },
+)
 
-defineEmits<{ change: [page: number] }>()
+const emit = defineEmits<{ change: [page: number] }>()
+
+const rootEl = ref<HTMLElement | null>(null)
+
+function changePage(next: number) {
+  if (next === props.page) return
+  emit('change', next)
+  if (!props.scrollOnChange) return
+  nextTick(() => {
+    let target: Element | null = null
+    if (props.scrollTarget) target = document.querySelector(props.scrollTarget)
+    if (!target && rootEl.value) target = rootEl.value.closest('[data-list-top]')
+    if (!target && rootEl.value) target = rootEl.value.closest('[id]')
+    if (!target && rootEl.value) target = rootEl.value.parentElement
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
 
 const visibleItems = computed(() => {
   if (props.totalPages <= 7) {
@@ -35,13 +57,13 @@ const visibleItems = computed(() => {
 </script>
 
 <template>
-  <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-    <div class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-white/10 bg-white/5 px-1 py-1 sm:gap-1 sm:px-2 sm:py-2">
+  <div ref="rootEl" v-if="totalPages > 1 || (totalElements ?? 0) > 0" class="mt-6 flex flex-col items-center gap-2">
+    <div v-if="totalPages > 1" class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-white/10 bg-white/5 px-1 py-1 sm:gap-1 sm:px-2 sm:py-2">
       <button
         type="button"
         :disabled="page === 0"
         class="rounded-full px-2 py-1.25 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
-        @click="$emit('change', page - 1)"
+        @click="changePage(page - 1)"
       >
         Prev
       </button>
@@ -55,7 +77,7 @@ const visibleItems = computed(() => {
             'min-w-7 rounded-full px-2 py-1.25 text-[11px] transition-colors sm:min-w-9 sm:px-3 sm:py-1.5 sm:text-sm',
             item === page ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white',
           ]"
-          @click="$emit('change', item)"
+          @click="changePage(item)"
         >
           {{ item + 1 }}
         </button>
@@ -65,10 +87,13 @@ const visibleItems = computed(() => {
         type="button"
         :disabled="page >= totalPages - 1"
         class="rounded-full px-2 py-1.25 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
-        @click="$emit('change', page + 1)"
+        @click="changePage(page + 1)"
       >
         Next
       </button>
     </div>
+    <p v-if="totalElements != null" class="text-[11px] text-gray-400 sm:text-xs">
+      {{ totalElements.toLocaleString() }} {{ totalElements === 1 ? 'rezultat' : 'rezultate' }}
+    </p>
   </div>
 </template>

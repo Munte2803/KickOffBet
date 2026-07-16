@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.services.users;
 
 import com.munte.KickOffBet.domain.dto.api.response.StoredFile;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDto;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.enums.UserStatus;
@@ -8,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface UserService {
@@ -39,4 +42,6 @@ public interface UserService {
     void uploadIdCard(MultipartFile idCard);
 
     void deactivateMyAccount();
+
+    List<TimeSeriesPointDto> getDailyNewUsersTimeSeries(LocalDateTime start, LocalDateTime end);
 }

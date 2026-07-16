@@ -14,9 +14,9 @@ const toast = useToastStore()
           @click="toast.dismiss(t.id)"
           :class="[
             'flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg cursor-pointer text-sm font-medium',
-            t.type === 'success' ? 'bg-green-900/90 border-green-500/50 text-green-200' :
-            t.type === 'error' ? 'bg-red-900/90 border-red-500/50 text-red-200' :
-            'bg-blue-900/90 border-blue-500/50 text-blue-200',
+            t.type === 'success' ? 'bg-green-500/90 border-green-500/50 text-green-300' :
+            t.type === 'error' ? 'bg-red-600/90 border-red-500/50 text-red-300' :
+            'bg-blue-600/90 border-blue-500/50 text-blue-300',
           ]"
         >
           <span>{{ t.message }}</span>

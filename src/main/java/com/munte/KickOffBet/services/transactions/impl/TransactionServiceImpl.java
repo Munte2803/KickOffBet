@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.services.transactions.impl;
 
 import com.munte.KickOffBet.domain.dto.api.request.TransactionSearchRequest;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.TransactionReportDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDepositSummaryDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserTransactionSummaryDto;
@@ -14,6 +15,7 @@ import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.repository.specification.TransactionSpecifications;
 import com.munte.KickOffBet.services.transactions.TransactionService;
 import com.munte.KickOffBet.services.users.AuthService;
+import com.munte.KickOffBet.util.DateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +23,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -139,6 +143,24 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     public Page<Transaction> getPendingTransactions(Pageable pageable) {
         return transactionRepository.findAllByStatus(TransactionStatus.PENDING, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TimeSeriesPointDto> getDailyTransactionsTimeSeries(LocalDateTime start, LocalDateTime end, TransactionType type) {
+        List<Object[]> rows = transactionRepository.aggregateDailyByType(
+                type.name(),
+                TransactionStatus.COMPLETED.name(),
+                start,
+                end
+        );
+        return rows.stream()
+                .map(row -> new TimeSeriesPointDto(
+                        DateUtils.toLocalDate(row[0]),
+                        ((Number) row[1]).longValue(),
+                        row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO
+                ))
+                .toList();
     }
 
 }

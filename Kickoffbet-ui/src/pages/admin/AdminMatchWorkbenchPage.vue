@@ -322,7 +322,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
           v-for="offer in offers"
           :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}`"
           class="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
-          :class="offer.active === false ? 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10' : 'border-blue-500/20 bg-blue-500/10 text-blue-100 hover:bg-blue-500/15'"
+          :class="offer.active === false ? 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10' : 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'"
           @click="offer.id && switchOfferActive(offer.id, !(offer.active ?? true))"
         >
           <p class="font-semibold">{{ translateEnumLabel(offer.marketType) }} - {{ translateEnumLabel(offer.option) }}</p>

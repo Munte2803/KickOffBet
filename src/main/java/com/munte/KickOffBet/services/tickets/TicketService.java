@@ -2,11 +2,14 @@ package com.munte.KickOffBet.services.tickets;
 
 
 import com.munte.KickOffBet.domain.dto.api.request.PlaceTicketRequest;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.entity.Ticket;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,5 +31,6 @@ public interface TicketService {
 
     void cancelTicket(UUID id);
 
+    List<TimeSeriesPointDto> getDailyTicketsTimeSeries(LocalDateTime start, LocalDateTime end, TicketStatus status);
 
 }

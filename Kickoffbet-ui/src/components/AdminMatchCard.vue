@@ -35,10 +35,10 @@ const getTeamTag = (name: string, tla?: string | null) => {
     <div class="mb-2 flex items-center justify-between gap-3">
       <button
         v-if="match.leagueCode"
-        class="flex min-w-0 items-center gap-1.5 text-[10px] text-gray-400 transition-colors hover:text-blue-300"
+        class="flex min-w-0 items-center gap-1.5 text-[12px] text-gray-400 transition-colors hover:text-blue-300"
         @click.stop="goToLeague"
       >
-        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="xs" />
+        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="cardLeague" />
         <span class="truncate">{{ match.leagueName }}</span>
       </button>
 
@@ -52,14 +52,14 @@ const getTeamTag = (name: string, tla?: string | null) => {
 
     <div class="px-2 py-1.5">
       <div class="mb-2 flex items-center justify-center gap-3">
-        <button class="inline-flex items-center justify-center rounded-full p-0.5 transition-all hover:ring-2 hover:ring-blue-500" @click.stop="goToTeam(match.homeTeamId)">
+        <button class="logo-hover-blue inline-flex items-center justify-center p-0.5" @click.stop="goToTeam(match.homeTeamId)">
           <LogoFrame v-if="match.homeTeamLogo" :src="match.homeTeamLogo" size="lg" />
           <span v-else class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white text-[10px] text-gray-600">Gazde</span>
         </button>
 
         <span class="text-[10px] font-bold text-gray-500">vs</span>
 
-        <button class="inline-flex items-center justify-center rounded-full p-0.5 transition-all hover:ring-2 hover:ring-blue-500" @click.stop="goToTeam(match.awayTeamId)">
+        <button class="logo-hover-blue inline-flex items-center justify-center p-0.5" @click.stop="goToTeam(match.awayTeamId)">
           <LogoFrame v-if="match.awayTeamLogo" :src="match.awayTeamLogo" size="lg" />
           <span v-else class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white text-[10px] text-gray-600">Oaspeti</span>
         </button>
@@ -67,11 +67,11 @@ const getTeamTag = (name: string, tla?: string | null) => {
 
       <div class="flex flex-col items-center">
         <div class="flex items-center justify-center gap-3">
-          <button class="min-w-[44px] text-center text-base font-black tracking-[0.14em] text-white transition-colors group-hover:text-blue-400 hover:underline" @click.stop="goToTeam(match.homeTeamId)">
+          <button class="min-w-[44px] text-center text-base font-black tracking-[0.14em] text-white transition-colors group-hover:text-blue-500 hover:underline" @click.stop="goToTeam(match.homeTeamId)">
             {{ getTeamTag(match.homeTeamName, match.homeTeamTla) }}
           </button>
           <span class="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">vs</span>
-          <button class="min-w-[44px] text-center text-base font-black tracking-[0.14em] text-white transition-colors group-hover:text-blue-400 hover:underline" @click.stop="goToTeam(match.awayTeamId)">
+          <button class="min-w-[44px] text-center text-base font-black tracking-[0.14em] text-white transition-colors group-hover:text-blue-500 hover:underline" @click.stop="goToTeam(match.awayTeamId)">
             {{ getTeamTag(match.awayTeamName, match.awayTeamTla) }}
           </button>
         </div>

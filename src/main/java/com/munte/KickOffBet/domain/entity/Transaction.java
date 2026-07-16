@@ -39,6 +39,9 @@ public class Transaction {
     @Column(name = "reference_id", updatable = false)
     private UUID referenceId;
 
+    @Column(name = "reference_type", updatable = false)
+    private String referenceType;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, updatable = false)
     private TransactionType transactionType;

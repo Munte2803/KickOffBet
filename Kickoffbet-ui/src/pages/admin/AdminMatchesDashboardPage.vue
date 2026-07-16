@@ -7,6 +7,7 @@ import { getStuckMatches, searchMatches } from '@/api/matches.admin.api'
 import type { MatchSearchRequest } from '@/types/match.types'
 import { getAllTeams } from '@/api/teams.admin.api'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import type { MatchStatus } from '@/types/enums'
 import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -19,6 +20,10 @@ import AppButton from '@/components/AppButton.vue'
 import AdminMatchCard from '@/components/AdminMatchCard.vue'
 import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
+import DatePresetButtons from '@/components/DatePresetButtons.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import type { ExportColumn } from '@/utils/export.utils'
+import type { MatchList } from '@/types/match.types'
 
 const statusOptions: Array<{ label: string; value: MatchStatus | '' }> = [
   { label: 'Toate', value: '' },
@@ -51,9 +56,9 @@ const sortBy = ref('')
 const hasSearched = ref(false)
 const showStuckMatches = ref(true)
 
-const pagination = usePagination(12)
-const leaguePagination = usePagination(6)
-const teamPagination = usePagination(6)
+const pagination = usePagination(PAGE_SIZES.COMPACT)
+const leaguePagination = usePagination(PAGE_SIZES.NORMAL)
+const teamPagination = usePagination(PAGE_SIZES.NORMAL)
 const appliedFilters = ref<MatchSearchRequest>({})
 const matchesPageRequest = computed(() => ({
   ...pagination.request.value,
@@ -130,6 +135,20 @@ async function applyFilters() {
   await matchesQuery.refetch()
 }
 
+const exportColumns: ExportColumn<MatchList>[] = [
+  { header: 'ID', accessor: (r) => r.id },
+  { header: 'Liga', accessor: (r) => r.leagueName },
+  { header: 'Echipa gazda', accessor: (r) => r.homeTeamName },
+  { header: 'Echipa oaspete', accessor: (r) => r.awayTeamName },
+  { header: 'Status', accessor: (r) => r.status },
+  { header: 'Ora start', accessor: (r) => r.startTime },
+]
+
+async function fetchAllMatchesForExport(): Promise<MatchList[]> {
+  const data = await searchMatches(appliedFilters.value, { page: 0, size: 10000, sort: sortBy.value || undefined })
+  return data.content
+}
+
 function resetFilters() {
   status.value = ''
   manualUpdate.value = 'ALL'
@@ -190,10 +209,10 @@ function resetFilters() {
     <Panel id="match-search" no-hover>
       <SectionHeader title="Filtre si cautare" />
       <p class="mt-2 text-sm text-gray-400">
-        Selectezi liga si echipa direct din liste paginate. Optiunea Doar active trimite doar active=true, iar cand o debifezi filtrul dispare complet.
+        Selectezi liga si echipa direct din liste.
       </p>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
         <label class="text-sm text-gray-300">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
@@ -210,15 +229,23 @@ function resetFilters() {
           </select>
         </label>
 
+        <label class="text-sm text-gray-300">
+          <span class="mb-1 block">Doar active</span>
+          <select v-model="activeOnly" class="app-select-field app-select">
+            <option :value="true">Da</option>
+            <option :value="false">Nu</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
         <FormInput v-model="startTimeFrom" label="Data inceput" type="datetime-local" />
         <FormInput v-model="startTimeTo" label="Data sfarsit" type="datetime-local" />
-
-        <label class="flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-gray-300">
-          <input v-model="activeOnly" type="checkbox" class="h-4 w-4 rounded border-white/20 bg-black/40" />
-          Doar active
-        </label>
-
         <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
+      </div>
+
+      <div class="mt-6 flex justify-start">
+        <DatePresetButtons @select="(s, e) => { startTimeFrom = s; startTimeTo = e }" />
       </div>
 
       <div class="mt-6 grid gap-6 xl:grid-cols-2">
@@ -252,7 +279,17 @@ function resetFilters() {
     </Panel>
 
     <Panel id="match-search-results" no-hover>
-      <SectionHeader title="Rezultate cautare" />
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <SectionHeader title="Rezultate cautare" />
+        <ExportButton
+          v-if="hasSearched"
+          :fetch-all="fetchAllMatchesForExport"
+          :columns="exportColumns"
+          filename="meciuri"
+          title="Meciuri"
+          :disabled="!currentMatches.length"
+        />
+      </div>
       <p class="mt-2 text-sm text-gray-400">
         Aici vei vedea rezultatele cautarii.
       </p>
@@ -266,21 +303,25 @@ function resetFilters() {
 
         <LoadingState v-else-if="matchesQuery.isLoading.value" message="Se incarca meciurile filtrate..." />
 
-        <div v-else-if="currentMatches.length" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <AdminMatchCard v-for="match in currentMatches" :key="match.id" :match="match" />
-        </div>
-
-        <EmptyState
-          v-else
-          message="Nu exista meciuri pentru filtrele selectate."
-          description="Poti lasa unele filtre goale sau poti schimba intervalul de timp."
-        />
+        <Transition v-else name="page-fade" mode="out-in" appear>
+          <div :key="matchesQuery.data.value?.number ?? 0">
+            <div v-if="currentMatches.length" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <AdminMatchCard v-for="match in currentMatches" :key="match.id" :match="match" />
+            </div>
+            <EmptyState
+              v-else
+              message="Nu exista meciuri pentru filtrele selectate."
+              description="Poti lasa unele filtre goale sau poti schimba intervalul de timp."
+            />
+          </div>
+        </Transition>
       </div>
 
       <AppPagination
-        v-if="hasSearched && (matchesQuery.data.value?.totalPages ?? 0) > 1"
+        v-if="hasSearched && (matchesQuery.data.value?.totalElements ?? 0) > 0"
         :page="matchesQuery.data.value?.number ?? 0"
         :total-pages="matchesQuery.data.value?.totalPages ?? 0"
+        :total-elements="matchesQuery.data.value?.totalElements"
         @change="pagination.setPage"
       />
     </Panel>

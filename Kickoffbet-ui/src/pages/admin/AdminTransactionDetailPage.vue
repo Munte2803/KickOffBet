@@ -83,9 +83,16 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Referinta</p>
         <RouterLink
-          v-if="transactionQuery.data.value.referenceId"
+          v-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TICKET'"
           :to="{ name: 'admin-ticket-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-200"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
+        >
+          {{ transactionQuery.data.value.referenceId }}
+        </RouterLink>
+        <RouterLink
+          v-else-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TRANSACTION'"
+          :to="{ name: 'admin-transaction-detail', params: { id: transactionQuery.data.value.referenceId } }"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>
@@ -95,7 +102,7 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
 
     <Panel id="transaction-actions" no-hover>
       <h2 class="text-lg font-semibold text-white">Actiuni</h2>
-      <p class="mt-1 text-sm text-gray-400">Endpointurile de aprobare si respingere sunt disponibile doar pentru tranzactiile pending.</p>
+      <p class="mt-1 text-sm text-gray-400">Pentru tranzactiile pending exista optiuni de aprobare sau respingere.</p>
 
       <div class="mt-4 flex flex-wrap gap-3">
         <AppButton

@@ -17,7 +17,7 @@ public interface WalletService {
 
     void payout(UUID userId, BigDecimal amount, UUID ticketId);
 
-    void refund(UUID userId, BigDecimal amount);
+    void refund(UUID userId, BigDecimal amount, UUID referenceId);
 
     Transaction approveTransaction(UUID transactionId);
 

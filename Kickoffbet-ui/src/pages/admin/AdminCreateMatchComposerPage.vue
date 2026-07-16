@@ -9,6 +9,7 @@ import { getLeagueByCode, getLeaguePage } from '@/api/leagues.admin.api'
 import type { EditableMarketOffer } from '@/types/match.types'
 import { createMatchSchema } from '@/validation/forms'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useToastStore } from '@/stores/toast.store'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
@@ -20,7 +21,9 @@ import AdminOfferBuilder from '@/components/AdminOfferBuilder.vue'
 const router = useRouter()
 const toastStore = useToastStore()
 const offers = ref<EditableMarketOffer[]>([])
-const leaguePagination = usePagination(6)
+const leaguePagination = usePagination(PAGE_SIZES.SMALL)
+const homeTeamsPagination = usePagination(PAGE_SIZES.SMALL)
+const awayTeamsPagination = usePagination(PAGE_SIZES.SMALL)
 const selectedLeagueCode = ref('')
 
 const leaguesQuery = useQuery({
@@ -55,6 +58,20 @@ const teamItems = computed(() =>
     active: team.active,
   })),
 )
+
+const teamsTotalPages = computed(() =>
+  Math.max(1, Math.ceil(teamItems.value.length / homeTeamsPagination.size.value)),
+)
+
+const homeTeamsPage = computed(() => {
+  const start = homeTeamsPagination.page.value * homeTeamsPagination.size.value
+  return teamItems.value.slice(start, start + homeTeamsPagination.size.value)
+})
+
+const awayTeamsPage = computed(() => {
+  const start = awayTeamsPagination.page.value * awayTeamsPagination.size.value
+  return teamItems.value.slice(start, start + awayTeamsPagination.size.value)
+})
 
 const { defineField, handleSubmit, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(createMatchSchema),
@@ -105,6 +122,8 @@ watch(leagueId, (nextLeagueId) => {
   selectedLeagueCode.value = league?.code ?? ''
   homeTeamId.value = ''
   awayTeamId.value = ''
+  homeTeamsPagination.setPage(0)
+  awayTeamsPagination.setPage(0)
 })
 </script>
 
@@ -135,11 +154,12 @@ watch(leagueId, (nextLeagueId) => {
             <AdminEntityPicker
               v-model="homeTeamId"
               title="Echipa gazda"
-              :items="teamItems"
-              :page="0"
-              :total-pages="0"
+              :items="homeTeamsPage"
+              :page="homeTeamsPagination.page.value"
+              :total-pages="teamsTotalPages"
               :loading="canChooseTeams ? selectedLeagueQuery.isLoading.value : false"
               :empty-message="teamEmptyMessage"
+              @change-page="homeTeamsPagination.setPage"
             />
             <span v-if="errors.homeTeamId" class="block text-xs text-red-400">{{ errors.homeTeamId }}</span>
           </div>
@@ -148,11 +168,12 @@ watch(leagueId, (nextLeagueId) => {
             <AdminEntityPicker
               v-model="awayTeamId"
               title="Echipa oaspete"
-              :items="teamItems"
-              :page="0"
-              :total-pages="0"
+              :items="awayTeamsPage"
+              :page="awayTeamsPagination.page.value"
+              :total-pages="teamsTotalPages"
               :loading="canChooseTeams ? selectedLeagueQuery.isLoading.value : false"
               :empty-message="teamEmptyMessage"
+              @change-page="awayTeamsPagination.setPage"
             />
             <span v-if="errors.awayTeamId" class="block text-xs text-red-400">{{ errors.awayTeamId }}</span>
           </div>

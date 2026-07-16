@@ -111,6 +111,12 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
+          path: 'profile/settings',
+          name: 'profile-settings',
+          component: () => import('@/pages/user/ProfileSettingsPage.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
           path: 'wallet',
           name: 'wallet',
           component: () => import('@/pages/user/WalletPage.vue'),
@@ -145,7 +151,7 @@ const router = createRouter({
         {
           path: '',
           name: 'admin-dashboard',
-          component: () => import('@/pages/admin/AdminHomePage.vue'),
+          redirect: { name: 'admin-matches' },
         },
         {
           path: 'matches',

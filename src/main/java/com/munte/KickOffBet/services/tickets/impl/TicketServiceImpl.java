@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.services.tickets.impl;
 
 import com.munte.KickOffBet.domain.dto.api.request.PlaceTicketRequest;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.entity.MarketOffer;
 import com.munte.KickOffBet.domain.entity.Ticket;
 import com.munte.KickOffBet.domain.dto.api.request.TicketSelectionRequest;
@@ -16,6 +17,7 @@ import com.munte.KickOffBet.services.tickets.TicketPlacementValidator;
 import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.services.tickets.TicketService;
 import com.munte.KickOffBet.services.transactions.WalletService;
+import com.munte.KickOffBet.util.DateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -126,7 +128,7 @@ public class TicketServiceImpl implements TicketService {
             }
 
             if (ticket.getTotalOdd().compareTo(BigDecimal.ONE) == 0) {
-                walletService.refund(ticket.getUser().getId(), ticket.getStake());
+                walletService.refund(ticket.getUser().getId(), ticket.getStake(), ticket.getId());
                 ticket.setStatus(TicketStatus.CANCELLED);
             } else {
                 walletService.payout(ticket.getUser().getId(), ticket.getPotentialPayout(), ticket.getId());
@@ -192,11 +194,28 @@ public class TicketServiceImpl implements TicketService {
 
         ticket.setStatus(TicketStatus.CANCELLED);
         ticketRepository.save(ticket);
-        walletService.refund(ticket.getUser().getId(), ticket.getStake());
+        walletService.refund(ticket.getUser().getId(), ticket.getStake(), ticket.getId());
 
     }
 
     private BigDecimal calculateCappedPayout(BigDecimal stake, BigDecimal totalOdd) {
         return stake.multiply(totalOdd).min(MAX_WIN);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TimeSeriesPointDto> getDailyTicketsTimeSeries(LocalDateTime start, LocalDateTime end, TicketStatus status) {
+        List<Object[]> rows = ticketRepository.aggregateDailyTickets(
+                status != null ? status.name() : null,
+                start,
+                end
+        );
+        return rows.stream()
+                .map(row -> new TimeSeriesPointDto(
+                        DateUtils.toLocalDate(row[0]),
+                        ((Number) row[1]).longValue(),
+                        row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO
+                ))
+                .toList();
     }
 }

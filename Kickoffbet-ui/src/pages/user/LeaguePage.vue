@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { getLeagueByCode } from '@/api/leagues.api'
-import { useLazyDays } from '@/composables/useLazyDays'
+import { getMatchesByLeague } from '@/api/matches.api'
+import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
+import { groupByLocalDay, parseUtcDate } from '@/utils/date.utils'
 import MatchCard from '@/components/MatchCard.vue'
+import MatchDayGrid from '@/components/MatchDayGrid.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -12,7 +16,7 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
-import AppButton from '@/components/AppButton.vue'
+import AppPagination from '@/components/AppPagination.vue'
 
 const route = useRoute()
 const leagueCode = route.params.code as string
@@ -22,22 +26,27 @@ const leagueQuery = useQuery({
   queryFn: () => getLeagueByCode(leagueCode),
 })
 
-const { visibleDays, allEmpty, lastBatchEmpty, loading, loadInitial, loadNextDays } = useLazyDays({
-  direction: 'forward',
-  filters: {
-    status: 'SCHEDULED',
-    leagueCode,
-  },
+const pagination = usePagination(PAGE_SIZES.LARGE)
+const pageRequest = computed(() => ({
+  ...pagination.request.value,
+  sort: 'startTime,asc',
+}))
+
+const matchesQuery = useQuery({
+  queryKey: ['league-scheduled-matches', leagueCode, pageRequest],
+  queryFn: () => getMatchesByLeague(leagueCode, 'SCHEDULED', pageRequest.value),
 })
 
-onMounted(() => {
-  loadInitial(14)
+const groupedByDay = computed(() => {
+  const now = Date.now()
+  const matches = (matchesQuery.data.value?.content ?? []).filter((m) => parseUtcDate(m.startTime).getTime() > now)
+  return groupByLocalDay(matches, (m) => m.startTime)
 })
 </script>
 
 <template>
   <LoadingState v-if="leagueQuery.isLoading.value" message="Se incarca liga..." />
-  <div v-else-if="leagueQuery.data.value" class="space-y-6">
+  <div v-else-if="leagueQuery.data.value" data-list-top class="space-y-6">
     <PageHeader
       :title="leagueQuery.data.value.name"
       :logo-url="leagueQuery.data.value.emblemUrl"
@@ -71,24 +80,31 @@ onMounted(() => {
       <EmptyState v-else message="Nu exista echipe disponibile in aceasta liga." />
     </Panel>
 
-    <template v-for="day in visibleDays" :key="day.dateStr">
-      <section v-if="day.matches.length">
-        <SectionHeader :title="day.label" />
-        <div class="grid grid-cols-3 gap-1.5 sm:gap-3">
-          <MatchCard v-for="match in day.matches" :key="match.id" :match="match" :link-league="false" />
-        </div>
-      </section>
+    <LoadingState v-if="matchesQuery.isLoading.value" message="Se incarca meciurile..." />
+
+    <template v-else>
+      <Transition name="page-fade" mode="out-in" appear>
+        <MatchDayGrid :key="matchesQuery.data.value?.number ?? 0" :days="groupedByDay">
+          <template #default="{ match }">
+            <MatchCard :match="match" :link-league="false" />
+          </template>
+        </MatchDayGrid>
+      </Transition>
+
+      <EmptyState
+        v-if="!groupedByDay.length"
+        class="mt-6"
+        message="Nu s-au gasit meciuri programate pentru aceasta liga."
+      />
+
+      <AppPagination
+        v-if="(matchesQuery.data.value?.totalElements ?? 0) > 0"
+        :page="matchesQuery.data.value?.number ?? 0"
+        :total-pages="matchesQuery.data.value?.totalPages ?? 0"
+        :total-elements="matchesQuery.data.value?.totalElements"
+        scroll-on-change
+        @change="pagination.setPage"
+      />
     </template>
-
-    <div class="mt-8 flex justify-center">
-      <AppButton variant="outline" :loading="loading" @click="loadNextDays()">
-        Incarca mai multe meciuri
-      </AppButton>
-    </div>
-
-    <div v-if="allEmpty || lastBatchEmpty" class="mt-6">
-      <EmptyState message="Nu exista meciuri in zilele selectate pentru aceasta liga." />
-    </div>
   </div>
 </template>
-

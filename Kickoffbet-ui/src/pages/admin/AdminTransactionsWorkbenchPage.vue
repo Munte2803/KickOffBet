@@ -1,39 +1,44 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import {
-  approveTransaction,
   getPendingTransactions,
   getTopDepositors,
   getTransactionReport,
   getUserTransactionSummary,
   getUserTransactions,
-  rejectTransaction,
   searchTransactions,
 } from '@/api/transactions.admin.api'
 import type { TransactionReport, UserDepositSummary, UserTransactionSummary } from '@/types/transaction.types'
 import type { TransactionStatus, TransactionType } from '@/types/enums'
 import { usePagination } from '@/composables/usePagination'
-import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useToastStore } from '@/stores/toast.store'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import AppButton from '@/components/AppButton.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppPagination from '@/components/AppPagination.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
+import TransactionRow from '@/components/TransactionRow.vue'
+import StatCard from '@/components/StatCard.vue'
+import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AdminUserSearchPicker from '@/components/AdminUserSearchPicker.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
+import ExportButton from '@/components/ExportButton.vue'
+import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
+import type { ExportColumn } from '@/utils/export.utils'
+import type { Transaction } from '@/types/transaction.types'
+import { getTransactionsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
-import { formatDateShort, inputToUtcApiDate } from '@/utils/date.utils'
+import { inputToUtcApiDate } from '@/utils/date.utils'
+import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import { translateEnumLabel } from '@/utils/labels.utils'
 
 const toastStore = useToastStore()
-const { confirm } = useConfirmDialog()
-const searchPagination = usePagination(12)
-const userTransactionsPagination = usePagination(5)
+const searchPagination = usePagination(PAGE_SIZES.SMALL)
+const userTransactionsPagination = usePagination(PAGE_SIZES.COMPACT)
+const pendingPagination = usePagination(PAGE_SIZES.COMPACT)
 
 const transactionType = ref<TransactionType | ''>('')
 const transactionStatus = ref<TransactionStatus | ''>('')
@@ -121,9 +126,14 @@ const searchQuery = useQuery({
   enabled: computed(() => hasSearched.value),
 })
 
+const pendingPageRequest = computed(() => ({
+  ...pendingPagination.request.value,
+  sort: sortBy.value,
+}))
+
 const pendingQuery = useQuery({
-  queryKey: ['admin-transaction-pending', sortBy],
-  queryFn: () => getPendingTransactions({ page: 0, size: 10, sort: sortBy.value }),
+  queryKey: ['admin-transaction-pending', sortBy, pendingPageRequest],
+  queryFn: () => getPendingTransactions(pendingPageRequest.value),
 })
 
 const userTransactionsQuery = useQuery({
@@ -137,6 +147,7 @@ watch(sortBy, () => {
     searchPagination.reset()
     searchQuery.refetch()
   }
+  pendingPagination.reset()
   pendingQuery.refetch()
 })
 
@@ -151,32 +162,6 @@ watch(() => userTransactionsPagination.page.value, () => {
     userTransactionsQuery.refetch()
   }
 })
-
-async function updateTransaction(action: (id: string) => Promise<unknown>, id: string, message: string) {
-  const isReject = action === rejectTransaction
-  const confirmed = await confirm({
-    title: isReject ? 'Respingere tranzactie' : 'Aprobare tranzactie',
-    message: isReject
-      ? 'Sunteti sigur ca vreti sa respingeti tranzactia selectata?'
-      : 'Sunteti sigur ca vreti sa aprobati tranzactia selectata?',
-    description: 'Actiunea va actualiza imediat starea tranzactiei.',
-    confirmLabel: isReject ? 'Respinge tranzactia' : 'Aproba tranzactia',
-    cancelLabel: 'Renunta',
-    variant: isReject ? 'danger' : 'primary',
-  })
-
-  if (!confirmed) {
-    return
-  }
-
-  try {
-    await action(id)
-    await Promise.all([pendingQuery.refetch(), searchQuery.refetch()])
-    toastStore.showSuccess(message)
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Actiunea a esuat.')
-  }
-}
 
 async function loadReport() {
   if (!reportStart.value || !reportEnd.value) {
@@ -216,7 +201,7 @@ async function loadUserSummary() {
     )
   } catch (error) {
     userSummary.value = null
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut incarca sumarul userului.')
+    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut incarca sumarul utilizatorului.')
   } finally {
     summaryLoading.value = false
   }
@@ -248,16 +233,6 @@ async function applySearchFilters() {
   const amountFilters = validateAmountFilters()
 
   if (!amountFilters) {
-    hasSearched.value = true
-    appliedSearchFilters.value = {
-      userId: undefined,
-      transactionType: undefined,
-      transactionStatus: undefined,
-      startDate: undefined,
-      endDate: undefined,
-      minAmount: undefined,
-      maxAmount: undefined,
-    }
     return
   }
 
@@ -279,6 +254,28 @@ async function applySearchFilters() {
 
   await searchQuery.refetch()
 }
+
+const exportColumns: ExportColumn<Transaction>[] = [
+  { header: 'ID', accessor: (r) => r.id },
+  { header: 'Email', accessor: (r) => r.userEmail },
+  { header: 'Nume', accessor: (r) => `${r.userFirstName} ${r.userLastName}` },
+  { header: 'Tip', accessor: (r) => translateEnumLabel(r.transactionType) },
+  { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
+  { header: 'Suma', accessor: (r) => r.amount },
+  { header: 'Creat la', accessor: (r) => r.createdAt },
+]
+
+async function fetchAllTransactionsForExport(): Promise<Transaction[]> {
+  const data = await searchTransactions(appliedSearchFilters.value, { page: 0, size: 10000, sort: sortBy.value })
+  return data.content
+}
+
+const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)
+const chartType = ref<'DEPOSIT' | 'WITHDRAWAL' | 'BET' | 'PAYOUT' | 'REFUND'>('DEPOSIT')
+const chartMetric = ref<'count' | 'totalAmount'>('totalAmount')
+const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeriesChart(
+  (start, end) => getTransactionsTimeSeries(start, end, chartType.value),
+)
 
 function resetSearchFilters() {
   transactionType.value = ''
@@ -310,42 +307,81 @@ function resetSearchFilters() {
     <Panel id="transaction-pending" no-hover>
       <h2 class="text-lg font-semibold text-white">Aprobari in asteptare</h2>
 
-      <div class="mt-4 space-y-3">
+      <Transition name="page-fade" mode="out-in" appear>
         <div
-          v-for="transaction in pendingQuery.data.value?.content ?? []"
-          :key="transaction.id"
-          class="rounded-xl border border-white/10 bg-black/40 p-4"
+          v-if="pendingQuery.data.value?.content?.length"
+          :key="pendingQuery.data.value?.number ?? 0"
+          class="mt-4 space-y-3"
         >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <StatusBadge :status="transaction.transactionType" />
-                <StatusBadge :status="transaction.status" />
-              </div>
-              <p class="mt-2 text-sm text-gray-400">{{ transaction.userEmail }} - {{ formatDateShort(transaction.createdAt) }}</p>
-            </div>
-            <div class="text-right">
-              <p class="text-sm font-semibold text-white">{{ formatMoney(transaction.amount) }}</p>
-              <div class="mt-2 flex flex-wrap gap-2">
-                <AppButton size="sm" @click="updateTransaction(approveTransaction, transaction.id, 'Tranzactia a fost aprobata.')">Aproba</AppButton>
-                <AppButton size="sm" variant="danger" @click="updateTransaction(rejectTransaction, transaction.id, 'Tranzactia a fost respinsa.')">Respinge</AppButton>
-              </div>
-            </div>
-          </div>
+          <TransactionRow
+            v-for="transaction in pendingQuery.data.value?.content ?? []"
+            :key="transaction.id"
+            :transaction="transaction"
+            show-email
+            route-name="admin-transaction-detail"
+            link-label="Deschide pagina dedicata"
+          />
+        </div>
+      </Transition>
 
-          <div class="mt-3 flex gap-3">
-            <RouterLink
-              :to="{ name: 'admin-transaction-detail', params: { id: transaction.id } }"
-              class="inline-flex items-center text-xs font-semibold text-blue-300 transition-colors hover:text-blue-200"
-              @click.stop
-            >
-              Deschide pagina dedicata
-            </RouterLink>
-          </div>
+      <EmptyState v-if="!(pendingQuery.data.value?.content?.length ?? 0)" class="mt-4" message="Nu exista tranzactii care asteapta aprobare." />
+
+      <AppPagination
+        v-if="(pendingQuery.data.value?.totalElements ?? 0) > 0"
+        :page="pendingQuery.data.value?.number ?? 0"
+        :total-pages="pendingQuery.data.value?.totalPages ?? 0"
+        :total-elements="pendingQuery.data.value?.totalElements"
+        @change="pendingPagination.setPage"
+      />
+    </Panel>
+
+    <Panel id="transaction-trend" no-hover>
+      <h2 class="text-lg font-semibold text-white">Evolutie in timp</h2>
+
+      <div class="mt-4 grid items-end gap-3 md:grid-cols-4">
+        <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
+        <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
+        <label class="text-sm text-gray-300">
+          <span class="mb-1 block">Tip</span>
+          <select v-model="chartType" class="app-select-field app-select">
+            <option value="DEPOSIT">{{ translateEnumLabel('DEPOSIT') }}</option>
+            <option value="WITHDRAWAL">{{ translateEnumLabel('WITHDRAWAL') }}</option>
+            <option value="BET">{{ translateEnumLabel('BET') }}</option>
+            <option value="PAYOUT">{{ translateEnumLabel('PAYOUT') }}</option>
+            <option value="REFUND">{{ translateEnumLabel('REFUND') }}</option>
+          </select>
+        </label>
+        <label class="text-sm text-gray-300">
+          <span class="mb-1 block">Metrica</span>
+          <select v-model="chartMetric" class="app-select-field app-select">
+            <option value="totalAmount">Suma totala</option>
+            <option value="count">Numar tranzactii</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <DatePresetButtons @select="(s, e) => { chartStart = s; chartEnd = e }" />
+        <div class="flex flex-wrap gap-2">
+          <AppButton :loading="chartLoading" @click="loadChart">Incarca graficul</AppButton>
+          <AppButton variant="outline" :disabled="!chartData.length" @click="trendChartRef?.exportPng(`tranzactii-${chartType.toLowerCase()}-grafic`)">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            <span>Descarca PNG</span>
+          </AppButton>
         </div>
       </div>
 
-      <EmptyState v-if="!(pendingQuery.data.value?.content?.length ?? 0)" class="mt-4" message="Nu exista tranzactii care asteapta aprobare." />
+      <div class="mt-6">
+        <TimeSeriesChart
+          ref="trendChartRef"
+          :data="chartData"
+          :metric="chartMetric"
+          :label="chartMetric === 'totalAmount' ? 'Suma' : 'Numar'"
+          color="#3b82f6"
+        />
+      </div>
     </Panel>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -353,45 +389,32 @@ function resetSearchFilters() {
         <Panel id="transaction-report" no-hover>
           <h2 class="text-lg font-semibold text-white">Raport</h2>
 
-          <div class="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div class="mt-4 grid gap-3 md:grid-cols-2">
             <FormInput v-model="reportStart" label="Data inceput" type="datetime-local" />
             <FormInput v-model="reportEnd" label="Data sfarsit" type="datetime-local" />
-            <div class="flex items-end">
-              <AppButton :loading="loadingReport" @click="loadReport">Incarca raportul</AppButton>
-            </div>
           </div>
+          <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <DatePresetButtons @select="(s, e) => { reportStart = s; reportEnd = e }" />
+            <AppButton :loading="loadingReport" @click="loadReport">Incarca raportul</AppButton>
+          </div>
+          
 
-          <div v-if="report" class="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Depuneri</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(report.totalDeposited) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Retras</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(report.totalWithdrawn) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Pariat</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(report.totalStaked) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Castigat</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(report.totalWon) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Rambursat</p>
-              <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(report.totalRefunded) }}</p>
-            </div>
+          <div v-if="report" class="mt-6 grid gap-3 grid-cols-2 md:grid-cols-3 2xl:grid-cols-5">
+            <StatCard label="Depuneri" :value="formatMoney(report.totalDeposited)" />
+            <StatCard label="Retras" :value="formatMoney(report.totalWithdrawn)" />
+            <StatCard label="Pariat" :value="formatMoney(report.totalStaked)" />
+            <StatCard label="Castigat" :value="formatMoney(report.totalWon)" />
+            <StatCard label="Rambursat" :value="formatMoney(report.totalRefunded)" />
           </div>
 
           <div v-if="topDepositors.length" class="mt-6 space-y-2">
             <div
               v-for="user in topDepositors"
               :key="user.userId"
-              class="flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm"
+              class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-3 sm:px-4 py-3 text-xs sm:text-sm"
             >
-              <span class="text-gray-300">{{ user.firstName }} {{ user.lastName }}</span>
-              <span class="font-semibold text-white">{{ formatMoney(user.totalDeposited) }}</span>
+              <span class="min-w-0 truncate text-gray-300">{{ user.firstName }} {{ user.lastName }}</span>
+              <span class="shrink-0 font-semibold text-white">{{ formatMoney(user.totalDeposited) }}</span>
             </div>
           </div>
         </Panel>
@@ -408,30 +431,19 @@ function resetSearchFilters() {
             />
             <FormInput v-model="summaryStart" label="Data inceput" type="datetime-local" />
             <FormInput v-model="summaryEnd" label="Data sfarsit" type="datetime-local" />
-            <div class="flex items-end">
-              <AppButton :loading="summaryLoading" @click="loadUserSummary">Incarca sumarul</AppButton>
-            </div>
+          </div>
+          <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <DatePresetButtons @select="(s, e) => { summaryStart = s; summaryEnd = e }" />
+            <AppButton :loading="summaryLoading" @click="loadUserSummary">Incarca sumarul</AppButton>
           </div>
 
-          <div v-if="userSummary" class="mt-4 grid gap-3 md:grid-cols-2">
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Utilizator</p>
-              <p class="mt-2 text-sm font-semibold text-white">{{ userSummary.firstName }} {{ userSummary.lastName }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Depuneri</p>
-              <p class="mt-2 text-sm font-semibold text-white">{{ formatMoney(userSummary.totalDeposited) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Retras</p>
-              <p class="mt-2 text-sm font-semibold text-white">{{ formatMoney(userSummary.totalWithdrawn) }}</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Pariat / Castigat / Rambursat</p>
-              <p class="mt-2 text-sm font-semibold text-white">
-                {{ formatMoney(userSummary.totalStaked) }} / {{ formatMoney(userSummary.totalWon) }} / {{ formatMoney(userSummary.totalRefunded) }}
-              </p>
-            </div>
+          <div v-if="userSummary" class="mt-4 grid gap-3 grid-cols-2 md:grid-cols-3">
+            <StatCard label="Utilizator" :value="`${userSummary.firstName} ${userSummary.lastName}`" />
+            <StatCard label="Depuneri" :value="formatMoney(userSummary.totalDeposited)" />
+            <StatCard label="Retras" :value="formatMoney(userSummary.totalWithdrawn)" />
+            <StatCard label="Pariat" :value="formatMoney(userSummary.totalStaked)" />
+            <StatCard label="Castigat" :value="formatMoney(userSummary.totalWon)" />
+            <StatCard label="Rambursat" :value="formatMoney(userSummary.totalRefunded)" />
           </div>
         </Panel>
       </div>
@@ -449,22 +461,21 @@ function resetSearchFilters() {
           />
         </div>
 
-        <div class="mt-4 space-y-3">
+        <Transition name="page-fade" mode="out-in" appear>
           <div
-            v-for="transaction in userTransactionsQuery.data.value?.content ?? []"
-            :key="transaction.id"
-            class="rounded-xl border border-white/10 bg-black/40 p-4"
+            v-if="userTransactionsQuery.data.value?.content?.length"
+            :key="userTransactionsQuery.data.value?.number ?? 0"
+            class="mt-4 space-y-3"
           >
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2">
-                <StatusBadge :status="transaction.transactionType" />
-                <StatusBadge :status="transaction.status" />
-              </div>
-              <span class="text-sm font-semibold text-white">{{ formatMoney(transaction.amount) }}</span>
-            </div>
-            <p class="mt-2 text-xs text-gray-400">{{ formatDateShort(transaction.createdAt) }}</p>
+            <TransactionRow
+              v-for="transaction in userTransactionsQuery.data.value?.content ?? []"
+              :key="transaction.id"
+              :transaction="transaction"
+              route-name="admin-transaction-detail"
+              link-label="Deschide pagina dedicata"
+            />
           </div>
-        </div>
+        </Transition>
 
         <EmptyState
           v-if="selectedHistoryUserId && !(userTransactionsQuery.data.value?.content?.length ?? 0)"
@@ -473,25 +484,42 @@ function resetSearchFilters() {
         />
 
         <AppPagination
-          v-if="(userTransactionsQuery.data.value?.totalPages ?? 0) > 1"
+          v-if="selectedHistoryUserId && (userTransactionsQuery.data.value?.totalElements ?? 0) > 0"
           :page="userTransactionsQuery.data.value?.number ?? 0"
           :total-pages="userTransactionsQuery.data.value?.totalPages ?? 0"
+          :total-elements="userTransactionsQuery.data.value?.totalElements"
           @change="userTransactionsPagination.setPage"
         />
       </Panel>
     </div>
 
     <Panel id="transaction-search" no-hover>
-      <h2 class="text-lg font-semibold text-white">Cautare completa</h2>
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold text-white">Cautare completa</h2>
+        <ExportButton
+          v-if="hasSearched"
+          :fetch-all="fetchAllTransactionsForExport"
+          :columns="exportColumns"
+          filename="tranzactii"
+          title="Tranzactii"
+          :disabled="!(searchQuery.data.value?.content?.length ?? 0)"
+        />
+      </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
         <AdminUserSearchPicker
           v-model="selectedSearchUserId"
           title="Utilizator pentru filtrare"
           placeholder="Cauta utilizatorul dupa email"
           results-title="Rezultate utilizatori"
-          class="md:col-span-2 xl:col-span-2"
         />
+
+        <FormInput v-model="startDate" label="Data inceput" type="datetime-local" />
+        <FormInput v-model="endDate" label="Data sfarsit" type="datetime-local" />
+      </div>
+
+      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
+        <FormInput v-model="minAmount" label="Suma minima" type="number" min="0" step="0.01" />
 
         <label class="text-sm text-gray-300">
           <span class="mb-1 block">Tip</span>
@@ -514,17 +542,20 @@ function resetSearchFilters() {
             <option :value="'REJECTED'">{{ translateEnumLabel('REJECTED') }}</option>
           </select>
         </label>
+      </div>
 
-        <FormInput v-model="minAmount" label="Suma minima" type="number" min="0" step="0.01" />
+      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
         <FormInput v-model="maxAmount" label="Suma maxima" type="number" min="0" step="0.01" />
-        <FormInput v-model="startDate" label="Data inceput" type="datetime-local" />
-        <FormInput v-model="endDate" label="Data sfarsit" type="datetime-local" />
+        <div class="hidden md:block"></div>
         <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
       </div>
 
-      <div class="mt-6 flex flex-wrap gap-3">
-        <AppButton @click="applySearchFilters">Aplica filtrele</AppButton>
-        <AppButton variant="outline" @click="resetSearchFilters">Reseteaza tot</AppButton>
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-3">
+          <AppButton @click="applySearchFilters">Aplica filtrele</AppButton>
+          <AppButton variant="outline" @click="resetSearchFilters">Reseteaza tot</AppButton>
+        </div>
+        <DatePresetButtons @select="(s, e) => { startDate = s; endDate = e }" />
       </div>
 
       <div class="mt-4 space-y-3">
@@ -534,46 +565,32 @@ function resetSearchFilters() {
           description="Alege filtrele pe care le vrei si apasa Aplica filtrele."
         />
 
-        <template v-else-if="searchQuery.data.value?.content?.length">
-          <div
-            v-for="transaction in searchQuery.data.value?.content ?? []"
-            :key="transaction.id"
-            class="rounded-xl border border-white/10 bg-black/40 p-4"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div class="flex items-center gap-2">
-                  <StatusBadge :status="transaction.transactionType" />
-                  <StatusBadge :status="transaction.status" />
-                </div>
-                <p class="mt-2 text-sm text-gray-400">{{ transaction.userEmail }} - {{ formatDateShort(transaction.createdAt) }}</p>
-              </div>
-              <span class="text-sm font-semibold text-white">{{ formatMoney(transaction.amount) }}</span>
-            </div>
-
-            <div class="mt-3 flex justify-start">
-              <RouterLink
-                :to="{ name: 'admin-transaction-detail', params: { id: transaction.id } }"
-                class="text-xs font-semibold text-blue-300 transition-colors hover:text-blue-200"
-                @click.stop
-              >
-                Deschide pagina dedicata
-              </RouterLink>
-            </div>
+        <Transition v-else name="page-fade" mode="out-in" appear>
+          <div :key="searchQuery.data.value?.number ?? 0" class="space-y-3">
+            <template v-if="searchQuery.data.value?.content?.length">
+              <TransactionRow
+                v-for="transaction in searchQuery.data.value?.content ?? []"
+                :key="transaction.id"
+                :transaction="transaction"
+                show-email
+                route-name="admin-transaction-detail"
+                link-label="Deschide pagina dedicata"
+              />
+            </template>
+            <EmptyState
+              v-else
+              class="mt-4"
+              message="Nu exista tranzactii pentru filtrele selectate."
+            />
           </div>
-        </template>
-
-        <EmptyState
-          v-else
-          class="mt-4"
-          message="Nu exista tranzactii pentru filtrele selectate."
-        />
+        </Transition>
       </div>
 
       <AppPagination
-        v-if="hasSearched && (searchQuery.data.value?.totalPages ?? 0) > 1"
+        v-if="hasSearched && (searchQuery.data.value?.totalElements ?? 0) > 0"
         :page="searchQuery.data.value?.number ?? 0"
         :total-pages="searchQuery.data.value?.totalPages ?? 0"
+        :total-elements="searchQuery.data.value?.totalElements"
         @change="searchPagination.setPage"
       />
     </Panel>

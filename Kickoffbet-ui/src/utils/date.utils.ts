@@ -1,5 +1,3 @@
-// Backend sends LocalDateTime as ISO string without timezone (e.g. "2024-03-15T14:30:00")
-// JavaScript treats bare ISO strings as local time, but our backend values are UTC-origin.
 const UTC_SUFFIX_REGEX = /(Z|[+-]\d{2}:\d{2})$/i
 
 export function parseUtcDate(dateString: string): Date {
@@ -33,7 +31,7 @@ function toUtcLocalDateTimeString(date: Date): string {
   ].join('T')
 }
 
-function toLocalInputValue(date: Date): string {
+export function toLocalInputValue(date: Date): string {
   return [
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
     `${pad(date.getHours())}:${pad(date.getMinutes())}`,
@@ -167,6 +165,33 @@ export const getUtcDateParamsForLocalDay = (dateStr: string): string[] => {
   const lastUtcDate = toUtcDateParam(endOfLocalDay)
 
   return firstUtcDate === lastUtcDate ? [firstUtcDate] : [firstUtcDate, lastUtcDate]
+}
+
+export interface DayGroup<T> {
+  dateStr: string
+  label: string
+  items: T[]
+}
+
+export function groupByLocalDay<T>(items: T[], getStartTime: (item: T) => string): DayGroup<T>[] {
+  const map = new Map<string, T[]>()
+  const order: string[] = []
+
+  for (const item of items) {
+    const key = getLocalDateParam(getStartTime(item))
+    if (!key) continue
+    if (!map.has(key)) {
+      map.set(key, [])
+      order.push(key)
+    }
+    map.get(key)!.push(item)
+  }
+
+  return order.map((dateStr) => ({
+    dateStr,
+    label: getDayLabel(dateStr),
+    items: map.get(dateStr)!,
+  }))
 }
 
 export const getDayLabel = (dateStr: string): string => {

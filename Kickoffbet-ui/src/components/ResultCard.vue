@@ -25,21 +25,21 @@ const goToLeague = (code: string) => router.push({ name: 'league', params: { cod
 <template>
   <Panel
     no-hover
-    class="group relative flex min-h-[142px] cursor-pointer flex-col border border-white/10 bg-black/40 p-1.5 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition-all duration-300 hover:border-blue-800 max-[390px]:min-h-[138px] max-[360px]:min-h-[134px] sm:min-h-[168px] sm:p-3 lg:min-h-[176px]"
+    class="group relative flex min-h-[142px] cursor-pointer flex-col border border-white/10 bg-black/40 p-1.5 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition-all duration-300 hover:border-blue-600 max-[390px]:min-h-[138px] max-[360px]:min-h-[134px] sm:min-h-[168px] sm:p-3 lg:min-h-[176px]"
     @click="goToMatch"
   >
     <div class="mb-0.5 flex min-h-[18px] items-center justify-between gap-1 sm:mb-1.5 sm:min-h-[22px] sm:gap-2">
       <button
         v-if="linkLeague && match.leagueCode"
-        class="flex min-w-0 items-center gap-1 text-[9px] text-gray-400 transition-colors hover:text-blue-300 sm:gap-1.5 sm:text-[10px]"
+        class="flex min-w-0 items-center gap-1 text-[11px] text-gray-400 transition-colors hover:text-blue-300 sm:gap-1.5 sm:text-[12px]"
         @click.stop="goToLeague(match.leagueCode)"
       >
-        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="xs" />
+        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="cardLeague" />
         <span class="truncate">{{ match.leagueName }}</span>
       </button>
 
-      <div v-else class="flex min-w-0 items-center gap-1 text-[9px] text-gray-400 sm:gap-1.5 sm:text-[10px]">
-        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="xs" />
+      <div v-else class="flex min-w-0 items-center gap-1 text-[11px] text-gray-400 sm:gap-1.5 sm:text-[12px]">
+        <LogoFrame v-if="match.leagueLogo" :src="match.leagueLogo" size="cardLeague" />
         <span class="truncate">{{ match.leagueName }}</span>
       </div>
 
@@ -49,7 +49,7 @@ const goToLeague = (code: string) => router.push({ name: 'league', params: { cod
     <div class="flex flex-1 flex-col justify-center px-0 py-0.5 sm:px-1 sm:py-1">
       <div class="mb-1 grid w-full grid-cols-[1fr_auto_1fr] items-center sm:mb-2">
         <button
-          class="inline-flex items-center justify-center justify-self-end rounded-full p-0.5 transition-all hover:ring-2 hover:ring-blue-500"
+          class="logo-hover-blue inline-flex items-center justify-center justify-self-end p-0.5"
           @click.stop="goToTeam(match.homeTeamId)"
         >
           <LogoFrame v-if="match.homeTeamLogo" :src="match.homeTeamLogo" size="card" />
@@ -59,7 +59,7 @@ const goToLeague = (code: string) => router.push({ name: 'league', params: { cod
         <div class="min-w-[46px] sm:min-w-[68px]" aria-hidden="true" />
 
         <button
-          class="inline-flex items-center justify-center justify-self-start rounded-full p-0.5 transition-all hover:ring-2 hover:ring-blue-500"
+          class="logo-hover-blue inline-flex items-center justify-center justify-self-start p-0.5"
           @click.stop="goToTeam(match.awayTeamId)"
         >
           <LogoFrame v-if="match.awayTeamLogo" :src="match.awayTeamLogo" size="card" />
@@ -70,7 +70,7 @@ const goToLeague = (code: string) => router.push({ name: 'league', params: { cod
       <div class="flex flex-col items-center">
         <div class="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5 max-[390px]:gap-1">
           <button
-            class="truncate text-right text-[11px] font-black tracking-normal text-white transition-colors group-hover:text-blue-400 hover:underline sm:text-[15px]"
+            class="truncate text-right text-[11px] font-black tracking-normal text-white transition-colors group-hover:text-blue-500 hover:underline sm:text-[15px]"
             @click.stop="goToTeam(match.homeTeamId)"
           >
             {{ getTeamTag(match.homeTeamName, match.homeTeamTla) }}
@@ -79,7 +79,7 @@ const goToLeague = (code: string) => router.push({ name: 'league', params: { cod
             {{ match.ftHome ?? '-' }} - {{ match.ftAway ?? '-' }}
           </div>
           <button
-            class="truncate text-left text-[11px] font-black tracking-normal text-white transition-colors group-hover:text-blue-400 hover:underline sm:text-[15px]"
+            class="truncate text-left text-[11px] font-black tracking-normal text-white transition-colors group-hover:text-blue-500 hover:underline sm:text-[15px]"
             @click.stop="goToTeam(match.awayTeamId)"
           >
             {{ getTeamTag(match.awayTeamName, match.awayTeamTla) }}

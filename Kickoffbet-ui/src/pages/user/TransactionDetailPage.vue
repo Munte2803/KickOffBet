@@ -52,9 +52,16 @@ const transactionQuery = useQuery({
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Referinta</p>
         <RouterLink
-          v-if="transactionQuery.data.value.referenceId"
+          v-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TICKET'"
           :to="{ name: 'ticket-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-200"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
+        >
+          {{ transactionQuery.data.value.referenceId }}
+        </RouterLink>
+        <RouterLink
+          v-else-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TRANSACTION'"
+          :to="{ name: 'transaction-detail', params: { id: transactionQuery.data.value.referenceId } }"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>

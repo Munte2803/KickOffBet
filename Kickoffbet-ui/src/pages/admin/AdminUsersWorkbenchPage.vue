@@ -7,6 +7,7 @@ import { RouterLink } from 'vue-router'
 import { createAdmin, getPendingVerification, getUsers, getUsersByStatus } from '@/api/admin-users.api'
 import { adminCreateSchema } from '@/validation/forms'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import FormInput from '@/components/FormInput.vue'
@@ -20,10 +21,16 @@ import type { UserStatus } from '@/types/enums'
 import type { UserList } from '@/types/admin-user.types'
 import { useToastStore } from '@/stores/toast.store'
 import { formatDateShort } from '@/utils/date.utils'
+import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import ExportButton from '@/components/ExportButton.vue'
+import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
+import DatePresetButtons from '@/components/DatePresetButtons.vue'
+import type { ExportColumn } from '@/utils/export.utils'
+import { getUsersTimeSeries } from '@/api/admin.timeseries.api'
 
 const toastStore = useToastStore()
-const pagination = usePagination(12)
+const pagination = usePagination(PAGE_SIZES.NORMAL)
 const selectedSearchUserId = ref('')
 const selectedSearchUser = ref<UserList | null>(null)
 const status = ref<'ALL' | 'PENDING_VERIFICATION' | UserStatus>('PENDING_VERIFICATION')
@@ -145,11 +152,66 @@ const submitCreateAdmin = adminForm.handleSubmit(async (values) => {
 onMounted(() => {
   void runListQuery()
 })
+
+const exportColumns: ExportColumn<UserList>[] = [
+  { header: 'ID', accessor: (r) => r.id },
+  { header: 'Email', accessor: (r) => r.email },
+  { header: 'Prenume', accessor: (r) => r.firstName },
+  { header: 'Nume', accessor: (r) => r.lastName },
+  { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
+  { header: 'Creat la', accessor: (r) => r.createdAt },
+]
+
+async function fetchAllUsersForExport(): Promise<UserList[]> {
+  const sortParam = { page: 0, size: 10000, sort: sortBy.value }
+  if (status.value === 'PENDING_VERIFICATION') {
+    return (await getPendingVerification(sortParam)).content
+  }
+  if (status.value !== 'ALL') {
+    return (await getUsersByStatus(status.value, sortParam)).content
+  }
+  return (await getUsers(sortParam)).content
+}
+
+const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)
+const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeriesChart(getUsersTimeSeries)
 </script>
 
 <template>
   <div class="space-y-6">
     <PageHeader title="Administrare - utilizatori" subtitle="Filtre complete pentru utilizatori si creare directa de administratori." />
+
+    <Panel id="user-trend" no-hover>
+      <h2 class="text-lg font-semibold text-white">Utilizatori noi pe zi</h2>
+
+      <div class="mt-4 grid items-end gap-3 md:grid-cols-2">
+        <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
+        <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <DatePresetButtons @select="(s, e) => { chartStart = s; chartEnd = e }" />
+        <div class="flex flex-wrap gap-2">
+          <AppButton :loading="chartLoading" @click="loadChart">Incarca graficul</AppButton>
+          <AppButton variant="outline" :disabled="!chartData.length" @click="trendChartRef?.exportPng('utilizatori-noi-grafic')">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            <span>Descarca PNG</span>
+          </AppButton>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <TimeSeriesChart
+          ref="trendChartRef"
+          :data="chartData"
+          metric="count"
+          label="Utilizatori noi"
+          color="#f59e0b"
+        />
+      </div>
+    </Panel>
 
     <Panel id="create-admin" no-hover>
       <h2 class="text-lg font-semibold text-white">Creeaza administrator</h2>
@@ -194,7 +256,7 @@ onMounted(() => {
       <div v-if="selectedSearchUser" class="mt-4 space-y-3">
         <RouterLink
           :to="{ name: 'admin-user-detail', params: { id: selectedSearchUser.id } }"
-          class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-700"
+          class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-600"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -213,6 +275,14 @@ onMounted(() => {
           <h2 class="text-lg font-semibold text-white">Lista si filtre</h2>
           <p class="text-sm text-gray-400">Filtreaza utilizatorii dupa stare sau sorteaza rezultatele.</p>
         </div>
+        <ExportButton
+          v-if="listTriggered"
+          :fetch-all="fetchAllUsersForExport"
+          :columns="exportColumns"
+          filename="utilizatori"
+          title="Utilizatori"
+          :disabled="!(listedUsersQuery.data.value?.content?.length ?? 0)"
+        />
       </div>
 
       <div class="mt-4 grid gap-3 md:grid-cols-2">
@@ -238,34 +308,37 @@ onMounted(() => {
         <AppButton variant="outline" @click="clearListFilters">Reseteaza filtrele</AppButton>
       </div>
 
-      <div v-if="listTriggered" class="mt-4 space-y-3">
-        <RouterLink
-          v-for="user in listedUsersQuery.data.value?.content ?? []"
-          :key="user.id"
-          :to="{ name: 'admin-user-detail', params: { id: user.id } }"
-          class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-700"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p class="text-sm font-semibold text-white">{{ user.firstName }} {{ user.lastName }}</p>
-              <p class="mt-1 text-xs text-gray-400">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
+      <Transition v-if="listTriggered" name="page-fade" mode="out-in" appear>
+        <div :key="listedUsersQuery.data.value?.number ?? 0" class="mt-4 space-y-3">
+          <RouterLink
+            v-for="user in listedUsersQuery.data.value?.content ?? []"
+            :key="user.id"
+            :to="{ name: 'admin-user-detail', params: { id: user.id } }"
+            class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-600"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-semibold text-white">{{ user.firstName }} {{ user.lastName }}</p>
+                <p class="mt-1 text-xs text-gray-400">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
+              </div>
+              <StatusBadge :status="user.status" />
             </div>
-            <StatusBadge :status="user.status" />
-          </div>
-        </RouterLink>
-      </div>
+          </RouterLink>
+        </div>
+      </Transition>
 
       <EmptyState
         v-if="listTriggered && !listedUsersQuery.isLoading.value && !(listedUsersQuery.data.value?.content?.length ?? 0)"
         class="mt-4"
-        message="Nu exista useri pentru filtrele selectate."
+        message="Nu exista utilizatori pentru filtrele selectate."
         description="Schimba emailul sau statusul si incearca din nou."
       />
 
       <AppPagination
-        v-if="listTriggered && (listedUsersQuery.data.value?.totalPages ?? 0) > 1"
+        v-if="listTriggered && (listedUsersQuery.data.value?.totalElements ?? 0) > 0"
         :page="listedUsersQuery.data.value?.number ?? 0"
         :total-pages="listedUsersQuery.data.value?.totalPages ?? 0"
+        :total-elements="listedUsersQuery.data.value?.totalElements"
         @change="changePage"
       />
     </Panel>

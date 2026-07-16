@@ -1,16 +1,23 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import {
   triggerFullSync,
   syncAllMatches,
   quickSyncMatches,
   recalculateAutomaticOdds,
+  triggerSeed,
+  type SeedResult,
 } from '@/api/admin-sync.api'
 import { useToastStore } from '@/stores/toast.store'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const toastStore = useToastStore()
+const { confirm } = useConfirmDialog()
+const seedLoading = ref(false)
+const lastSeedResult = ref<SeedResult | null>(null)
 
 async function runAction(action: () => Promise<void>, message: string) {
   try {
@@ -18,6 +25,30 @@ async function runAction(action: () => Promise<void>, message: string) {
     toastStore.showSuccess(message)
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut porni sincronizarea.')
+  }
+}
+
+async function runSeed() {
+  const ok = await confirm({
+    title: 'Genereaza date demo',
+    message: 'Aceasta operatie va sterge toti utilizatorii seed existenti si va recrea ~510 utilizatori, ~10k bilete si ~25k tranzactii.',
+    description: 'Datele reale (utilizatorii non-seed) nu sunt afectate. Poate dura cateva secunde.',
+    confirmLabel: 'Genereaza',
+    cancelLabel: 'Renunta',
+    variant: 'primary',
+  })
+  if (!ok) return
+  seedLoading.value = true
+  try {
+    const result = await triggerSeed()
+    lastSeedResult.value = result
+    toastStore.showSuccess(
+      `Seed gata: ${result.usersCreated} utilizatori, ${result.ticketsCreated} bilete, ${result.transactionsCreated} tranzactii in ${result.durationMs} ms.`,
+    )
+  } catch (error) {
+    toastStore.showError(error instanceof Error ? error.message : 'Seed-ul a esuat.')
+  } finally {
+    seedLoading.value = false
   }
 }
 </script>
@@ -43,6 +74,29 @@ async function runAction(action: () => Promise<void>, message: string) {
             Recalculeaza cotele automate
           </AppButton>
         </div>
+      </div>
+    </Panel>
+
+    <Panel id="seed-demo" no-hover class="space-y-4">
+      <h2 class="text-lg font-semibold text-white">Date demo</h2>
+      <p class="text-sm text-gray-400">
+        Genereaza ~510 utilizatori seed cu istoric coerent de depozite, bilete (WON/LOST/PENDING/CANCELLED) si tranzactii pe ultimele 365 zile.
+        Util pentru testarea graficelor, exporturilor si rapoartelor. Idempotent — re-rularea sterge si recreeaza.
+      </p>
+      <div>
+        <AppButton :loading="seedLoading" @click="runSeed">Genereaza date demo</AppButton>
+      </div>
+      <div
+        v-if="lastSeedResult"
+        class="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-gray-300"
+      >
+        <p>Ultima rulare:</p>
+        <ul class="mt-1 list-disc space-y-0.5 pl-5 text-xs text-gray-400">
+          <li>{{ lastSeedResult.usersCreated }} utilizatori</li>
+          <li>{{ lastSeedResult.ticketsCreated }} bilete</li>
+          <li>{{ lastSeedResult.transactionsCreated }} tranzactii</li>
+          <li>{{ lastSeedResult.durationMs }} ms</li>
+        </ul>
       </div>
     </Panel>
   </div>

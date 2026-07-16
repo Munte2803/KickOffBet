@@ -12,37 +12,36 @@ function withMatchSort(status: MatchStatus, pageRequest: PageRequest) {
 }
 
 export const getMatchesByDay = (
-  from: string,
-  to: string,
   status: MatchStatus,
-  pageRequest: PageRequest
+  pageRequest: PageRequest,
+  from?: string,
+  to?: string,
 ): Promise<PageResponse<MatchList>> =>
-  api.get(`/api/matches/day/${encodeURIComponent(from)}/${encodeURIComponent(to)}/${status}`, {
-    params: withMatchSort(status, pageRequest),
+  api.get(`/api/matches/day/${status}`, {
+    params: { ...withMatchSort(status, pageRequest), from, to },
   }).then(res => res.data)
 
 export const getMatchesByLeague = (
   leagueCode: string,
-  from: string,
-  to: string,
   status: MatchStatus,
-  pageRequest: PageRequest
+  pageRequest: PageRequest,
+  from?: string,
+  to?: string,
 ): Promise<PageResponse<MatchList>> =>
-  api.get(`/api/matches/league/${leagueCode}/${encodeURIComponent(from)}/${encodeURIComponent(to)}/${status}`, {
-    params: withMatchSort(status, pageRequest),
+  api.get(`/api/matches/league/${leagueCode}/${status}`, {
+    params: { ...withMatchSort(status, pageRequest), from, to },
   }).then(res => res.data)
 
 export const getMatchesByTeam = (
   teamId: string,
-  from: string,
-  to: string,
   status: MatchStatus,
-  pageRequest: PageRequest
+  pageRequest: PageRequest,
+  from?: string,
+  to?: string,
 ): Promise<PageResponse<MatchList>> =>
-  api.get(`/api/matches/team/${teamId}/${encodeURIComponent(from)}/${encodeURIComponent(to)}/${status}`, {
-    params: withMatchSort(status, pageRequest),
+  api.get(`/api/matches/team/${teamId}/${status}`, {
+    params: { ...withMatchSort(status, pageRequest), from, to },
   }).then(res => res.data)
 
 export const getMatchDetails = (id: string): Promise<MatchDetail> =>
   api.get(`/api/matches/${id}`).then(res => res.data)
-

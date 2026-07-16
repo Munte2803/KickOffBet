@@ -41,10 +41,9 @@ const ticketQuery = useQuery({
           </div>
           <RouterLink
             :to="{ name: 'admin-user-detail', params: { id: ticketQuery.data.value.userId } }"
-            class="mt-2 inline-flex max-w-full flex-col text-left text-sm font-medium text-blue-300 transition-colors hover:text-blue-200"
+            class="mt-2 inline-flex max-w-full flex-col text-left text-sm font-medium text-blue-300 transition-colors hover:text-blue-300"
           >
             <span class="truncate">{{ ticketQuery.data.value.userEmail }}</span>
-            <span class="mt-2 font-mono text-xs text-gray-500">{{ ticketQuery.data.value.userId }}</span>
           </RouterLink>
             <p class="mt-2 font-mono text-xs text-gray-500">ID bilet: {{ ticketQuery.data.value.id }}</p>
         </div>
@@ -65,7 +64,12 @@ const ticketQuery = useQuery({
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold text-white">{{ selection.homeTeamName }} vs {{ selection.awayTeamName }}</p>
+              <RouterLink
+                :to="{ name: 'admin-match-detail', params: { id: selection.matchId } }"
+                class="text-sm font-semibold text-white transition hover:text-amber-300"
+              >
+                {{ selection.homeTeamName }} vs {{ selection.awayTeamName }}
+              </RouterLink>
               <p class="mt-1 text-xs text-gray-400">
               {{ translateEnumLabel(selection.marketType) }} ·
                 {{ formatBetLabel(selection.selectedOption, selection.marketType, selection.line) }}

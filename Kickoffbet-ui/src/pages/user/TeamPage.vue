@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { getTeamById } from '@/api/teams.api'
 import { getMatchesByTeam } from '@/api/matches.api'
-import { useLazyDays } from '@/composables/useLazyDays'
+import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
+import { groupByLocalDay, parseUtcDate } from '@/utils/date.utils'
 import MatchCard from '@/components/MatchCard.vue'
+import MatchDayGrid from '@/components/MatchDayGrid.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -13,16 +16,10 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
-import AppButton from '@/components/AppButton.vue'
-import { addLocalDays, getStartOfLocalDay, getUtcApiRange } from '@/utils/date.utils'
+import AppPagination from '@/components/AppPagination.vue'
 
 const route = useRoute()
 const teamId = route.params.id as string
-const recentResultsRange = (() => {
-  const end = addLocalDays(getStartOfLocalDay(new Date()), 1)
-  const start = addLocalDays(end, -365)
-  return getUtcApiRange(start, end)
-})()
 
 const teamQuery = useQuery({
   queryKey: ['team-detail', teamId],
@@ -31,19 +28,24 @@ const teamQuery = useQuery({
 
 const recentResultsQuery = useQuery({
   queryKey: ['team-form', teamId],
-  queryFn: () => getMatchesByTeam(teamId, recentResultsRange.from, recentResultsRange.to, 'FINISHED', { page: 0, size: 5 }),
+  queryFn: () => getMatchesByTeam(teamId, 'FINISHED', { page: 0, size: 5 }),
 })
 
-const { visibleDays, allEmpty, lastBatchEmpty, loading, loadInitial, loadNextDays } = useLazyDays({
-  direction: 'forward',
-  filters: {
-    status: 'SCHEDULED',
-    teamId,
-  },
+const pagination = usePagination(PAGE_SIZES.LARGE)
+const pageRequest = computed(() => ({
+  ...pagination.request.value,
+  sort: 'startTime,asc',
+}))
+
+const matchesQuery = useQuery({
+  queryKey: ['team-scheduled-matches', teamId, pageRequest],
+  queryFn: () => getMatchesByTeam(teamId, 'SCHEDULED', pageRequest.value),
 })
 
-onMounted(() => {
-  loadInitial(14)
+const groupedByDay = computed(() => {
+  const now = Date.now()
+  const matches = (matchesQuery.data.value?.content ?? []).filter((m) => parseUtcDate(m.startTime).getTime() > now)
+  return groupByLocalDay(matches, (m) => m.startTime)
 })
 
 const formGuide = computed(() =>
@@ -61,7 +63,7 @@ const formGuide = computed(() =>
 
 <template>
   <LoadingState v-if="teamQuery.isLoading.value" message="Se incarca echipa..." />
-  <div v-else-if="teamQuery.data.value" class="space-y-6">
+  <div v-else-if="teamQuery.data.value" data-list-top class="space-y-6">
     <PageHeader
       :title="teamQuery.data.value.name"
       :logo-url="teamQuery.data.value.crestUrl"
@@ -112,24 +114,31 @@ const formGuide = computed(() =>
       </div>
     </Panel>
 
-    <template v-for="day in visibleDays" :key="day.dateStr">
-      <section v-if="day.matches.length">
-        <SectionHeader :title="day.label" />
-        <div class="grid grid-cols-3 gap-1.5 sm:gap-3">
-          <MatchCard v-for="match in day.matches" :key="match.id" :match="match" />
-        </div>
-      </section>
+    <LoadingState v-if="matchesQuery.isLoading.value" message="Se incarca meciurile..." />
+
+    <template v-else>
+      <Transition name="page-fade" mode="out-in" appear>
+        <MatchDayGrid :key="matchesQuery.data.value?.number ?? 0" :days="groupedByDay">
+          <template #default="{ match }">
+            <MatchCard :match="match" />
+          </template>
+        </MatchDayGrid>
+      </Transition>
+
+      <EmptyState
+        v-if="!groupedByDay.length"
+        class="mt-6"
+        message="Nu s-au gasit meciuri programate pentru aceasta echipa."
+      />
+
+      <AppPagination
+        v-if="(matchesQuery.data.value?.totalElements ?? 0) > 0"
+        :page="matchesQuery.data.value?.number ?? 0"
+        :total-pages="matchesQuery.data.value?.totalPages ?? 0"
+        :total-elements="matchesQuery.data.value?.totalElements"
+        scroll-on-change
+        @change="pagination.setPage"
+      />
     </template>
-
-    <div class="mt-8 flex justify-center">
-      <AppButton variant="outline" :loading="loading" @click="loadNextDays()">
-        Incarca mai multe meciuri
-      </AppButton>
-    </div>
-
-    <div v-if="allEmpty || lastBatchEmpty" class="mt-6">
-      <EmptyState message="Nu exista meciuri in zilele selectate pentru aceasta echipa." />
-    </div>
   </div>
 </template>
-

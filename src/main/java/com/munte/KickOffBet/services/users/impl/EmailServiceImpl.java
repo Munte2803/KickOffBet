@@ -31,6 +31,7 @@ public class EmailServiceImpl implements EmailService {
     private String frontendUrl;
 
     @Override
+    @Async("threadPoolTaskExecutor")
     public void sendVerificationEmail(User user, String token) {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
@@ -39,6 +40,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async("threadPoolTaskExecutor")
     public void sendPasswordResetEmail(User user, String token) {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
@@ -47,6 +49,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async("threadPoolTaskExecutor")
     public void sendDepositConfirmation(User user, BigDecimal amount) {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
@@ -55,6 +58,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async("threadPoolTaskExecutor")
     public void sendWithdrawalConfirmation(User user, BigDecimal amount) {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
@@ -62,7 +66,6 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(user.getEmail(), "KickOffBet - Withdrawal Confirmation", "email/withdrawal-confirmation", context);
     }
 
-    @Async("threadPoolTaskExecutor")
     private void sendEmail(String to, String subject, String template, Context context) {
         try {
             String html = templateEngine.process(template, context);
@@ -73,13 +76,14 @@ public class EmailServiceImpl implements EmailService {
             helper.setSubject(subject);
             helper.setText(html, true);
             mailSender.send(message);
-            log.info("Email sent to: {}", to);
+            log.info("Email sent async to: {}", to);
         } catch (MessagingException e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
+            log.warn("Failed to send email async to {}: {}", to, e.getMessage());
         }
     }
 
     @Override
+    @Async("threadPoolTaskExecutor")
     public void sendPasswordChangedNotification(User user) {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());

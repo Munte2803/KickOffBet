@@ -16,7 +16,7 @@ defineEmits<{ change: [key: string] }>()
       :class="[
         'flex-1 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[11px] font-bold transition-colors sm:px-4 sm:py-4 sm:text-sm',
         tab.key === active
-          ? 'border-blue-500 bg-white/5 text-blue-400'
+          ? 'border-blue-500 bg-white/5 text-blue-500'
           : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-white',
       ]"
     >

@@ -1,5 +1,6 @@
 package com.munte.KickOffBet.services.transactions.impl;
 
+import com.munte.KickOffBet.domain.constants.TransactionConstants;
 import com.munte.KickOffBet.domain.dto.api.request.DepositRequest;
 import com.munte.KickOffBet.domain.dto.api.request.WithdrawRequest;
 import com.munte.KickOffBet.domain.entity.Transaction;
@@ -77,14 +78,14 @@ public class WalletServiceImpl implements WalletService {
         transaction.setAmount(request.getAmount());
         transaction.setTransactionType(TransactionType.WITHDRAWAL);
 
+        user.setBalance(user.getBalance().subtract(request.getAmount()));
+
         if (amlService.susWithdrawal(user, request.getAmount())) {
             transaction.setStatus(TransactionStatus.PENDING);
             return transactionRepository.save(transaction);
         }
 
         transaction.setStatus(TransactionStatus.COMPLETED);
-
-        user.setBalance(user.getBalance().subtract(request.getAmount()));
 
         userRepository.save(user);
 
@@ -111,6 +112,7 @@ public class WalletServiceImpl implements WalletService {
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.BET);
         transaction.setReferenceId(ticketId);
+        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
         transaction.setStatus(TransactionStatus.COMPLETED);
 
         user.setBalance(user.getBalance().subtract(amount));
@@ -131,6 +133,7 @@ public class WalletServiceImpl implements WalletService {
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.PAYOUT);
         transaction.setReferenceId(ticketId);
+        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
         transaction.setStatus(TransactionStatus.COMPLETED);
 
         user.setBalance(user.getBalance().add(amount));
@@ -142,7 +145,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public void refund(UUID userId, BigDecimal amount) {
+    public void refund(UUID userId, BigDecimal amount, UUID referenceId) {
 
         User user = this.getActiveUserById(userId);
 
@@ -151,6 +154,8 @@ public class WalletServiceImpl implements WalletService {
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.REFUND);
         transaction.setStatus(TransactionStatus.COMPLETED);
+        transaction.setReferenceId(referenceId);
+        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
 
         user.setBalance(user.getBalance().add(amount));
 
@@ -208,6 +213,19 @@ public class WalletServiceImpl implements WalletService {
 
         transaction.setStatus(TransactionStatus.REJECTED);
 
+        if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
+            Transaction refund = new Transaction();
+            refund.setReferenceId(transaction.getId());
+            refund.setReferenceType(TransactionConstants.REFERENCE_TYPE_TRANSACTION);
+            refund.setTransactionType(TransactionType.REFUND);
+            refund.setStatus(TransactionStatus.COMPLETED);
+            refund.setAmount(transaction.getAmount());
+            refund.setUser(transaction.getUser());
+            transaction.getUser().setBalance(transaction.getUser().getBalance().add(transaction.getAmount()));
+            userRepository.save(transaction.getUser());
+            transactionRepository.save(refund);
+        }
+
         return transactionRepository.save(transaction);
     }
 
@@ -222,7 +240,7 @@ public class WalletServiceImpl implements WalletService {
     private User getActiveUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        if (!user.getStatus().equals(UserStatus.ACTIVE)) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException("User account is not active");
         }
         return user;

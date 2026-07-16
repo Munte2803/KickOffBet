@@ -23,7 +23,7 @@ defineProps<{
       (!variant || variant === 'primary') ? 'border border-transparent bg-blue-600 text-white shadow-lg shadow-blue-950/25 hover:bg-blue-500' :
       variant === 'danger' ? 'border border-transparent bg-red-600 text-white shadow-lg shadow-red-950/25 hover:bg-red-500' :
       variant === 'ghost' ? 'text-gray-400 hover:bg-white/5 hover:text-white' :
-      'border border-white/10 bg-white/5 text-white hover:border-blue-700 hover:bg-white/10',
+      'border border-white/10 bg-white/5 text-white hover:border-blue-600 hover:bg-white/10',
     ]"
   >
     <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

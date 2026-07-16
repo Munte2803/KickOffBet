@@ -1,5 +1,6 @@
 package com.munte.KickOffBet.services.users.impl;
 
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDto;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.enums.UserRole;
@@ -12,6 +13,7 @@ import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.services.users.StorageService;
 import com.munte.KickOffBet.domain.dto.api.response.StoredFile;
 import com.munte.KickOffBet.services.users.UserService;
+import com.munte.KickOffBet.util.DateUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -68,7 +72,7 @@ public class UserServiceImpl implements UserService {
     public void approveUser(UUID id) {
         User user = getUserById(id);
 
-        if (user.getStatus().equals(UserStatus.ACTIVE)) {
+        if (user.getStatus() == UserStatus.ACTIVE) {
             throw new BusinessException("User is already active.");
         }
         if (user.isEmailVerified()) {
@@ -84,7 +88,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void rejectUser(UUID id) {
         User user = getUserById(id);
-        if (!user.getStatus().equals(UserStatus.PENDING)|| user.isIdCardVerified()) {
+        if (user.getStatus() != UserStatus.PENDING || user.isIdCardVerified()) {
             throw new BusinessException("User is not pending");
         }
         user.setStatus(UserStatus.DECLINED);
@@ -165,10 +169,6 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("ID card upload is not allowed for your account status");
         }
 
-        if (user.getIdCardUrl() != null) {
-            throw new BusinessException("ID card already submitted and pending review");
-        }
-
         String idCardUrl = storageService.uploadFile(idCard, idCardsBucket);
         user.setIdCardUrl(idCardUrl);
 
@@ -187,5 +187,17 @@ public class UserServiceImpl implements UserService {
        user.setStatus(UserStatus.DEACTIVATED);
        userRepository.save(user);
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TimeSeriesPointDto> getDailyNewUsersTimeSeries(LocalDateTime start, LocalDateTime end) {
+        List<Object[]> rows = userRepository.aggregateDailyNewUsers(start, end);
+        return rows.stream()
+                .map(row -> new TimeSeriesPointDto(
+                        DateUtils.toLocalDate(row[0]),
+                        ((Number) row[1]).longValue()
+                ))
+                .toList();
     }
 }

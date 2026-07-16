@@ -7,6 +7,22 @@ import {
 } from '@/utils/auth-session.utils'
 import { isJwtExpired } from '@/utils/jwt.utils'
 
+const errorCodeMessages: Record<string, string> = {
+  CONCURRENT_MODIFICATION: 'Operatiunea a esuat din cauza unei modificari concurente. Incearca din nou.',
+  TICKET_PLACEMENT_ERROR: 'Nu am putut plasa biletul. Verifica selectiile si incearca din nou.',
+  ACCOUNT_LOCKED: 'Contul tau este blocat. Contacteaza suportul.',
+  INVALID_CREDENTIALS: 'Email sau parola incorecta.',
+  RESOURCE_NOT_FOUND: 'Resursa solicitata nu a fost gasita.',
+  STORAGE_ERROR: 'Eroare la incarcarea fisierului. Incearca din nou.',
+  EXTERNAL_API_ERROR: 'Serviciu extern indisponibil. Incearca mai tarziu.',
+  INTERNAL_ERROR: 'Eroare interna. Incearca mai tarziu.',
+}
+
+function translateErrorCode(errorCode: string | undefined): string | undefined {
+  if (!errorCode) return undefined
+  return errorCodeMessages[errorCode]
+}
+
 function resolveApiBaseUrl() {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 
@@ -167,7 +183,9 @@ api.interceptors.response.use(
       }
     }
 
-    const message = error.response?.data?.error ?? 'Eroare de conexiune'
+    const errorCode = error.response?.data?.errorCode as string | undefined
+    const serverMessage = error.response?.data?.error as string | undefined
+    const message = translateErrorCode(errorCode) ?? serverMessage ?? 'Eroare de conexiune'
     return Promise.reject(new Error(message))
   }
 )

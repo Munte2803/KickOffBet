@@ -22,6 +22,7 @@ public class TransactionDto {
     private String userLastName;
     private BigDecimal amount;
     private UUID referenceId;
+    private String referenceType;
     private TransactionType transactionType;
     private TransactionStatus status;
     private LocalDateTime createdAt;

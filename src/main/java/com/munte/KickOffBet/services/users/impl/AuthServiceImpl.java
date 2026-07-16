@@ -290,7 +290,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(String token, ResetPasswordRequest request) {
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BusinessException("Passwords do not match");
         }
 
@@ -307,7 +307,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = verificationToken.getUser();
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
 
         verificationToken.setUsed(true);

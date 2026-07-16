@@ -7,7 +7,6 @@
     --app-page-header-top: var(--app-header-height);
     --app-page-max-width: 1600px;
     --app-content-max-width: 1240px;
-    --app-admin-sidebar-width: 260px;
     --app-slip-width: 360px;
     --app-slip-top: calc(var(--app-header-height) + 62px);
   }
@@ -149,12 +148,47 @@
 }
 
 @layer utilities {
+  /* Pagination page transitions (used with <Transition name="page-fade" appear> mode="out-in")
+     Pure opacity crossfade — no Y-translate so there is no visible "jump" when the
+     transition plays (e.g. on first load or when going to a page you haven't visited). */
+  .page-fade-enter-active,
+  .page-fade-leave-active,
+  .page-fade-appear-active {
+    transition: opacity 220ms ease;
+  }
+  .page-fade-enter-from,
+  .page-fade-leave-to,
+  .page-fade-appear-from {
+    opacity: 0;
+  }
+
   .app-shell-width {
     max-width: var(--app-page-max-width);
   }
 
   .app-content-width {
     max-width: var(--app-content-max-width);
+  }
+
+  /* Thin white outline traced on the alpha-shape of a logo (PNG/SVG with transparency).
+     Four 1px drop-shadows at the cardinal directions form the contour.
+     Works for SVGs and PNGs with alpha; on JPEGs (no alpha) it outlines the bounding box. */
+  .logo-outline {
+    filter:
+      drop-shadow( 1px  0    0 rgba(255, 255, 255, 0.95))
+      drop-shadow(-1px  0    0 rgba(255, 255, 255, 0.95))
+      drop-shadow( 0    1px  0 rgba(255, 255, 255, 0.95))
+      drop-shadow( 0   -1px  0 rgba(255, 255, 255, 0.95));
+    transition: filter 200ms ease;
+  }
+
+  /* When any ancestor with .logo-hover-blue is hovered, the inner .logo-outline turns blue. */
+  .logo-hover-blue:hover .logo-outline {
+    filter:
+      drop-shadow( 1px  0    0 #3b82f6)
+      drop-shadow(-1px  0    0 #3b82f6)
+      drop-shadow( 0    1px  0 #3b82f6)
+      drop-shadow( 0   -1px  0 #3b82f6);
   }
 
   /* Hide number input spinners */

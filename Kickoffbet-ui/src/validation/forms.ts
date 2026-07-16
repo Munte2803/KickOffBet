@@ -140,6 +140,7 @@ export const stakeSchema = z.object({
   stake: z.coerce
     .number()
     .min(MIN_STAKE, `Miza minima este ${MIN_STAKE} RON`)
-    .max(MAX_STAKE, `Miza maxima este ${MAX_STAKE} RON`),
+    .max(MAX_STAKE, `Miza maxima este ${MAX_STAKE} RON`)
+    .multipleOf(0.01, 'Miza poate avea maxim 2 zecimale'),
 })
 

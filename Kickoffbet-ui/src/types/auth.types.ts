@@ -21,7 +21,6 @@ export interface EmailRequest {
 export interface ResetPasswordRequest {
   token: string
   password: string
-  newPassword: string
   confirmPassword: string
 }
 

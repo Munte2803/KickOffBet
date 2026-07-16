@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.services.transactions;
 
 import com.munte.KickOffBet.domain.dto.api.request.TransactionSearchRequest;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.TransactionReportDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDepositSummaryDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserTransactionSummaryDto;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface TransactionService {
@@ -31,5 +33,7 @@ public interface TransactionService {
     Page<UserDepositSummaryDto> getTopDepositors(LocalDateTime start, LocalDateTime end, Pageable pageable);
 
     Page<Transaction> getPendingTransactions(Pageable pageable);
+
+    List<TimeSeriesPointDto> getDailyTransactionsTimeSeries(LocalDateTime start, LocalDateTime end, TransactionType type);
 
 }

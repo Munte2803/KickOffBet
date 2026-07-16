@@ -42,6 +42,33 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     @Value("${betting.lines.over-under:1.5,2.5,3.5}")
     private double[] overUnderLines;
 
+    @Value("${betting.default.season-home-avg-scored:1.25}")
+    private double defaultSeasonHomeAvgScored;
+    @Value("${betting.default.season-home-avg-conceded:1.10}")
+    private double defaultSeasonHomeAvgConceded;
+    @Value("${betting.default.season-away-avg-scored:1.05}")
+    private double defaultSeasonAwayAvgScored;
+    @Value("${betting.default.season-away-avg-conceded:1.30}")
+    private double defaultSeasonAwayAvgConceded;
+    @Value("${betting.default.season-win-rate:0.38}")
+    private double defaultSeasonWinRate;
+    @Value("${betting.default.season-draw-rate:0.29}")
+    private double defaultSeasonDrawRate;
+    @Value("${betting.default.season-over25-rate:0.48}")
+    private double defaultSeasonOver25Rate;
+    @Value("${betting.default.season-btts-rate:0.45}")
+    private double defaultSeasonBttsRate;
+    @Value("${betting.default.last5-avg-scored:1.25}")
+    private double defaultLast5AvgScored;
+    @Value("${betting.default.last5-avg-conceded:1.10}")
+    private double defaultLast5AvgConceded;
+    @Value("${betting.default.last5-draw-rate:0.29}")
+    private double defaultLast5DrawRate;
+    @Value("${betting.default.last5-over25-rate:0.48}")
+    private double defaultLast5Over25Rate;
+    @Value("${betting.default.last5-btts-rate:0.45}")
+    private double defaultLast5BttsRate;
+
     private static final ReentrantLock lock = new ReentrantLock();
 
     @Override
@@ -88,15 +115,16 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         for (final Match match : toCalculate) {
             final TeamMatchMetrics rawHomeMetrics = metricsMap.get(match.getHomeTeam().getId());
             final TeamMatchMetrics rawAwayMetrics = metricsMap.get(match.getAwayTeam().getId());
-            final boolean homeHasUsableMetrics = hasUsableMetrics(rawHomeMetrics);
-            final boolean awayHasUsableMetrics = hasUsableMetrics(rawAwayMetrics);
-            final TeamMatchMetrics homeMetrics = homeHasUsableMetrics ? rawHomeMetrics : defaultMetrics();
-            final TeamMatchMetrics awayMetrics = awayHasUsableMetrics ? rawAwayMetrics : defaultMetrics();
 
-            if (!homeHasUsableMetrics && !awayHasUsableMetrics) {
-                log.warn("Using default metrics for match: {} vs {}", match.getHomeTeam().getName(), match.getAwayTeam().getName());
-            } else if (!homeHasUsableMetrics || !awayHasUsableMetrics) {
-                log.warn("Using partial default metrics for match: {} vs {}", match.getHomeTeam().getName(), match.getAwayTeam().getName());
+            final TeamMatchMetrics homeMetrics = rawHomeMetrics != null ? rawHomeMetrics : new TeamMatchMetrics();
+            final TeamMatchMetrics awayMetrics = rawAwayMetrics != null ? rawAwayMetrics : new TeamMatchMetrics();
+
+            final int homeDefaults = applyFieldDefaults(homeMetrics);
+            final int awayDefaults = applyFieldDefaults(awayMetrics);
+
+            if (homeDefaults > 0 || awayDefaults > 0) {
+                log.info("Applied field-level defaults for match {} vs {} (home: {} fields, away: {} fields)",
+                        match.getHomeTeam().getName(), match.getAwayTeam().getName(), homeDefaults, awayDefaults);
             }
 
             generateAndApplyOdds(match, homeMetrics, awayMetrics);
@@ -141,7 +169,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
 
         for (final double line : overUnderLines) {
             final double rawOver = marketProcessor.calculateOverUnder(pm, line, true);
-            final double calibratedOver = calibrator.calibrateOver(rawOver, h, a);
+            final double calibratedOver = calibrator.calibrateOver(rawOver, h, a, line);
             final BigDecimal lineValue = BigDecimal.valueOf(line);
 
             applyOffer(match, MarketType.OVER_UNDER, BetOption.OVER, lineValue, calibratedOver);
@@ -190,45 +218,25 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
                 m.getAwayTeam() != null && m.getAwayTeam().getExternalId() > 0;
     }
 
-    private boolean hasUsableMetrics(final TeamMatchMetrics metrics) {
-        return metrics != null && !isEmptyMetrics(metrics);
-    }
-
-    private boolean isEmptyMetrics(final TeamMatchMetrics metrics) {
-        return isZero(metrics.getSeasonHomeAvgScored()) &&
-                isZero(metrics.getSeasonHomeAvgConceded()) &&
-                isZero(metrics.getSeasonAwayAvgScored()) &&
-                isZero(metrics.getSeasonAwayAvgConceded()) &&
-                isZero(metrics.getSeasonWinRate()) &&
-                isZero(metrics.getSeasonDrawRate()) &&
-                isZero(metrics.getSeasonOver25Rate()) &&
-                isZero(metrics.getSeasonBttsRate()) &&
-                isZero(metrics.getLast5AvgScored()) &&
-                isZero(metrics.getLast5AvgConceded()) &&
-                isZero(metrics.getLast5DrawRate()) &&
-                isZero(metrics.getLast5Over25Rate()) &&
-                isZero(metrics.getLast5BttsRate());
+    private int applyFieldDefaults(final TeamMatchMetrics m) {
+        int count = 0;
+        if (isZero(m.getSeasonHomeAvgScored()))   { m.setSeasonHomeAvgScored(defaultSeasonHomeAvgScored);     count++; }
+        if (isZero(m.getSeasonHomeAvgConceded()))  { m.setSeasonHomeAvgConceded(defaultSeasonHomeAvgConceded); count++; }
+        if (isZero(m.getSeasonAwayAvgScored()))    { m.setSeasonAwayAvgScored(defaultSeasonAwayAvgScored);     count++; }
+        if (isZero(m.getSeasonAwayAvgConceded()))  { m.setSeasonAwayAvgConceded(defaultSeasonAwayAvgConceded); count++; }
+        if (isZero(m.getSeasonWinRate()))           { m.setSeasonWinRate(defaultSeasonWinRate);                 count++; }
+        if (isZero(m.getSeasonDrawRate()))           { m.setSeasonDrawRate(defaultSeasonDrawRate);               count++; }
+        if (isZero(m.getSeasonOver25Rate()))         { m.setSeasonOver25Rate(defaultSeasonOver25Rate);           count++; }
+        if (isZero(m.getSeasonBttsRate()))           { m.setSeasonBttsRate(defaultSeasonBttsRate);               count++; }
+        if (isZero(m.getLast5AvgScored()))           { m.setLast5AvgScored(defaultLast5AvgScored);               count++; }
+        if (isZero(m.getLast5AvgConceded()))         { m.setLast5AvgConceded(defaultLast5AvgConceded);           count++; }
+        if (isZero(m.getLast5DrawRate()))             { m.setLast5DrawRate(defaultLast5DrawRate);                 count++; }
+        if (isZero(m.getLast5Over25Rate()))           { m.setLast5Over25Rate(defaultLast5Over25Rate);             count++; }
+        if (isZero(m.getLast5BttsRate()))             { m.setLast5BttsRate(defaultLast5BttsRate);                 count++; }
+        return count;
     }
 
     private boolean isZero(final Double value) {
         return value == null || Math.abs(value) < 1e-9;
-    }
-
-    private TeamMatchMetrics defaultMetrics() {
-        TeamMatchMetrics m = new TeamMatchMetrics();
-        m.setSeasonHomeAvgScored(1.4);
-        m.setSeasonHomeAvgConceded(1.4);
-        m.setSeasonAwayAvgScored(1.1);
-        m.setSeasonAwayAvgConceded(1.4);
-        m.setSeasonWinRate(0.40);
-        m.setSeasonDrawRate(0.25);
-        m.setSeasonOver25Rate(0.52);
-        m.setSeasonBttsRate(0.48);
-        m.setLast5AvgScored(1.4);
-        m.setLast5AvgConceded(1.4);
-        m.setLast5DrawRate(0.25);
-        m.setLast5Over25Rate(0.52);
-        m.setLast5BttsRate(0.48);
-        return m;
     }
 }

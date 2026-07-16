@@ -39,7 +39,7 @@ public class StorageServiceImpl implements StorageService {
                 throw new BusinessException("Only images are allowed");
             }
 
-            if (file.getSize() > 5 * 1024 * 1024) { // 5MB
+            if (file.getSize() > 5 * 1024 * 1024) {
                 throw new BusinessException("File size must be under 5MB");
             }
 

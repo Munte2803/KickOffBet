@@ -11,7 +11,6 @@ async function syncSession() {
   try {
     await ensureFreshSession(30_000)
   } catch {
-    // Redirect and cleanup are handled in the shared auth session flow.
   }
 }
 

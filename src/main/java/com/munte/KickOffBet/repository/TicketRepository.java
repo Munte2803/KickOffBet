@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,4 +45,20 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     Optional<Ticket> findByIdWithSelections(@Param("id") UUID id);
 
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
+
+    @Query(value = """
+            SELECT DATE(t.created_at) AS day,
+                   COUNT(*) AS cnt,
+                   COALESCE(SUM(t.stake), 0) AS total
+            FROM tickets t
+            WHERE (:status IS NULL OR t.status = :status)
+              AND t.created_at BETWEEN :start AND :end
+            GROUP BY DATE(t.created_at)
+            ORDER BY DATE(t.created_at)
+            """, nativeQuery = true)
+    List<Object[]> aggregateDailyTickets(
+            @Param("status") String status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 }

@@ -1,17 +1,22 @@
 package com.munte.KickOffBet.controllers.admin;
 
 import com.munte.KickOffBet.domain.dto.api.response.TicketDto;
+import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
 import com.munte.KickOffBet.mapper.TicketMapper;
 import com.munte.KickOffBet.services.tickets.TicketService;
 import com.munte.KickOffBet.util.PageableValidator;
+import com.munte.KickOffBet.util.TimeSeriesRangeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -53,8 +58,14 @@ public class AdminTicketController {
         return ResponseEntity.ok(ticketService.getTicketsForUser(userId, pageable).map(ticketMapper::toDto));
     }
 
-
-
+    @GetMapping("/timeseries")
+    public ResponseEntity<List<TimeSeriesPointDto>> getTicketsTimeSeries(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false) TicketStatus status) {
+        TimeSeriesRangeValidator.validate(start, end);
+        return ResponseEntity.ok(ticketService.getDailyTicketsTimeSeries(start, end, status));
+    }
 
 
 

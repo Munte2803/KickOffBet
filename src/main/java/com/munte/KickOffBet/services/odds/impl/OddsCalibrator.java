@@ -29,6 +29,15 @@ public class OddsCalibrator {
     @Value("${betting.draw-min-probability:0.15}")
     private double drawMinProbability;
 
+    @Value("${betting.over-probability-cap-15:0.92}")
+    private double overProbabilityCap15;
+
+    @Value("${betting.over-probability-cap-25:0.78}")
+    private double overProbabilityCap25;
+
+    @Value("${betting.over-probability-cap-35:0.68}")
+    private double overProbabilityCap35;
+
     @Value("${betting.weight.season:0.4}")
     private double weightSeason;
 
@@ -67,7 +76,7 @@ public class OddsCalibrator {
 
     public BigDecimal calculateFinalOdds(double probability) {
         if (probability <= 0) return oddsCap;
-        BigDecimal calculated = BigDecimal.valueOf(1.0 / (probability / margin))
+        BigDecimal calculated = BigDecimal.valueOf((1.0 / probability) * margin)
                 .setScale(2, RoundingMode.HALF_UP);
         if (calculated.compareTo(oddsFloor) < 0) return oddsFloor;
         if (calculated.compareTo(oddsCap) > 0) return oddsCap;
@@ -80,10 +89,27 @@ public class OddsCalibrator {
         return Math.max((pX * weightDrawPoisson) + (realDraw * weightDrawHistorical), drawMinProbability);
     }
 
-    public double calibrateOver(double pOver, TeamMatchMetrics h, TeamMatchMetrics a) {
-        double realOver = ((coalesce(h.getSeasonOver25Rate()) * weightSeason + coalesce(h.getLast5Over25Rate()) * weightLast5) +
-                (coalesce(a.getSeasonOver25Rate()) * weightSeason + coalesce(a.getLast5Over25Rate()) * weightLast5)) / 2.0;
-        return (pOver * weightOverPoisson) + (realOver * weightOverHistorical);
+    public double calibrateOver(double pOver, TeamMatchMetrics h, TeamMatchMetrics a, double line) {
+        double homeHistorical;
+        double awayHistorical;
+        double cap;
+
+        if (line <= 1.5) {
+            homeHistorical = coalesce(h.getSeasonOver15Rate()) * weightSeason + coalesce(h.getLast5Over15Rate()) * weightLast5;
+            awayHistorical = coalesce(a.getSeasonOver15Rate()) * weightSeason + coalesce(a.getLast5Over15Rate()) * weightLast5;
+            cap = overProbabilityCap15;
+        } else if (line <= 2.5) {
+            homeHistorical = coalesce(h.getSeasonOver25Rate()) * weightSeason + coalesce(h.getLast5Over25Rate()) * weightLast5;
+            awayHistorical = coalesce(a.getSeasonOver25Rate()) * weightSeason + coalesce(a.getLast5Over25Rate()) * weightLast5;
+            cap = overProbabilityCap25;
+        } else {
+            double calibrated = pOver;
+            return Math.min(calibrated, overProbabilityCap35);
+        }
+
+        double realOver = (homeHistorical + awayHistorical) / 2.0;
+        double calibrated = (pOver * weightOverPoisson) + (realOver * weightOverHistorical);
+        return Math.min(calibrated, cap);
     }
 
     public double calibrateBtts(double pBtts, TeamMatchMetrics h, TeamMatchMetrics a) {

@@ -8,6 +8,7 @@ import { getLeagueByCode, toggleLeagueStatus, updateLeague } from '@/api/leagues
 import { getAllTeams } from '@/api/teams.admin.api'
 import { leagueSchema } from '@/validation/forms'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
 import PageHeader from '@/components/PageHeader.vue'
@@ -27,7 +28,7 @@ const { confirm } = useConfirmDialog()
 const leagueCode = route.params.code as string
 const editEmblem = ref<File | null>(null)
 const editFileVersion = ref(0)
-const teamsPagination = usePagination(6)
+const teamsPagination = usePagination(PAGE_SIZES.MEDIUM)
 
 const leagueQuery = useQuery({
   queryKey: ['admin-league-detail-route', leagueCode],
@@ -202,7 +203,7 @@ async function switchLeague(active: boolean) {
             v-for="team in leagueQuery.data.value.teams"
             :key="team.id"
             :to="{ name: 'admin-team-detail', params: { id: team.id } }"
-            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 transition-colors hover:border-blue-700"
+            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 transition-colors hover:border-blue-600"
           >
             <div>
               <p class="text-sm font-semibold text-white">{{ team.name }}</p>

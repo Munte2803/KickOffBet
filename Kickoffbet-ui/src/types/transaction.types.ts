@@ -8,6 +8,7 @@ export interface Transaction {
   userLastName: string
   amount: number
   referenceId: string | null
+  referenceType: 'TICKET' | 'TRANSACTION' | null
   transactionType: TransactionType
   status: TransactionStatus
   createdAt: string

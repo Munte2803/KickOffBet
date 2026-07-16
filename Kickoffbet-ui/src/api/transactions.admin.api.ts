@@ -1,4 +1,5 @@
 import api from '@/api/axios'
+import { withDefaultSort } from '@/api/utils/defaultSort'
 import type {
   Transaction,
   TransactionSearchRequest,
@@ -13,21 +14,14 @@ export const searchTransactions = (
   pageable?: PageRequest
 ): Promise<PageResponse<Transaction>> =>
   api.get('/api/admin/transactions/search', {
-    params: {
-      ...filters,
-      sort: pageable?.sort ?? 'createdAt,desc',
-      ...pageable,
-    },
+    params: { ...filters, ...withDefaultSort(pageable) },
   }).then(res => res.data)
 
 export const getPendingTransactions = (
   pageable?: PageRequest
 ): Promise<PageResponse<Transaction>> =>
   api.get('/api/admin/transactions/pending', {
-    params: {
-      sort: pageable?.sort ?? 'createdAt,desc',
-      ...pageable,
-    },
+    params: withDefaultSort(pageable),
   }).then(res => res.data)
 
 export const getTransactionById = (id: string): Promise<Transaction> =>
@@ -80,9 +74,6 @@ export const getUserTransactions = (
   pageable?: PageRequest
 ): Promise<PageResponse<Transaction>> =>
   api.get(`/api/admin/transactions/users/${userId}`, {
-    params: {
-      sort: pageable?.sort ?? 'createdAt,desc',
-      ...pageable,
-    },
+    params: withDefaultSort(pageable),
   }).then(res => res.data)
 

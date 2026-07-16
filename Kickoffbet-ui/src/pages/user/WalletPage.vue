@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -12,23 +11,23 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 import { depositSchema, withdrawSchema } from '@/validation/forms'
 import { usePagination } from '@/composables/usePagination'
+import { PAGE_SIZES } from '@/constants/pagination.constants'
 import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import AppPagination from '@/components/AppPagination.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
+import TransactionRow from '@/components/TransactionRow.vue'
 import TabNav from '@/components/TabNav.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import { formatMoney } from '@/utils/money.utils'
-import { formatDateShort } from '@/utils/date.utils'
 
 const authStore = useAuthStore()
 const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const mode = ref<'deposit' | 'withdraw'>('deposit')
 const transactionType = ref<TransactionTypeFilter>('ALL')
-const pagination = usePagination(10)
+const pagination = usePagination(PAGE_SIZES.COMPACT)
 const transactionPageRequest = computed(() => ({
   ...pagination.request.value,
   sort: 'createdAt,desc',
@@ -90,6 +89,11 @@ const submitDeposit = depositForm.handleSubmit(async (values) => {
 })
 
 const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
+  if (values.amount > authStore.balance) {
+    toastStore.showError(`Fonduri insuficiente. Balanta curenta: ${formatMoney(authStore.balance)}.`)
+    return
+  }
+
   const confirmed = await confirm({
     title: 'Confirmare retragere',
     message: `Sunteti sigur ca vreti sa inregistrati o retragere de ${formatMoney(values.amount)}?`,
@@ -116,9 +120,9 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
 
 <template>
   <div class="space-y-6">
-    <PageHeader title="Portofel" />
+    <PageHeader title="Portofel" subtitle="Depuneri, retrageri si istoric tranzactii" />
 
-    <div class="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+    <div class="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)] items-start">
       <Panel>
         <div class="flex gap-2">
           <button
@@ -187,46 +191,37 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
           />
         </div>
 
-        <div v-if="transactionsQuery.data.value?.content?.length" class="mt-4 space-y-3">
+        <Transition name="page-fade" mode="out-in" appear>
           <div
-            v-for="transaction in transactionsQuery.data.value?.content ?? []"
-            :key="transaction.id"
-            class="rounded-xl border border-white/10 bg-black/40 p-3"
+            v-if="transactionsQuery.data.value?.content?.length"
+            :key="transactionsQuery.data.value?.number ?? 0"
+            class="mt-4 space-y-3"
           >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-center gap-2">
-                <StatusBadge :status="transaction.transactionType" />
-                <StatusBadge :status="transaction.status" />
-              </div>
-              <span class="text-sm font-semibold text-white">{{ formatMoney(transaction.amount) }}</span>
-            </div>
-            <p class="mt-2 text-xs text-gray-400">{{ formatDateShort(transaction.createdAt) }}</p>
-            <div class="mt-3 flex justify-start">
-              <RouterLink
-                :to="{ name: 'transaction-detail', params: { id: transaction.id } }"
-                class="text-xs font-semibold text-blue-300 transition-colors hover:text-blue-200"
-              >
-                Deschide detaliul tranzactiei
-              </RouterLink>
-            </div>
+            <TransactionRow
+              v-for="transaction in transactionsQuery.data.value?.content ?? []"
+              :key="transaction.id"
+              :transaction="transaction"
+              route-name="transaction-detail"
+              compact
+            />
           </div>
-        </div>
+        </Transition>
 
         <EmptyState
-          v-else-if="!transactionsQuery.isLoading.value"
+          v-if="!transactionsQuery.data.value?.content?.length && !transactionsQuery.isLoading.value"
           class="mt-4"
           message="Nu ai inca tranzactii pentru filtrul selectat."
           description="Efectueaza o depunere, o retragere ori un pariu nou."
         />
 
         <AppPagination
-          v-if="(transactionsQuery.data.value?.totalPages ?? 0) > 1"
+          v-if="(transactionsQuery.data.value?.totalElements ?? 0) > 0"
           :page="transactionsQuery.data.value?.number ?? 0"
           :total-pages="transactionsQuery.data.value?.totalPages ?? 0"
+          :total-elements="transactionsQuery.data.value?.totalElements"
           @change="pagination.setPage"
         />
       </Panel>
     </div>
   </div>
 </template>
-
