@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import AppDropdownSelect from '@/components/AppDropdownSelect.vue'
 
 defineOptions({
   inheritAttrs: false,
 })
+
+function toChoices(values: string[]) {
+  return values.map((value) => ({ value, label: value }))
+}
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -104,22 +109,22 @@ const yearOptions = computed(() => {
   return Array.from({ length: end - start + 1 }, (_, index) => String(end - index))
 })
 
-const monthOptions = computed(() =>
-  Array.from({ length: 12 }, (_, index) => ({
-    value: pad(index + 1),
-  })),
+const yearChoices = computed(() => toChoices(yearOptions.value))
+
+const monthChoices = computed(() =>
+  toChoices(Array.from({ length: 12 }, (_, index) => pad(index + 1))),
 )
 
-const dayOptions = computed(() =>
-  Array.from({ length: getDaysInMonth(selectedYear.value, selectedMonth.value) }, (_, index) => pad(index + 1)),
+const dayChoices = computed(() =>
+  toChoices(Array.from({ length: getDaysInMonth(selectedYear.value, selectedMonth.value) }, (_, index) => pad(index + 1))),
 )
 
-const hourOptions = computed(() =>
-  Array.from({ length: 24 }, (_, index) => pad(index)),
+const hourChoices = computed(() =>
+  toChoices(Array.from({ length: 24 }, (_, index) => pad(index))),
 )
 
-const minuteOptions = computed(() =>
-  Array.from({ length: 60 }, (_, index) => pad(index)),
+const minuteChoices = computed(() =>
+  toChoices(Array.from({ length: 60 }, (_, index) => pad(index))),
 )
 
 const fieldMeta = {
@@ -190,77 +195,63 @@ watch(assembledValue, (value) => {
   }
 })
 
-const selectClass = computed(() => [
-  'app-select w-full min-w-0 rounded-lg border bg-surface-2 px-2 py-1.75 pr-5 text-[12px] font-medium text-fg focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-2 sm:pr-7 sm:text-sm',
-  props.invalid ? 'border-red-500 focus:border-red-400' : 'border-line focus:border-blue-500',
-])
 </script>
 
 <template>
   <div class="flex flex-wrap gap-1 sm:gap-2">
     <div v-if="['date', 'datetime-local', 'month'].includes(inputType)" class="min-w-[88px] flex-[1_1_100px] sm:min-w-[112px] sm:flex-[1_1_132px]">
-
-      <select
+      <AppDropdownSelect
         v-model="selectedYear"
+        :options="yearChoices"
+        :placeholder="fieldMeta.year.placeholder"
         :disabled="disabled"
-        :class="selectClass"
+        :invalid="invalid"
         aria-label="An"
-      >
-        <option value="">{{ fieldMeta.year.placeholder }}</option>
-        <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
-      </select>
+      />
     </div>
 
     <div v-if="['date', 'datetime-local', 'month'].includes(inputType)" class="min-w-[72px] flex-[1_1_80px] sm:min-w-[88px] sm:flex-[1_1_96px]">
-
-      <select
+      <AppDropdownSelect
         v-model="selectedMonth"
+        :options="monthChoices"
+        :placeholder="fieldMeta.month.placeholder"
         :disabled="disabled"
-        :class="selectClass"
+        :invalid="invalid"
         aria-label="Luna"
-      >
-        <option value="">{{ fieldMeta.month.placeholder }}</option>
-        <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.value }}</option>
-      </select>
+      />
     </div>
 
     <div v-if="['date', 'datetime-local'].includes(inputType)" class="min-w-[72px] flex-[1_1_80px] sm:min-w-[88px] sm:flex-[1_1_96px]">
-
-      <select
+      <AppDropdownSelect
         v-model="selectedDay"
+        :options="dayChoices"
+        :placeholder="fieldMeta.day.placeholder"
         :disabled="disabled"
-        :class="selectClass"
+        :invalid="invalid"
         aria-label="Zi"
-      >
-        <option value="">{{ fieldMeta.day.placeholder }}</option>
-        <option v-for="day in dayOptions" :key="day" :value="day">{{ day }}</option>
-      </select>
+      />
     </div>
 
     <div v-if="['datetime-local', 'time'].includes(inputType)" class="min-w-[72px] flex-[1_1_80px] sm:min-w-[88px] sm:flex-[1_1_96px]">
-
-      <select
+      <AppDropdownSelect
         v-model="selectedHour"
+        :options="hourChoices"
+        :placeholder="fieldMeta.hour.placeholder"
         :disabled="disabled"
-        :class="selectClass"
+        :invalid="invalid"
         aria-label="Ora"
-      >
-        <option value="">{{ fieldMeta.hour.placeholder }}</option>
-        <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
-      </select>
+      />
     </div>
 
     <div v-if="['datetime-local', 'time'].includes(inputType)" class="min-w-[72px] flex-[1_1_80px] sm:min-w-[88px] sm:flex-[1_1_96px]">
-
-      <select
+      <AppDropdownSelect
         v-model="selectedMinute"
+        :options="minuteChoices"
+        :placeholder="fieldMeta.minute.placeholder"
         :disabled="disabled"
-        :class="selectClass"
+        :invalid="invalid"
         aria-label="Minute"
-      >
-        <option value="">{{ fieldMeta.minute.placeholder }}</option>
-        <option v-for="minute in minuteOptions" :key="minute" :value="minute">{{ minute }}</option>
-      </select>
+      />
     </div>
   </div>
 </template>
