@@ -1,0 +1,55 @@
+# Production overlay. Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Only Caddy is published to the host (80/443). Every other service is reachable
+# solely over the internal docker network (by service name). The OCI Security List
+# should allow ONLY 22/80/443 inbound as the hard gate.
+
+services:
+  db:
+    ports: !reset []
+
+  adminer:
+    # Not exposed in prod. Reach it via an SSH tunnel if you ever need it:
+    #   ssh -L 8888:localhost:8888 user@vps  (after temporarily publishing it)
+    ports: !reset []
+
+  minio:
+    ports: !reset []
+
+  backend:
+    ports: !reset []
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+
+  frontend:
+    ports: !reset []
+    # Same-origin in prod: leave VITE_API_BASE_URL empty so axios uses window.location.origin
+    build:
+      context: ./Kickoffbet-ui
+      args:
+        VITE_API_BASE_URL: ""
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - minio
+
+volumes:
+  caddy_data:
+  caddy_config:

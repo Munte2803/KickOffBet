@@ -64,8 +64,8 @@ const onSubmit = handleSubmit(async (values) => {
 <template>
   <div class="mx-auto max-w-md py-12">
     <Panel class="p-8 pt-6">
-      <h1 class="text-3xl font-black text-white">Confirma emailul</h1>
-      <p class="mt-2 text-sm text-gray-400">Pagina de confirmare pentru linkul primit pe email. Daca linkul nu mai este valid, poti retrimite mesajul de confirmare.</p>
+      <h1 class="text-3xl font-black text-fg">Confirma emailul</h1>
+      <p class="mt-2 text-sm text-muted">Pagina de confirmare pentru linkul primit pe email. Daca linkul nu mai este valid, poti retrimite mesajul de confirmare.</p>
 
       <AlertMessage
         class="mt-4"

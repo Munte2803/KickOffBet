@@ -114,7 +114,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
   <div :style="{ height: (height ?? 280) + 'px' }">
     <div
       v-if="data.length === 0"
-      class="flex h-full items-center justify-center text-sm text-gray-400"
+      class="flex h-full items-center justify-center text-sm text-muted"
     >
       No data for selected range
     </div>

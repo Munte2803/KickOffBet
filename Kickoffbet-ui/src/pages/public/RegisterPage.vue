@@ -84,9 +84,9 @@ const onSubmit = handleSubmit(async (formValues) => {
   <div class="mx-auto max-w-2xl py-12">
     <Panel class="p-8">
       <div class="mb-6">
-        <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Creeaza cont</p>
-        <h1 class="mt-2 text-3xl font-black text-white">Inregistrare</h1>
-        <p class="mt-2 text-sm text-gray-400">Buletin obligatoriu pentru inregistrare</p>
+        <p class="text-xs uppercase tracking-[0.3em] text-subtle">Creeaza cont</p>
+        <h1 class="mt-2 text-3xl font-black text-fg">Inregistrare</h1>
+        <p class="mt-2 text-sm text-muted">Buletin obligatoriu pentru inregistrare</p>
       </div>
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="onSubmit">
@@ -116,8 +116,8 @@ const onSubmit = handleSubmit(async (formValues) => {
         </div>
       </form>
 
-      <div class="mt-6 text-sm text-gray-400">
-        <RouterLink :to="{ name: 'login' }" class="hover:text-white">Ai deja cont? Autentifica-te</RouterLink>
+      <div class="mt-6 text-sm text-muted">
+        <RouterLink :to="{ name: 'login' }" class="hover:text-fg">Ai deja cont? Autentifica-te</RouterLink>
       </div>
     </Panel>
   </div>

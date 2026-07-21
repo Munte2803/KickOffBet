@@ -4,6 +4,7 @@ import com.munte.KickOffBet.domain.dto.api.response.SeedResultDto;
 import com.munte.KickOffBet.services.admin.SeedService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,9 @@ public class SeedServiceImpl implements SeedService {
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${seed.user-password:Seed1234!}")
+    private String seedUserPassword;
+
     @Override
     @Transactional
     public SeedResultDto runSeed() {
@@ -59,7 +63,7 @@ public class SeedServiceImpl implements SeedService {
             return new SeedResultDto(0, 0, 0, System.currentTimeMillis() - start);
         }
 
-        String passwordHash = passwordEncoder.encode("Seed1234!");
+        String passwordHash = passwordEncoder.encode(seedUserPassword);
 
         List<UserSeed> users = buildUsers(passwordHash);
         insertUsers(users);
@@ -174,7 +178,7 @@ public class SeedServiceImpl implements SeedService {
 
     private void insertUsers(List<UserSeed> users) {
         log.info("[SEED] Inserting {} users", users.size());
-        String hash = passwordEncoder.encode("Seed1234!");
+        String hash = passwordEncoder.encode(seedUserPassword);
         String sql = """
                 INSERT INTO users (id, first_name, last_name, email, password, balance, birth_date,
                                    role, status, email_verified, id_card_verified, version,

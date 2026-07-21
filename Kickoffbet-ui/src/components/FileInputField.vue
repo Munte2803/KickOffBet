@@ -55,7 +55,7 @@ watch(
 
 <template>
   <div :class="['flex flex-col gap-2', rootClass]" :style="rootStyle">
-    <label v-if="label" class="text-sm font-medium text-gray-300">
+    <label v-if="label" class="text-sm font-medium text-muted">
       {{ label }}<span v-if="required" class="ml-1 text-red-400">*</span>
     </label>
 
@@ -68,12 +68,12 @@ watch(
       @change="handleChange"
     >
 
-    <div class="rounded-xl border border-white/10 bg-black/40 p-4">
+    <div class="rounded-xl border border-line bg-surface p-4">
       <div class="flex flex-wrap items-center gap-3">
         <AppButton variant="outline" @click="openPicker">
           {{ buttonLabel }}
         </AppButton>
-        <span class="text-sm text-gray-400">
+        <span class="text-sm text-muted">
           {{ fileName || helper }}
         </span>
       </div>

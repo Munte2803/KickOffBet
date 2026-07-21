@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import BettingSlip from '@/components/BettingSlip.vue'
 import AppShellFrame from '@/components/AppShellFrame.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useTicketStore } from '@/stores/ticket.store'
 import { formatMoney } from '@/utils/money.utils'
@@ -122,33 +123,35 @@ function closeMobileSlip() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-black text-white">
+  <div class="min-h-screen bg-app text-fg">
     <!-- Top bar (always visible; hamburger toggles sidebar drawer) -->
-    <header class="fixed left-0 top-0 z-50 w-full border-b border-white/20 bg-black shadow-lg">
+    <header class="fixed left-0 top-0 z-50 w-full border-b border-line bg-header shadow-[0_1px_0_var(--c-line)]">
       <div class="mx-auto grid h-[var(--app-header-height)] app-shell-width grid-cols-[auto_1fr_auto] items-center gap-2 px-2.5 sm:gap-4 sm:px-4">
         <button
           v-if="authStore.isAuthenticated"
           type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-gray-200 hover:border-blue-500/30 hover:text-white"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-fg hover:border-blue-500/30 hover:text-fg"
           @click="toggleMobileMenu"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <span class="min-w-0 truncate text-[15px] font-bold tracking-tight text-white sm:text-xl">
+        <span class="min-w-0 truncate text-[15px] font-bold tracking-tight text-fg sm:text-xl">
           KickOffBet
         </span>
-        <template v-if="authStore.isAuthenticated">
+        <div class="flex items-center justify-end gap-2 sm:gap-3">
+          <ThemeToggle />
           <RouterLink
+            v-if="authStore.isAuthenticated"
             :to="{ name: 'profile' }"
             class="min-w-0 text-right hover:text-blue-500"
-            :class="String(route.name ?? '').startsWith('profile') ? 'text-white' : 'text-gray-200'"
+            :class="String(route.name ?? '').startsWith('profile') ? 'text-fg' : 'text-muted'"
           >
             <p class="max-w-[132px] truncate text-sm font-bold">{{ authStore.fullName }}</p>
             <p class="max-w-[132px] truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-green-500">{{ formatMoney(authStore.balance) }}</p>
           </RouterLink>
-        </template>
+        </div>
       </div>
     </header>
 
@@ -179,12 +182,12 @@ function closeMobileSlip() {
     >
       <aside
         v-if="mobileMenuOpen"
-        class="fixed left-0 top-0 z-[65] flex h-screen w-[min(86vw,300px)] flex-col border-r border-white/10 bg-black p-3"
+        class="fixed left-0 top-0 z-[65] flex h-screen w-[min(86vw,300px)] flex-col border-r border-line bg-app p-3"
       >
-        <div class="border-b border-white/10 pb-3">
-          <RouterLink :to="{ name: 'profile' }" class="block rounded-xl border border-white/10 bg-white/5 p-3 hover:border-blue-500/30 hover:bg-white/10">
-            <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Utilizator</p>
-            <p class="mt-2 text-lg font-bold text-white">{{ authStore.fullName }}</p>
+        <div class="border-b border-line pb-3">
+          <RouterLink :to="{ name: 'profile' }" class="block rounded-xl border border-line bg-surface p-3 hover:border-blue-500/30 hover:bg-surface-2">
+            <p class="text-xs uppercase tracking-[0.2em] text-subtle">Utilizator</p>
+            <p class="mt-2 text-lg font-bold text-fg">{{ authStore.fullName }}</p>
             <p class="mt-1 text-xs uppercase tracking-[0.2em] text-green-500">{{ formatMoney(authStore.balance) }}</p>
           </RouterLink>
         </div>
@@ -195,18 +198,18 @@ function closeMobileSlip() {
             :key="link.key"
             :to="link.to"
             class="flex items-center rounded-lg border px-3 py-2 text-sm font-semibold"
-            :class="isMainActive(link.key) ? 'border-blue-500/40 bg-blue-600/15 text-white' : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'"
+            :class="isMainActive(link.key) ? 'border-blue-500/40 bg-blue-600/15 text-fg' : 'border-line bg-surface text-muted hover:bg-surface-2 hover:text-fg'"
           >
             {{ link.label }}
           </RouterLink>
 
-          <div class="mt-3 border-t border-white/10 pt-3 space-y-1">
+          <div class="mt-3 border-t border-line pt-3 space-y-1">
             <RouterLink
               v-for="link in profileLinks"
               :key="link.key"
               :to="link.to"
               class="flex items-center rounded-lg border px-3 py-2 text-sm font-semibold"
-              :class="isProfileActive(link.key) ? 'border-blue-500/40 bg-blue-600/15 text-white' : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'"
+              :class="isProfileActive(link.key) ? 'border-blue-500/40 bg-blue-600/15 text-fg' : 'border-line bg-surface text-muted hover:bg-surface-2 hover:text-fg'"
             >
               {{ link.label }}
             </RouterLink>
@@ -216,7 +219,7 @@ function closeMobileSlip() {
             v-if="authStore.isAdmin"
             :to="{ name: 'admin-matches' }"
             class="mt-3 flex items-center rounded-lg border px-3 py-2 text-sm font-semibold"
-            :class="isAdminActive ? 'border-red-500/40 bg-red-600/15 text-white' : 'border-red-500/20 bg-red-600/10 text-red-300 hover:bg-red-600/15 hover:text-white'"
+            :class="isAdminActive ? 'border-red-500/40 bg-red-600/15 text-fg' : 'border-red-500/20 bg-red-600/10 text-red-400 hover:bg-red-600/15 hover:text-fg'"
           >
             Administrare
           </RouterLink>
@@ -237,15 +240,15 @@ function closeMobileSlip() {
         v-if="mobileSlipOpen && showSlip"
         class="fixed inset-x-0 bottom-0 top-[var(--app-header-height)] z-[65] overflow-hidden lg:hidden sm:inset-x-3 sm:bottom-3 sm:top-[76px]"
       >
-        <div class="flex h-full flex-col overflow-hidden border-y border-white/10 bg-black/95 shadow-[0_30px_60px_rgba(0,0,0,0.45)] sm:rounded-2xl sm:border">
-          <div class="flex items-center justify-between border-b border-white/10 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div class="flex h-full flex-col overflow-hidden border-y border-line bg-app/95 shadow-[0_30px_60px_var(--c-shadow-strong)] sm:rounded-2xl sm:border">
+          <div class="flex items-center justify-between border-b border-line px-3 py-2.5 sm:px-4 sm:py-3">
             <div>
-              <p class="text-[13px] font-semibold text-white sm:text-sm">Biletul meu</p>
-              <p class="text-[11px] text-gray-400 sm:text-xs">{{ formatMoney(authStore.balance) }}</p>
+              <p class="text-[13px] font-semibold text-fg sm:text-sm">Biletul meu</p>
+              <p class="text-[11px] text-muted sm:text-xs">{{ formatMoney(authStore.balance) }}</p>
             </div>
             <button
               type="button"
-              class="rounded-full border border-white/10 bg-white/5 p-1.5 text-gray-300 hover:text-white sm:p-2"
+              class="rounded-full border border-line bg-surface p-1.5 text-muted hover:text-fg sm:p-2"
               @click="closeMobileSlip"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

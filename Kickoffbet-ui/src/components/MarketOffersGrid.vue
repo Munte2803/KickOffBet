@@ -34,14 +34,14 @@ function updateOffer(index: number, patch: Partial<EditableMarketOffer>) {
   <div class="space-y-3">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h3 class="text-sm font-semibold text-white">Oferte de pariere</h3>
-        <p class="text-xs text-gray-400">
+        <h3 class="text-sm font-semibold text-fg">Oferte de pariere</h3>
+        <p class="text-xs text-muted">
           Editeaza doar cotele existente. Structura pietelor se configureaza la crearea meciului.
         </p>
       </div>
     </div>
 
-    <div v-if="!modelValue.length" class="rounded-xl border border-dashed border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-400">
+    <div v-if="!modelValue.length" class="rounded-xl border border-dashed border-line bg-surface px-4 py-6 text-sm text-muted">
       Nu exista oferte configurate.
     </div>
 
@@ -49,20 +49,20 @@ function updateOffer(index: number, patch: Partial<EditableMarketOffer>) {
       <div
         v-for="(offer, index) in modelValue"
         :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}-${index}`"
-        class="rounded-xl border border-white/10 bg-black/30 p-3"
+        class="rounded-xl border border-line bg-surface p-3"
       >
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div class="min-w-0">
-            <p class="text-sm font-semibold text-white">
+            <p class="text-sm font-semibold text-fg">
               {{ translateEnumLabel(offer.marketType) }}
             </p>
-            <p class="text-xs text-gray-400">
+            <p class="text-xs text-muted">
               {{ formatBetLabel(offer.option, offer.marketType, offer.line) }}
             </p>
           </div>
 
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-[360px]">
-            <div class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-gray-400">
+            <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-muted">
               {{ offer.marketType === 'OVER_UNDER' ? `Linie ${offer.line ?? '-'}` : 'Fara linie' }}
             </div>
 
@@ -72,11 +72,11 @@ function updateOffer(index: number, patch: Partial<EditableMarketOffer>) {
               type="number"
               min="1.01"
               step="0.01"
-              class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none disabled:opacity-60"
+              class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-blue-500 focus:outline-none disabled:opacity-60"
               @input="updateOffer(index, { odds: Number(($event.target as HTMLInputElement).value) || 0 })"
             />
 
-            <div class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-center text-xs text-gray-400">
+            <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-center text-xs text-muted">
               {{ offer.active === false ? 'Inactiv' : 'Activ' }}
             </div>
           </div>

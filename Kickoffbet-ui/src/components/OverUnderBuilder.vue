@@ -41,14 +41,14 @@ function submit() {
 </script>
 
 <template>
-  <div class="rounded-xl border border-white/10 bg-black/30 p-4 xl:col-span-2">
+  <div class="rounded-xl border border-line bg-surface p-4 xl:col-span-2">
     <div>
-      <h4 class="text-sm font-semibold text-white">Total goluri</h4>
-      <p class="mt-1 text-xs text-gray-400">Alegi optiunea, introduci cota si apoi adaugi oferta in lista de mai jos.</p>
+      <h4 class="text-sm font-semibold text-fg">Total goluri</h4>
+      <p class="mt-1 text-xs text-muted">Alegi optiunea, introduci cota si apoi adaugi oferta in lista de mai jos.</p>
     </div>
 
     <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_140px_160px_140px_auto]">
-      <div class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white">
+      <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg">
         Total goluri
       </div>
 
@@ -57,7 +57,7 @@ function submit() {
         type="number"
         min="0.5"
         step="1"
-        class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+        class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-blue-500 focus:outline-none"
       >
 
       <select
@@ -73,7 +73,7 @@ function submit() {
         type="number"
         min="1.01"
         step="0.01"
-        class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+        class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-blue-500 focus:outline-none"
       >
 
       <AppButton variant="outline" @click="submit">Adauga</AppButton>

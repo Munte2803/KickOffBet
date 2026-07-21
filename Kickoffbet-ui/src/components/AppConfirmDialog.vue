@@ -41,21 +41,21 @@ onBeforeUnmount(() => {
   >
     <div
       v-if="confirmStore.open"
-      class="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm"
+      class="fixed inset-0 z-[90] flex items-center justify-center bg-app/80 px-4 py-6 backdrop-blur-sm"
       @click.self="confirmStore.cancel()"
     >
-      <div class="w-full max-w-md rounded-2xl border border-white/10 bg-black shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
-        <div class="border-b border-white/10 px-5 py-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-gray-500">Confirmare</p>
-          <h2 class="mt-2 text-lg font-bold text-white">{{ confirmStore.title }}</h2>
+      <div class="w-full max-w-md rounded-2xl border border-line bg-app shadow-[0_30px_60px_var(--c-shadow-strong)]">
+        <div class="border-b border-line px-5 py-4">
+          <p class="text-xs uppercase tracking-[0.22em] text-subtle">Confirmare</p>
+          <h2 class="mt-2 text-lg font-bold text-fg">{{ confirmStore.title }}</h2>
         </div>
 
         <div class="space-y-3 px-5 py-4">
-          <p class="text-sm text-gray-200">{{ confirmStore.message }}</p>
-          <p v-if="confirmStore.description" class="text-xs text-gray-400">{{ confirmStore.description }}</p>
+          <p class="text-sm text-fg">{{ confirmStore.message }}</p>
+          <p v-if="confirmStore.description" class="text-xs text-muted">{{ confirmStore.description }}</p>
         </div>
 
-        <div class="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:justify-end">
+        <div class="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end">
           <AppButton variant="outline" @click="confirmStore.cancel()">
             {{ confirmStore.cancelLabel }}
           </AppButton>

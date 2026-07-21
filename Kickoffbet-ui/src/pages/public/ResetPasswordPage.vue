@@ -56,8 +56,8 @@ const onSubmit = handleSubmit(async (values) => {
 <template>
   <div class="mx-auto max-w-md py-12">
     <Panel class="p-8 pt-6">
-      <h1 class="text-3xl font-black text-white">Seteaza parola noua</h1>
-      <p class="mt-2 text-sm text-gray-400">Pagina de resetare foloseste tokenul din emailul primit. Daca linkul a expirat, cere unul nou din fluxul de recuperare.</p>
+      <h1 class="text-3xl font-black text-fg">Seteaza parola noua</h1>
+      <p class="mt-2 text-sm text-muted">Pagina de resetare foloseste tokenul din emailul primit. Daca linkul a expirat, cere unul nou din fluxul de recuperare.</p>
 
       <form class="mt-6 space-y-4" @submit.prevent="onSubmit">
         <FormInput v-model="newPassword" label="Parola noua" type="password" required :error="errors.newPassword" />
@@ -66,8 +66,8 @@ const onSubmit = handleSubmit(async (values) => {
         <AppButton class="w-full" type="submit" :loading="isSubmitting" :disabled="resetCompleted">Actualizeaza parola</AppButton>
       </form>
 
-      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-400">
-        <RouterLink :to="{ name: 'forgot-password' }" class="hover:text-white">Cere un nou link</RouterLink>
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+        <RouterLink :to="{ name: 'forgot-password' }" class="hover:text-fg">Cere un nou link</RouterLink>
         <AppLinkButton
           v-if="resetCompleted"
           :to="{ name: 'login' }"

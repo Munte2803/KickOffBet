@@ -115,7 +115,7 @@ const submitCreate = createForm.handleSubmit(async (values) => {
     <PageHeader title="Administrare - ligi" subtitle="Creeaza o noua liga, sau selecteaza o liga existenta" />
 
     <Panel id="league-create" no-hover>
-      <h2 class="text-lg font-semibold text-white">Creeaza liga</h2>
+      <h2 class="text-lg font-semibold text-fg">Creeaza liga</h2>
 
       <form class="mt-4 space-y-4" @submit.prevent="submitCreate">
         <FormInput v-model="createName" label="Nume" :error="createForm.errors.value.name" />
@@ -148,11 +148,11 @@ const submitCreate = createForm.handleSubmit(async (values) => {
     <Panel id="league-list" no-hover>
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-white">Toate ligile</h2>
-          <p class="text-sm text-gray-400">Deschide pagina unei ligi pentru editare, asocierea echipelor sau schimbarea starii.</p>
+          <h2 class="text-lg font-semibold text-fg">Toate ligile</h2>
+          <p class="text-sm text-muted">Deschide pagina unei ligi pentru editare, asocierea echipelor sau schimbarea starii.</p>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-400">{{ leaguesQuery.data.value?.totalElements ?? 0 }} ligi</span>
+          <span class="text-sm text-muted">{{ leaguesQuery.data.value?.totalElements ?? 0 }} ligi</span>
           <div class="w-48">
             <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
           </div>
@@ -176,13 +176,13 @@ const submitCreate = createForm.handleSubmit(async (values) => {
             v-for="league in leaguesQuery.data.value?.content ?? []"
             :key="league.id"
             :to="{ name: 'admin-league-detail', params: { code: league.code } }"
-            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:border-blue-600"
+            class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-blue-600"
           >
             <div class="flex min-w-0 items-center gap-3">
               <LogoFrame v-if="league.emblemUrl" :src="league.emblemUrl" size="md" />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-white">{{ league.name }}</p>
-                <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ league.code }}</p>
+                <p class="truncate text-sm font-semibold text-fg">{{ league.name }}</p>
+                <p class="text-xs uppercase tracking-[0.2em] text-subtle">{{ league.code }}</p>
               </div>
             </div>
             <StatusBadge :status="league.active ? 'ACTIVE' : 'DEACTIVATED'" />

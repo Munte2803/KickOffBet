@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import AppButton from '@/components/AppButton.vue'
 import AppShellFrame from '@/components/AppShellFrame.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/auth.store'
 import { adminTopTabs, getAdminResource } from '@/constants/admin-navigation'
@@ -54,25 +55,28 @@ function closeMobileMenu() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-black text-white">
+  <div class="min-h-screen bg-app text-fg">
     <!-- Top bar (always visible; hamburger toggles sidebar drawer) -->
-    <header class="fixed left-0 top-0 z-50 w-full border-b border-white/20 bg-black shadow-lg">
+    <header class="fixed left-0 top-0 z-50 w-full border-b border-line bg-header shadow-[0_1px_0_var(--c-line)]">
       <div class="mx-auto grid h-[var(--app-header-height)] app-shell-width grid-cols-[auto_1fr_auto] items-center gap-2 px-2.5 sm:gap-4 sm:px-4">
         <button
           type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-gray-200 hover:border-blue-500/30 hover:text-white"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-fg hover:border-blue-500/30 hover:text-fg"
           @click="toggleMobileMenu"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <span class="min-w-0 truncate text-[15px] font-bold tracking-tight text-white sm:text-xl">
+        <span class="min-w-0 truncate text-[15px] font-bold tracking-tight text-fg sm:text-xl">
           KickOffBet
         </span>
-        <div class="text-right">
-          <p class="text-sm font-semibold text-white">{{ authStore.fullName }}</p>
-          <p class="text-[10px] uppercase tracking-[0.2em] text-gray-500">Administrator</p>
+        <div class="flex items-center justify-end gap-2 sm:gap-3">
+          <ThemeToggle />
+          <div class="text-right">
+            <p class="text-sm font-semibold text-fg">{{ authStore.fullName }}</p>
+            <p class="text-[10px] uppercase tracking-[0.2em] text-subtle">Administrator</p>
+          </div>
         </div>
       </div>
     </header>
@@ -104,11 +108,11 @@ function closeMobileMenu() {
     >
       <aside
         v-if="mobileMenuOpen"
-        class="fixed left-0 top-0 z-[65] flex h-screen w-[min(86vw,300px)] flex-col border-r border-white/10 bg-black p-3"
+        class="fixed left-0 top-0 z-[65] flex h-screen w-[min(86vw,300px)] flex-col border-r border-line bg-app p-3"
       >
-        <div class="border-b border-white/10 pb-3">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Administrator</p>
-          <p class="mt-2 text-lg font-bold text-white">{{ authStore.fullName }}</p>
+        <div class="border-b border-line pb-3">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Administrator</p>
+          <p class="mt-2 text-lg font-bold text-fg">{{ authStore.fullName }}</p>
         </div>
 
         <nav class="mt-3 flex-1 space-y-1 overflow-y-auto">
@@ -117,14 +121,14 @@ function closeMobileMenu() {
             :key="tab.resource"
             :to="tab.to"
             class="flex items-center rounded-lg border px-3 py-2 text-sm font-semibold"
-            :class="isTopTabActive(tab.resource) ? 'border-blue-500/40 bg-blue-600/15 text-white' : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'"
+            :class="isTopTabActive(tab.resource) ? 'border-blue-500/40 bg-blue-600/15 text-fg' : 'border-line bg-surface text-muted hover:bg-surface-2 hover:text-fg'"
           >
             {{ tab.label }}
           </RouterLink>
 
           <RouterLink
             :to="{ name: 'home' }"
-            class="mt-3 flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10 hover:text-white"
+            class="mt-3 flex items-center rounded-lg border border-line bg-surface px-3 py-2 text-sm font-semibold text-fg hover:bg-surface-2 hover:text-fg"
           >
             Zona utilizator
           </RouterLink>

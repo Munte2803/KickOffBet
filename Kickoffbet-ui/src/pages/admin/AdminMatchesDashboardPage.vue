@@ -185,7 +185,7 @@ function resetFilters() {
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <SectionHeader title="Meciuri blocate" />
-          <p class="mt-2 text-sm text-gray-400">
+          <p class="mt-2 text-sm text-muted">
             Vezi aici meciurile care au ramas in urma cu actualizarea rezultatelor, pentru a le putea actualiza manual daca e necesar. Acestea sunt meciuri care ar fi trebuit sa fie actualizate deja, dar din cauza unor erori sau lipsa de date nu au fost.
           </p>
         </div>
@@ -208,19 +208,19 @@ function resetFilters() {
 
     <Panel id="match-search" no-hover>
       <SectionHeader title="Filtre si cautare" />
-      <p class="mt-2 text-sm text-gray-400">
+      <p class="mt-2 text-sm text-muted">
         Selectezi liga si echipa direct din liste.
       </p>
 
       <div class="mt-4 grid gap-3 md:grid-cols-3">
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
             <option v-for="option in statusOptions" :key="option.label" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
 
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Actualizare manuala</span>
           <select v-model="manualUpdate" class="app-select-field app-select">
             <option value="ALL">Toate</option>
@@ -229,7 +229,7 @@ function resetFilters() {
           </select>
         </label>
 
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Doar active</span>
           <select v-model="activeOnly" class="app-select-field app-select">
             <option :value="true">Da</option>
@@ -290,7 +290,7 @@ function resetFilters() {
           :disabled="!currentMatches.length"
         />
       </div>
-      <p class="mt-2 text-sm text-gray-400">
+      <p class="mt-2 text-sm text-muted">
         Aici vei vedea rezultatele cautarii.
       </p>
 

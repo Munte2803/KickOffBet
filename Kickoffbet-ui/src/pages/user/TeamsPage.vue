@@ -39,17 +39,17 @@ const teams = computed(() => teamsQuery.data.value?.content ?? [])
             :to="{ name: 'team', params: { id: team.id } }"
             class="block"
           >
-            <Panel class="h-full bg-black/40 transition-transform hover:-translate-y-0.5">
+            <Panel class="h-full bg-surface transition-transform hover:-translate-y-0.5">
               <div class="flex items-center gap-4">
                 <LogoFrame v-if="team.crestUrl" :src="team.crestUrl" size="xl" />
-                <div v-else class="flex h-14 w-14 items-center justify-center rounded-full border border-white/80 bg-white text-xs font-semibold text-gray-700">
+                <div v-else class="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-surface-2 text-xs font-semibold text-fg">
                   {{ team.tla }}
                 </div>
 
                 <div class="min-w-0">
-                  <h2 class="truncate text-lg font-bold text-white">{{ team.name }}</h2>
-                  <p class="mt-1 text-sm text-gray-400">{{ team.shortName }}</p>
-                  <p class="mt-1 text-xs uppercase tracking-[0.2em] text-gray-500">{{ team.tla }}</p>
+                  <h2 class="truncate text-lg font-bold text-fg">{{ team.name }}</h2>
+                  <p class="mt-1 text-sm text-muted">{{ team.shortName }}</p>
+                  <p class="mt-1 text-xs uppercase tracking-[0.2em] text-subtle">{{ team.tla }}</p>
                 </div>
               </div>
             </Panel>

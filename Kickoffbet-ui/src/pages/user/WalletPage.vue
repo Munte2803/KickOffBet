@@ -127,23 +127,23 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
         <div class="flex gap-2">
           <button
             class="flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors sm:text-sm"
-            :class="mode === 'deposit' ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-300'"
+            :class="mode === 'deposit' ? 'bg-blue-600 text-white' : 'bg-surface text-muted'"
             @click="mode = 'deposit'"
           >
             Depunere
           </button>
           <button
             class="flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors sm:text-sm"
-            :class="mode === 'withdraw' ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-300'"
+            :class="mode === 'withdraw' ? 'bg-blue-600 text-white' : 'bg-surface text-muted'"
             @click="mode = 'withdraw'"
           >
             Retragere
           </button>
         </div>
 
-        <div class="mt-4 rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Balanta curenta</p>
-          <p class="mt-2 text-2xl font-black text-white sm:text-3xl">{{ formatMoney(authStore.balance) }}</p>
+        <div class="mt-4 rounded-xl border border-line bg-surface p-3 sm:p-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Balanta curenta</p>
+          <p class="mt-2 text-2xl font-black text-fg sm:text-3xl">{{ formatMoney(authStore.balance) }}</p>
         </div>
 
         <form v-if="mode === 'deposit'" class="mt-4 space-y-4" @submit.prevent="submitDeposit">
@@ -174,7 +174,7 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
       </Panel>
 
       <Panel>
-        <h2 class="text-lg font-semibold text-white">Istoric tranzactii</h2>
+        <h2 class="text-lg font-semibold text-fg">Istoric tranzactii</h2>
 
         <div class="mt-4">
           <TabNav

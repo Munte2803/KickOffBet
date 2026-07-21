@@ -161,8 +161,8 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
 <template>
   <div class="space-y-5">
     <div>
-      <h3 class="text-sm font-semibold text-white">Piata initiala a meciului</h3>
-      <p class="text-xs text-gray-400">
+      <h3 class="text-sm font-semibold text-fg">Piata initiala a meciului</h3>
+      <p class="text-xs text-muted">
         Selecteaza optiunile de pariere care vor fi activate in momentul in care meciul va fi creat.
        </p>
     </div>
@@ -171,28 +171,28 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
       <div
         v-for="marketType in standardMarketTypes"
         :key="marketType"
-        class="rounded-xl border border-white/10 bg-black/30 p-4"
+        class="rounded-xl border border-line bg-surface p-4"
       >
-        <h4 class="text-sm font-semibold text-white">{{ translateEnumLabel(marketType) }}</h4>
+        <h4 class="text-sm font-semibold text-fg">{{ translateEnumLabel(marketType) }}</h4>
         <div class="mt-3 space-y-3">
           <label
             v-for="template in groupedTemplates[marketType]"
             :key="`${template.marketType}-${template.option}`"
-            class="block rounded-xl border border-white/10 bg-black/40 p-3"
+            class="block rounded-xl border border-line bg-surface p-3"
           >
             <div class="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)_120px] md:items-center">
               <div class="flex min-w-0 items-center gap-3">
                 <input
                   :checked="hasOffer(template)"
                   type="checkbox"
-                  class="h-4 w-4 rounded border-white/20 bg-black/40"
+                  class="h-4 w-4 rounded border-line-strong bg-surface"
                   @change="toggleOffer(template)"
                 >
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold text-white">
+                  <p class="truncate text-sm font-semibold text-fg">
                     {{ formatBetLabel(template.option, template.marketType, null) }}
                   </p>
-          <p class="text-xs text-gray-500">{{ translateEnumLabel(template.marketType) }}</p>
+          <p class="text-xs text-subtle">{{ translateEnumLabel(template.marketType) }}</p>
                 </div>
               </div>
 
@@ -202,7 +202,7 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
                 type="number"
                 min="1.01"
                 step="0.01"
-                class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none disabled:opacity-40"
+                class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-blue-500 focus:outline-none disabled:opacity-40"
                 @input="updateTemplateOdds(template, ($event.target as HTMLInputElement).value)"
               >
             </div>
@@ -217,16 +217,16 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
       <div
         v-for="offer in sortedSelectedOffers"
         :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}-${offer.originalIndex}`"
-        class="rounded-xl border border-white/10 bg-black/30 p-3"
+        class="rounded-xl border border-line bg-surface p-3"
       >
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div class="min-w-0">
-            <p class="text-sm font-semibold text-white">{{ translateEnumLabel(offer.marketType) }}</p>
-            <p class="text-xs text-gray-400">{{ formatBetLabel(offer.option, offer.marketType, offer.line) }}</p>
+            <p class="text-sm font-semibold text-fg">{{ translateEnumLabel(offer.marketType) }}</p>
+            <p class="text-xs text-muted">{{ formatBetLabel(offer.option, offer.marketType, offer.line) }}</p>
           </div>
 
           <div class="grid gap-2 sm:grid-cols-[140px_120px_120px]">
-            <div class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-gray-400">
+            <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-muted">
               {{ offer.marketType === 'OVER_UNDER' ? `Linie ${offer.line ?? '-'}` : 'Fara linie' }}
             </div>
 
@@ -235,13 +235,13 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
               type="number"
               min="1.01"
               step="0.01"
-              class="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+              class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-blue-500 focus:outline-none"
               @input="updateSelectedOfferOdds(offer.originalIndex, ($event.target as HTMLInputElement).value)"
             >
 
             <button
               type="button"
-              class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20"
+              class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-500/20"
               @click="removeOffer(offer.originalIndex)"
             >
               Scoate
@@ -250,7 +250,7 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
         </div>
       </div>
 
-      <div v-if="!sortedSelectedOffers.length" class="rounded-xl border border-dashed border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-400">
+      <div v-if="!sortedSelectedOffers.length" class="rounded-xl border border-dashed border-line bg-surface px-4 py-6 text-sm text-muted">
         Nu exista inca oferte configurate pentru meciul nou.
       </div>
     </div>

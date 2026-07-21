@@ -49,15 +49,17 @@ const groupedByDay = computed(() => {
 })
 
 const formGuide = computed(() =>
-  (recentResultsQuery.data.value?.content ?? []).map((match) => {
-    const isHome = match.homeTeamId === teamId
-    const teamGoals = isHome ? match.ftHome ?? 0 : match.ftAway ?? 0
-    const opponentGoals = isHome ? match.ftAway ?? 0 : match.ftHome ?? 0
+  (recentResultsQuery.data.value?.content ?? [])
+    .map((match) => {
+      const isHome = match.homeTeamId === teamId
+      const teamGoals = isHome ? match.ftHome ?? 0 : match.ftAway ?? 0
+      const opponentGoals = isHome ? match.ftAway ?? 0 : match.ftHome ?? 0
 
-    if (teamGoals > opponentGoals) return { label: 'W', color: 'bg-green-500/20 text-green-300' }
-    if (teamGoals < opponentGoals) return { label: 'L', color: 'bg-red-500/20 text-red-300' }
-    return { label: 'D', color: 'bg-gray-500/20 text-gray-300' }
-  }),
+      if (teamGoals > opponentGoals) return { label: 'W', color: 'bg-green-500/20 text-green-500' }
+      if (teamGoals < opponentGoals) return { label: 'L', color: 'bg-red-500/20 text-red-500' }
+      return { label: 'D', color: 'bg-gray-500/20 text-muted' }
+    })
+    .reverse(),
 )
 </script>
 
@@ -83,8 +85,8 @@ const formGuide = computed(() =>
       <div class="flex flex-wrap items-center gap-4">
         <LogoFrame v-if="teamQuery.data.value.crestUrl" :src="teamQuery.data.value.crestUrl" size="xl" />
         <div>
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ teamQuery.data.value.tla }}</p>
-          <p class="text-sm text-gray-300">{{ teamQuery.data.value.shortName }}</p>
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">{{ teamQuery.data.value.tla }}</p>
+          <p class="text-sm text-muted">{{ teamQuery.data.value.shortName }}</p>
         </div>
       </div>
 
@@ -92,7 +94,7 @@ const formGuide = computed(() =>
         <span
           v-for="league in teamQuery.data.value.leagues"
           :key="league.id"
-          class="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-300"
+          class="rounded-full border border-line px-3 py-1 text-xs text-muted"
         >
           {{ league.name }}
         </span>

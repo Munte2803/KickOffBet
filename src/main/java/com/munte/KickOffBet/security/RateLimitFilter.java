@@ -55,6 +55,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${rate-limit.global.refill-minutes:1}")
     private int globalRefillMinutes;
 
+    // Only trust X-Forwarded-For when the app runs behind a known reverse proxy
+    // (e.g. the nginx in docker-compose). Otherwise the header is client-controlled
+    // and can be spoofed to get a fresh rate-limit bucket on every request.
+    @Value("${rate-limit.behind-proxy:false}")
+    private boolean behindProxy;
+
     private Bucket resolveEmailBucket(String key) {
         emailLastAccess.put(key, Instant.now());
         if (emailBuckets.size() > MAX_BUCKETS_PER_TYPE) {
@@ -201,10 +207,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getRemoteAddr();
+        if (behindProxy) {
+            String xff = request.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                // The rightmost entry is the one appended by our own trusted proxy
+                // (nginx: proxy_add_x_forwarded_for), so it cannot be spoofed by the client.
+                String[] hops = xff.split(",");
+                String realClient = hops[hops.length - 1].trim();
+                if (!realClient.isEmpty()) {
+                    return realClient;
+                }
+            }
         }
-        return ip;
+        return request.getRemoteAddr();
     }
 }

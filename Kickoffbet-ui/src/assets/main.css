@@ -1,6 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* Enable class-based dark mode: any element inside `.dark` (or `.dark` itself)
+   gets the `dark:` variant. The theme store toggles `.dark` on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Semantic color tokens. `inline` makes the generated utilities emit
+   `var(--color-*)` directly (not a copied value), so overriding the raw
+   `--c-*` vars under `.dark` at runtime switches every utility live.
+   Utilities produced: bg-app, bg-surface, bg-surface-2, bg-header,
+   text-fg, text-muted, text-subtle, border-line, border-line-strong. */
+@theme inline {
+  --color-app: var(--c-app);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-header: var(--c-header);
+  --color-fg: var(--c-fg);
+  --color-muted: var(--c-muted);
+  --color-subtle: var(--c-subtle);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+}
+
 @layer base {
   :root {
     --app-header-height: 58px;
@@ -9,6 +30,51 @@
     --app-content-max-width: 1240px;
     --app-slip-width: 360px;
     --app-slip-top: calc(var(--app-header-height) + 62px);
+
+    /* Light theme (default when no `.dark` class is present) */
+    --c-app: #f4f6fb;
+    --c-surface: #ffffff;
+    --c-surface-2: #eef2f8;
+    --c-header: #f4f6fb;
+    --c-fg: #0f172a;
+    --c-muted: #64748b;
+    --c-subtle: #94a3b8;
+    --c-line: rgba(15, 23, 42, 0.10);
+    --c-line-strong: rgba(15, 23, 42, 0.16);
+
+    /* Input surfaces (differ slightly from cards for depth) */
+    --c-input-bg: #f1f4f9;
+    --c-input-border: rgba(15, 23, 42, 0.12);
+
+    /* Logo contour: subtle dark on light bg */
+    --c-logo-outline: rgba(15, 23, 42, 0.35);
+
+    /* Elevation shadows — soft on light so panels don't cast a heavy gray blob */
+    --c-shadow-strong: rgba(15, 23, 42, 0.14);
+    --c-shadow-soft: rgba(15, 23, 42, 0.08);
+  }
+
+  .dark {
+    /* Dark theme — matches the original hardcoded palette */
+    --c-app: #000000;
+    --c-surface: rgba(255, 255, 255, 0.05);
+    --c-surface-2: rgba(255, 255, 255, 0.10);
+    --c-header: #000000;
+    --c-fg: #ffffff;
+    --c-muted: #9ca3af;
+    --c-subtle: #6b7280;
+    --c-line: rgba(255, 255, 255, 0.10);
+    --c-line-strong: rgba(255, 255, 255, 0.20);
+
+    --c-input-bg: rgba(255, 255, 255, 0.05);
+    --c-input-border: rgba(255, 255, 255, 0.10);
+
+    /* Logo contour: white on dark bg (original look) */
+    --c-logo-outline: rgba(255, 255, 255, 0.95);
+
+    /* Elevation shadows — original deep black on dark theme */
+    --c-shadow-strong: rgba(0, 0, 0, 0.55);
+    --c-shadow-soft: rgba(0, 0, 0, 0.3);
   }
 
   *, *::before, *::after {
@@ -17,16 +83,16 @@
 
   html {
     font-family: 'Hanken Grotesk', sans-serif;
-    background-color: #000;
-    color: #fff;
+    background-color: var(--c-app);
+    color: var(--c-fg);
     -webkit-font-smoothing: antialiased;
     scroll-padding-top: calc(var(--app-page-header-top) + 72px);
   }
 
   body {
     margin: 0;
-    background-color: #000;
-    color: #fff;
+    background-color: var(--c-app);
+    color: var(--c-fg);
     min-height: 100vh;
     padding-bottom: 4rem;
   }
@@ -34,14 +100,14 @@
   input,
   select,
   textarea {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background-color: var(--c-input-bg);
+    border-color: var(--c-input-border);
+    color: var(--c-fg);
   }
 
   select option {
-    background-color: #111;
-    color: #fff;
+    background-color: var(--c-surface);
+    color: var(--c-fg);
   }
 
   .app-select {
@@ -56,9 +122,9 @@
     width: 100%;
     appearance: none;
     border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(0, 0, 0, 0.6);
-    color: #fff;
+    border: 1px solid var(--c-input-border);
+    background-color: var(--c-input-bg);
+    color: var(--c-fg);
     font-size: 0.75rem;
     line-height: 1rem;
     padding: 0.4rem 1.5rem 0.4rem 0.65rem;
@@ -73,15 +139,15 @@
     display: block;
   }
 
-  /* Dark autofill override */
+  /* Autofill override — follows the active theme */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #000 inset !important;
-    -webkit-text-fill-color: #fff !important;
+    -webkit-box-shadow: 0 0 0 30px var(--c-input-bg) inset !important;
+    -webkit-text-fill-color: var(--c-fg) !important;
     transition: background-color 5000s ease-in-out 0s;
-    caret-color: #fff !important;
+    caret-color: var(--c-fg) !important;
   }
 
   @media (max-width: 1439px) {
@@ -175,10 +241,10 @@
      Works for SVGs and PNGs with alpha; on JPEGs (no alpha) it outlines the bounding box. */
   .logo-outline {
     filter:
-      drop-shadow( 1px  0    0 rgba(255, 255, 255, 0.95))
-      drop-shadow(-1px  0    0 rgba(255, 255, 255, 0.95))
-      drop-shadow( 0    1px  0 rgba(255, 255, 255, 0.95))
-      drop-shadow( 0   -1px  0 rgba(255, 255, 255, 0.95));
+      drop-shadow( 1px  0    0 var(--c-logo-outline))
+      drop-shadow(-1px  0    0 var(--c-logo-outline))
+      drop-shadow( 0    1px  0 var(--c-logo-outline))
+      drop-shadow( 0   -1px  0 var(--c-logo-outline));
     transition: filter 200ms ease;
   }
 

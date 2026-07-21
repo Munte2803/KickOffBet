@@ -72,7 +72,7 @@ function handleSelection(value: string | string[]) {
 
     <div
       v-if="emailSearch.trim().length < 2"
-      class="rounded-xl border border-dashed border-white/10 bg-black/30 px-4 py-5 text-sm text-gray-400"
+      class="rounded-xl border border-dashed border-line bg-surface px-4 py-5 text-sm text-muted"
     >
       {{ emptyMessage }}
     </div>

@@ -126,11 +126,11 @@ const showOdds = computed(() => {
     />
 
     <Panel>
-      <div class="flex flex-wrap items-center gap-2 text-[13px] text-gray-400 sm:gap-3 sm:text-sm">
+      <div class="flex flex-wrap items-center gap-2 text-[13px] text-muted sm:gap-3 sm:text-sm">
         <span>{{ matchQuery.data.value.leagueName }}</span>
         <StatusBadge :status="matchQuery.data.value.status" />
         <span>{{ formatDateShort(matchQuery.data.value.startTime) }}</span>
-        <span v-if="matchQuery.data.value.ftHome !== null && matchQuery.data.value.ftAway !== null" class="rounded-lg bg-white/10 px-2.5 py-1 font-mono text-[13px] text-white sm:px-3 sm:text-sm">
+        <span v-if="matchQuery.data.value.ftHome !== null && matchQuery.data.value.ftAway !== null" class="rounded-lg bg-surface-2 px-2.5 py-1 font-mono text-[13px] text-fg sm:px-3 sm:text-sm">
           {{ matchQuery.data.value.ftHome }} - {{ matchQuery.data.value.ftAway }}
         </span>
       </div>
@@ -138,13 +138,13 @@ const showOdds = computed(() => {
       <div class="mt-4 flex flex-wrap gap-2 text-[13px] sm:gap-3 sm:text-sm">
         <RouterLink
           :to="{ name: 'team', params: { id: matchQuery.data.value.homeTeamId } }"
-          class="rounded-lg border border-white/10 px-2.5 py-1.5 text-gray-300 transition-colors hover:bg-white/5 hover:text-white sm:px-3 sm:py-2"
+          class="rounded-lg border border-line px-2.5 py-1.5 text-muted transition-colors hover:bg-surface hover:text-fg sm:px-3 sm:py-2"
         >
           {{ matchQuery.data.value.homeTeamName }}
         </RouterLink>
         <RouterLink
           :to="{ name: 'team', params: { id: matchQuery.data.value.awayTeamId } }"
-          class="rounded-lg border border-white/10 px-2.5 py-1.5 text-gray-300 transition-colors hover:bg-white/5 hover:text-white sm:px-3 sm:py-2"
+          class="rounded-lg border border-line px-2.5 py-1.5 text-muted transition-colors hover:bg-surface hover:text-fg sm:px-3 sm:py-2"
         >
           {{ matchQuery.data.value.awayTeamName }}
         </RouterLink>
@@ -152,16 +152,16 @@ const showOdds = computed(() => {
     </Panel>
 
     <Panel v-for="group in showOdds ? groupedOffers : []" :key="group.marketType">
-      <h2 class="text-base font-semibold text-white sm:text-lg">{{ group.label }}</h2>
+      <h2 class="text-base font-semibold text-fg sm:text-lg">{{ group.label }}</h2>
 
       <div v-if="group.type === 'over-under'" class="mt-4 space-y-3">
         <div
           v-for="row in group.rows"
           :key="row.line"
-          class="rounded-xl border border-white/10 bg-black/30 p-3 sm:p-4"
+          class="rounded-xl border border-line bg-surface p-3 sm:p-4"
         >
           <div class="mb-3 flex items-center justify-between gap-3">
-            <h3 class="text-[13px] font-semibold uppercase tracking-[0.14em] text-gray-400 sm:text-sm sm:tracking-[0.18em]">Total goluri {{ row.line.toFixed(1) }}</h3>
+            <h3 class="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-sm sm:tracking-[0.18em]">Total goluri {{ row.line.toFixed(1) }}</h3>
           </div>
 
           <div class="grid gap-2 sm:grid-cols-2 sm:gap-3">
@@ -173,7 +173,7 @@ const showOdds = computed(() => {
               :inactive="!row.over.active"
               @click="toggleOffer(matchQuery.data.value!, row.over)"
             />
-            <div v-else class="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-2 text-[13px] text-gray-500 sm:px-4 sm:py-3 sm:text-sm">
+            <div v-else class="rounded-xl border border-dashed border-line bg-surface px-3 py-2 text-[13px] text-subtle sm:px-4 sm:py-3 sm:text-sm">
               Over indisponibil
             </div>
 
@@ -185,7 +185,7 @@ const showOdds = computed(() => {
               :inactive="!row.under.active"
               @click="toggleOffer(matchQuery.data.value!, row.under)"
             />
-            <div v-else class="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-2 text-[13px] text-gray-500 sm:px-4 sm:py-3 sm:text-sm">
+            <div v-else class="rounded-xl border border-dashed border-line bg-surface px-3 py-2 text-[13px] text-subtle sm:px-4 sm:py-3 sm:text-sm">
               Under indisponibil
             </div>
           </div>

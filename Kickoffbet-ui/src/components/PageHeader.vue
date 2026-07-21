@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
   <div ref="wrapperRef" class="mb-3.5 max-[390px]:mb-3 max-[360px]:mb-2.5 sm:mb-6" :style="{ height: `${headerHeight}px` }">
     <div
       ref="headerRef"
-      class="fixed z-40 border-b border-white/10 bg-black pb-2.5 pt-2.5 shadow-[0_18px_36px_rgba(0,0,0,0.58)] max-[390px]:pb-2 max-[390px]:pt-2 max-[360px]:pb-1.5 max-[360px]:pt-1.5 sm:pb-4 sm:pt-4"
+      class="fixed z-40 border-b border-line bg-app pb-2.5 pt-2.5 shadow-[0_1px_0_var(--c-line)] max-[390px]:pb-2 max-[390px]:pt-2 max-[360px]:pb-1.5 max-[360px]:pt-1.5 sm:pb-4 sm:pt-4"
       :style="{
         top: 'var(--app-page-header-top)',
         left: `${wrapperLeft}px`,
@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
         <button
           v-if="backRoute"
           type="button"
-          class="flex-shrink-0 rounded-full border border-white/10 bg-white/5 p-1.25 text-gray-300 transition-colors hover:border-blue-500/30 hover:text-blue-300 max-[390px]:p-1 max-[360px]:p-0.75 sm:p-2"
+          class="flex-shrink-0 rounded-full border border-line bg-surface p-1.25 text-muted transition-colors hover:border-blue-500/30 hover:text-blue-500 max-[390px]:p-1 max-[360px]:p-0.75 sm:p-2"
           @click="handleBack"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 max-[390px]:h-4 max-[390px]:w-4 max-[360px]:h-3.5 max-[360px]:w-3.5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,13 +109,13 @@ onBeforeUnmount(() => {
           <template v-if="scoreboard">
             <div class="flex min-w-0 items-center gap-1.5 max-[390px]:gap-1 max-[360px]:gap-0.5 sm:gap-4">
               <div class="flex min-w-0 flex-1 items-center justify-end gap-2 max-[390px]:gap-1.5 max-[360px]:gap-1">
-                <span class="truncate text-right text-[15px] font-bold text-white max-[390px]:text-[13px] max-[360px]:text-[12px] sm:text-xl md:text-2xl">{{ homeTeamName }}</span>
+                <span class="truncate text-right text-[15px] font-bold text-fg max-[390px]:text-[13px] max-[360px]:text-[12px] sm:text-xl md:text-2xl">{{ homeTeamName }}</span>
                 <LogoFrame v-if="homeTeamLogo" :src="homeTeamLogo" size="md" />
               </div>
-            <span class="flex-shrink-0 px-0.5 text-[10px] font-bold italic text-gray-500 max-[390px]:text-[9px] max-[360px]:text-[8px] sm:px-2 sm:text-sm">vs</span>
+            <span class="flex-shrink-0 px-0.5 text-[10px] font-bold italic text-subtle max-[390px]:text-[9px] max-[360px]:text-[8px] sm:px-2 sm:text-sm">vs</span>
               <div class="flex min-w-0 flex-1 items-center justify-start gap-2 max-[390px]:gap-1.5 max-[360px]:gap-1">
                 <LogoFrame v-if="awayTeamLogo" :src="awayTeamLogo" size="md" />
-                <span class="truncate text-left text-[15px] font-bold text-white max-[390px]:text-[13px] max-[360px]:text-[12px] sm:text-xl md:text-2xl">{{ awayTeamName }}</span>
+                <span class="truncate text-left text-[15px] font-bold text-fg max-[390px]:text-[13px] max-[360px]:text-[12px] sm:text-xl md:text-2xl">{{ awayTeamName }}</span>
               </div>
             </div>
           </template>
@@ -123,11 +123,11 @@ onBeforeUnmount(() => {
           <template v-else>
             <div class="flex min-w-0 items-center gap-2 max-[390px]:gap-1.5 max-[360px]:gap-1 sm:gap-3">
               <LogoFrame v-if="logoUrl" :src="logoUrl" size="md" />
-              <h1 class="truncate text-lg font-bold tracking-tight text-white max-[390px]:text-[17px] max-[360px]:text-[16px] sm:text-2xl md:text-3xl">{{ title }}</h1>
+              <h1 class="truncate text-lg font-bold tracking-tight text-fg max-[390px]:text-[17px] max-[360px]:text-[16px] sm:text-2xl md:text-3xl">{{ title }}</h1>
             </div>
           </template>
 
-          <span v-if="subtitle" class="mt-0.5 block pl-0.5 text-[11px] text-gray-400 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:mt-1 sm:pl-1 sm:text-sm">{{ subtitle }}</span>
+          <span v-if="subtitle" class="mt-0.5 block pl-0.5 text-[11px] text-muted max-[390px]:text-[10px] max-[360px]:text-[9px] sm:mt-1 sm:pl-1 sm:text-sm">{{ subtitle }}</span>
         </div>
 
         <div class="flex-shrink-0">

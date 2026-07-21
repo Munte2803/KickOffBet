@@ -139,20 +139,20 @@ onBeforeUnmount(() => {
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
       <Panel no-hover>
-        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4 sm:pb-5">
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4 sm:pb-5">
           <div class="flex items-center gap-3 sm:gap-4">
-            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-xl font-black text-white sm:h-16 sm:w-16 sm:text-2xl">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-xl font-black text-fg sm:h-16 sm:w-16 sm:text-2xl">
               {{ profile.firstName[0] }}{{ profile.lastName[0] }}
             </div>
             <div>
-              <h2 class="text-xl font-black text-white sm:text-2xl">{{ profile.firstName }} {{ profile.lastName }}</h2>
-              <p class="mt-1 text-[13px] text-gray-400 sm:text-sm">{{ profile.email }}</p>
+              <h2 class="text-xl font-black text-fg sm:text-2xl">{{ profile.firstName }} {{ profile.lastName }}</h2>
+              <p class="mt-1 text-[13px] text-muted sm:text-sm">{{ profile.email }}</p>
               <div class="mt-3 flex flex-wrap items-center gap-2">
                 <StatusBadge :status="profile.status" />
-                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-300">
+                <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">
                   Email {{ profile.emailVerified ? 'verificat' : 'neverificat' }}
                 </span>
-                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-300">
+                <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">
                   ID {{ profile.idCardVerified ? 'verificat' : 'in asteptare' }}
                 </span>
               </div>
@@ -168,16 +168,16 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="mt-5 grid gap-4 md:grid-cols-2">
-          <div class="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Balanta</p>
-            <p class="mt-2 text-2xl font-black text-white sm:text-3xl">{{ formatMoney(profile.balance) }}</p>
+          <div class="rounded-xl border border-line bg-surface p-3 sm:p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-subtle">Balanta</p>
+            <p class="mt-2 text-2xl font-black text-fg sm:text-3xl">{{ formatMoney(profile.balance) }}</p>
           </div>
 
-          <div class="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-            <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Membru din</p>
-            <p class="mt-2 text-[13px] font-semibold text-white sm:text-sm">{{ formatDateShort(profile.createdAt) }}</p>
-            <p class="mt-3 text-xs uppercase tracking-[0.2em] text-gray-500">Data nasterii</p>
-            <p class="mt-2 text-[13px] font-semibold text-white sm:text-sm">{{ profile.birthDate }}</p>
+          <div class="rounded-xl border border-line bg-surface p-3 sm:p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-subtle">Membru din</p>
+            <p class="mt-2 text-[13px] font-semibold text-fg sm:text-sm">{{ formatDateShort(profile.createdAt) }}</p>
+            <p class="mt-3 text-xs uppercase tracking-[0.2em] text-subtle">Data nasterii</p>
+            <p class="mt-2 text-[13px] font-semibold text-fg sm:text-sm">{{ profile.birthDate }}</p>
           </div>
         </div>
 
@@ -188,14 +188,14 @@ onBeforeUnmount(() => {
           <SectionHeader title="Verificare email" />
 
           <div class="space-y-4">
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Stare email</p>
-              <p class="mt-2 text-sm text-gray-300">
+            <div class="rounded-xl border border-line bg-surface p-4">
+              <p class="text-xs uppercase tracking-[0.2em] text-subtle">Stare email</p>
+              <p class="mt-2 text-sm text-muted">
                 Emailul contului tau nu este verificat inca. Poti retrimite mesajul de confirmare pe {{ profile.email }}.
               </p>
             </div>
 
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
+            <div class="rounded-xl border border-line bg-surface p-4">
               <AppButton variant="outline" :loading="resendingVerification" @click="handleResendVerificationEmail">
                 Retrimite emailul de verificare
               </AppButton>
@@ -207,12 +207,12 @@ onBeforeUnmount(() => {
           <SectionHeader title="Buletin" />
 
           <div class="space-y-4">
-            <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Stare document</p>
-              <p class="mt-2 text-sm text-gray-300">{{ idCardStateMessage }}</p>
+            <div class="rounded-xl border border-line bg-surface p-4">
+              <p class="text-xs uppercase tracking-[0.2em] text-subtle">Stare document</p>
+              <p class="mt-2 text-sm text-muted">{{ idCardStateMessage }}</p>
             </div>
 
-            <div v-if="canUploadIdCard" class="space-y-3 rounded-xl border border-white/10 bg-black/40 p-4">
+            <div v-if="canUploadIdCard" class="space-y-3 rounded-xl border border-line bg-surface p-4">
               <FileInputField
                 label="Fisier pentru verificare"
                 :file-name="selectedFileName"
@@ -231,11 +231,11 @@ onBeforeUnmount(() => {
               </AppButton>
             </div>
 
-            <div v-else-if="canViewIdCard" class="space-y-3 rounded-xl border border-white/10 bg-black/40 p-4">
+            <div v-else-if="canViewIdCard" class="space-y-3 rounded-xl border border-line bg-surface p-4">
               <AppButton variant="outline" :loading="previewLoading" @click="handlePreviewIdCard">
                 Vezi buletinul meu
               </AppButton>
-              <p class="text-xs text-gray-400">Previzualizarea este privata si disponibila doar pentru documentul tau.</p>
+              <p class="text-xs text-muted">Previzualizarea este privata si disponibila doar pentru documentul tau.</p>
             </div>
 
             <EmptyState v-else message="Nu exista un document care poate fi vizualizat sau reincarcat in acest moment." />

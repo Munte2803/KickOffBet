@@ -49,18 +49,18 @@ async function submitTicket() {
 
 <template>
   <Panel
-    class="flex h-full min-h-0 flex-col rounded-none border-0 bg-transparent p-0 shadow-none lg:h-[calc(100vh-var(--app-slip-top)-16px)] lg:overflow-hidden lg:rounded-xl lg:border lg:border-white/10 lg:bg-black/70 lg:p-4 lg:shadow-[0_18px_42px_rgba(0,0,0,0.34)]"
+    class="flex h-full min-h-0 flex-col rounded-none border-0 bg-transparent p-0 shadow-none lg:h-[calc(100vh-var(--app-slip-top)-16px)] lg:overflow-hidden lg:rounded-xl lg:border lg:border-line lg:bg-surface lg:p-4 lg:shadow-[0_18px_42px_var(--c-shadow-strong)]"
     no-hover
   >
     <div class="hidden items-center justify-between gap-3 lg:flex">
       <div>
-        <h2 class="text-lg font-bold text-white">Biletul meu</h2>
-        <p class="text-xs text-gray-400">{{ ticketStore.selectionCount }} selectii</p>
+        <h2 class="text-lg font-bold text-fg">Biletul meu</h2>
+        <p class="text-xs text-muted">{{ ticketStore.selectionCount }} selectii</p>
       </div>
 
       <button
         v-if="ticketStore.selectionCount"
-        class="text-xs font-medium text-gray-400 transition-colors hover:text-white"
+        class="text-xs font-medium text-muted transition-colors hover:text-fg"
         @click="ticketStore.clearSelections()"
       >
         Goleste
@@ -69,16 +69,16 @@ async function submitTicket() {
 
     <div
       v-if="!ticketStore.selectionCount"
-      class="mx-3 rounded-xl border border-dashed border-white/10 bg-black/40 px-3 py-5 text-center text-[13px] text-gray-400 max-[390px]:mx-2.5 max-[390px]:px-2.5 max-[390px]:py-4 max-[390px]:text-[12px] max-[360px]:mx-2 max-[360px]:px-2 max-[360px]:py-3.5 max-[360px]:text-[11px] sm:mx-4 sm:px-4 sm:py-8 sm:text-sm lg:mx-0 lg:mt-4"
+      class="mx-3 rounded-xl border border-dashed border-line bg-surface px-3 py-5 text-center text-[13px] text-muted max-[390px]:mx-2.5 max-[390px]:px-2.5 max-[390px]:py-4 max-[390px]:text-[12px] max-[360px]:mx-2 max-[360px]:px-2 max-[360px]:py-3.5 max-[360px]:text-[11px] sm:mx-4 sm:px-4 sm:py-8 sm:text-sm lg:mx-0 lg:mt-4"
     >
       Selecteaza cote active pentru a construi biletul.
     </div>
 
     <div v-else class="flex min-h-0 flex-1 flex-col gap-3">
-      <div class="flex items-center justify-between gap-3 border-b border-white/10 px-3 pb-2.5 max-[390px]:px-2.5 max-[390px]:pb-2 max-[360px]:px-2 max-[360px]:pb-1.5 lg:hidden">
-        <p class="text-[13px] font-semibold text-white max-[390px]:text-[12px] max-[360px]:text-[11px]">{{ ticketStore.selectionCount }} selectii</p>
+      <div class="flex items-center justify-between gap-3 border-b border-line px-3 pb-2.5 max-[390px]:px-2.5 max-[390px]:pb-2 max-[360px]:px-2 max-[360px]:pb-1.5 lg:hidden">
+        <p class="text-[13px] font-semibold text-fg max-[390px]:text-[12px] max-[360px]:text-[11px]">{{ ticketStore.selectionCount }} selectii</p>
         <button
-          class="text-[11px] font-medium text-gray-400 transition-colors hover:text-white max-[390px]:text-[10px] max-[360px]:text-[9px]"
+          class="text-[11px] font-medium text-muted transition-colors hover:text-fg max-[390px]:text-[10px] max-[360px]:text-[9px]"
           @click="ticketStore.clearSelections()"
         >
           Goleste
@@ -92,23 +92,23 @@ async function submitTicket() {
           <div
             v-for="selection in ticketStore.selections"
             :key="selection.offerId"
-            class="relative min-h-[5.75rem] rounded-xl border border-white/10 bg-black/40 p-2 pr-12 max-[390px]:min-h-[5.25rem] max-[390px]:p-1.5 max-[390px]:pr-10 max-[360px]:min-h-[4.75rem] max-[360px]:p-1.25 max-[360px]:pr-9 sm:min-h-[6.25rem] sm:p-3 sm:pr-14"
+            class="relative min-h-[5.75rem] rounded-xl border border-line bg-surface p-2 pr-12 max-[390px]:min-h-[5.25rem] max-[390px]:p-1.5 max-[390px]:pr-10 max-[360px]:min-h-[4.75rem] max-[360px]:p-1.25 max-[360px]:pr-9 sm:min-h-[6.25rem] sm:p-3 sm:pr-14"
           >
-            <p class="min-w-0 pr-1 text-[12px] font-semibold text-white max-[390px]:text-[11px] max-[360px]:text-[10px] sm:text-sm sm:truncate">
+            <p class="min-w-0 pr-1 text-[12px] font-semibold text-fg max-[390px]:text-[11px] max-[360px]:text-[10px] sm:text-sm sm:truncate">
               {{ selection.homeTeamName }} vs {{ selection.awayTeamName }}
             </p>
 
-            <h3 class="absolute right-2 top-2 text-[15px] font-bold leading-none text-blue-300 max-[390px]:right-1.5 max-[390px]:top-1.5 max-[390px]:text-[14px] max-[360px]:right-1.25 max-[360px]:top-1.25 max-[360px]:text-[13px] sm:right-3 sm:top-3 sm:text-lg">
+            <h3 class="absolute right-2 top-2 text-[15px] font-bold leading-none text-blue-500 max-[390px]:right-1.5 max-[390px]:top-1.5 max-[390px]:text-[14px] max-[360px]:right-1.25 max-[360px]:top-1.25 max-[360px]:text-[13px] sm:right-3 sm:top-3 sm:text-lg">
               {{ selection.odds.toFixed(2) }}
             </h3>
 
-            <p class="absolute bottom-2 left-2 max-w-[calc(100%-4rem)] break-words text-[12px] font-medium leading-5 text-gray-300 max-[390px]:bottom-1.5 max-[390px]:left-1.5 max-[390px]:text-[11px] max-[390px]:leading-5 max-[360px]:bottom-1.25 max-[360px]:left-1.25 max-[360px]:text-[10px] max-[360px]:leading-5 sm:bottom-3 sm:left-3 sm:text-sm sm:leading-5">
+            <p class="absolute bottom-2 left-2 max-w-[calc(100%-4rem)] break-words text-[12px] font-medium leading-5 text-muted max-[390px]:bottom-1.5 max-[390px]:left-1.5 max-[390px]:text-[11px] max-[390px]:leading-5 max-[360px]:bottom-1.25 max-[360px]:left-1.25 max-[360px]:text-[10px] max-[360px]:leading-5 sm:bottom-3 sm:left-3 sm:text-sm sm:leading-5">
               {{ translateEnumLabel(selection.marketType) }} -
               {{ formatBetLabel(selection.option, selection.marketType, selection.line) }}
             </p>
 
             <button
-              class="absolute bottom-2 right-2 inline-flex h-5 w-5 items-center justify-center text-gray-400 hover:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/70 max-[390px]:bottom-1.5 max-[390px]:right-1.5 max-[360px]:bottom-1.25 max-[360px]:right-1.25 sm:bottom-3 sm:right-3"
+              class="absolute bottom-2 right-2 inline-flex h-5 w-5 items-center justify-center text-muted hover:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/70 max-[390px]:bottom-1.5 max-[390px]:right-1.5 max-[360px]:bottom-1.25 max-[360px]:right-1.25 sm:bottom-3 sm:right-3"
               type="button"
               :aria-label="`Sterge ${selection.homeTeamName} vs ${selection.awayTeamName}`"
               @click="ticketStore.removeSelection(selection.offerId)"
@@ -134,16 +134,16 @@ async function submitTicket() {
         </div>
       </div>
 
-      <div class="space-y-2.5 border-t border-white/10 px-3 pb-3 pt-3 max-[390px]:space-y-2 max-[390px]:px-2.5 max-[390px]:pb-2.5 max-[390px]:pt-2.5 max-[360px]:px-2 max-[360px]:pb-2 max-[360px]:pt-2 sm:px-4 sm:pb-4 sm:pt-4 lg:shrink-0 lg:border-t-0 lg:px-0 lg:pb-0 lg:pt-0">
-        <div class="space-y-2 bg-black/40 p-2.5 max-[390px]:space-y-1.5 max-[390px]:p-2 max-[360px]:p-1.75 sm:p-3">
-          <label class="block text-[10px] font-medium uppercase tracking-[0.18em] text-gray-500 max-[390px]:text-[9px] max-[390px]:tracking-[0.14em] max-[360px]:text-[8px] sm:text-xs sm:tracking-[0.2em]">
+      <div class="space-y-2.5 border-t border-line px-3 pb-3 pt-3 max-[390px]:space-y-2 max-[390px]:px-2.5 max-[390px]:pb-2.5 max-[390px]:pt-2.5 max-[360px]:px-2 max-[360px]:pb-2 max-[360px]:pt-2 sm:px-4 sm:pb-4 sm:pt-4 lg:shrink-0 lg:border-t-0 lg:px-0 lg:pb-0 lg:pt-0">
+        <div class="space-y-2 bg-surface p-2.5 max-[390px]:space-y-1.5 max-[390px]:p-2 max-[360px]:p-1.75 sm:p-3">
+          <label class="block text-[10px] font-medium uppercase tracking-[0.18em] text-subtle max-[390px]:text-[9px] max-[390px]:tracking-[0.14em] max-[360px]:text-[8px] sm:text-xs sm:tracking-[0.2em]">
             Miza
           </label>
           <input
             :value="ticketStore.stake"
             type="number"
             :aria-invalid="!isStakeValid"
-            class="no-spinner w-full rounded-lg border border-white/10 bg-black/60 px-2.5 py-1.5 text-[13px] text-white transition-colors focus:border-blue-500 focus:outline-none aria-[invalid=true]:border-red-400/70 max-[390px]:px-2 max-[390px]:py-1.25 max-[390px]:text-[12px] max-[360px]:px-1.75 max-[360px]:py-1 max-[360px]:text-[11px] sm:px-3 sm:py-2 sm:text-sm"
+            class="no-spinner w-full rounded-lg border border-line bg-surface-2 px-2.5 py-1.5 text-[13px] text-fg transition-colors focus:border-blue-500 focus:outline-none aria-[invalid=true]:border-red-400/70 max-[390px]:px-2 max-[390px]:py-1.25 max-[390px]:text-[12px] max-[360px]:px-1.75 max-[360px]:py-1 max-[360px]:text-[11px] sm:px-3 sm:py-2 sm:text-sm"
             :min="MIN_STAKE"
             :max="MAX_STAKE"
             step="1"
@@ -151,16 +151,16 @@ async function submitTicket() {
           />
         </div>
 
-        <div class="space-y-2 rounded-xl border border-white/10 bg-black/40 p-2.5 text-[13px] max-[390px]:space-y-1.5 max-[390px]:p-2 max-[390px]:text-[12px] max-[360px]:p-1.75 max-[360px]:text-[11px] sm:p-3 sm:text-sm">
-          <div class="flex items-center justify-between text-gray-400">
+        <div class="space-y-2 rounded-xl border border-line bg-surface p-2.5 text-[13px] max-[390px]:space-y-1.5 max-[390px]:p-2 max-[390px]:text-[12px] max-[360px]:p-1.75 max-[360px]:text-[11px] sm:p-3 sm:text-sm">
+          <div class="flex items-center justify-between text-muted">
             <span>Cota totala</span>
-            <span class="font-semibold text-white">{{ ticketStore.totalOdds.toFixed(2) }}</span>
+            <span class="font-semibold text-fg">{{ ticketStore.totalOdds.toFixed(2) }}</span>
           </div>
-          <div class="flex items-center justify-between text-gray-400">
+          <div class="flex items-center justify-between text-muted">
             <span>Castig potential</span>
-            <span class="font-semibold text-white">{{ formatMoney(ticketStore.potentialWin) }}</span>
+            <span class="font-semibold text-fg">{{ formatMoney(ticketStore.potentialWin) }}</span>
           </div>
-          <p v-if="isWinCapped" class="text-[11px] text-amber-300 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-xs">
+          <p v-if="isWinCapped" class="text-[11px] text-amber-500 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-xs">
             Castigul potential este plafonat la {{ formatMoney(MAX_WIN) }}.
           </p>
         </div>

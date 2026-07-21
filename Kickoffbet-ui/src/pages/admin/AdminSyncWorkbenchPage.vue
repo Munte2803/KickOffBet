@@ -58,7 +58,7 @@ async function runSeed() {
     <PageHeader title="Administrare - sincronizare" subtitle="Toate actiunile manuale de sincronizare, intr-o singura zona." />
 
     <Panel id="sync-actions" no-hover class="space-y-4">
-      <p class="text-sm text-gray-400">Porneste manual fluxurile de sincronizare pentru ligi, echipe si meciuri.</p>
+      <p class="text-sm text-muted">Porneste manual fluxurile de sincronizare pentru ligi, echipe si meciuri.</p>
       <div class="flex flex-wrap gap-3">
         <div id="sync-full">
           <AppButton variant="outline" @click="runAction(triggerFullSync, 'Sincronizarea completa a pornit.')">Sincronizare completa</AppButton>
@@ -78,8 +78,8 @@ async function runSeed() {
     </Panel>
 
     <Panel id="seed-demo" no-hover class="space-y-4">
-      <h2 class="text-lg font-semibold text-white">Date demo</h2>
-      <p class="text-sm text-gray-400">
+      <h2 class="text-lg font-semibold text-fg">Date demo</h2>
+      <p class="text-sm text-muted">
         Genereaza ~510 utilizatori seed cu istoric coerent de depozite, bilete (WON/LOST/PENDING/CANCELLED) si tranzactii pe ultimele 365 zile.
         Util pentru testarea graficelor, exporturilor si rapoartelor. Idempotent — re-rularea sterge si recreeaza.
       </p>
@@ -88,10 +88,10 @@ async function runSeed() {
       </div>
       <div
         v-if="lastSeedResult"
-        class="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-gray-300"
+        class="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted"
       >
         <p>Ultima rulare:</p>
-        <ul class="mt-1 list-disc space-y-0.5 pl-5 text-xs text-gray-400">
+        <ul class="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted">
           <li>{{ lastSeedResult.usersCreated }} utilizatori</li>
           <li>{{ lastSeedResult.ticketsCreated }} bilete</li>
           <li>{{ lastSeedResult.transactionsCreated }} tranzactii</li>

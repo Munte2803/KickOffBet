@@ -37,20 +37,20 @@ const ticketQuery = useQuery({
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
             <StatusBadge :status="ticketQuery.data.value.status" />
-            <span class="text-sm text-gray-400">{{ formatDateShort(ticketQuery.data.value.createdAt) }}</span>
+            <span class="text-sm text-muted">{{ formatDateShort(ticketQuery.data.value.createdAt) }}</span>
           </div>
           <RouterLink
             :to="{ name: 'admin-user-detail', params: { id: ticketQuery.data.value.userId } }"
-            class="mt-2 inline-flex max-w-full flex-col text-left text-sm font-medium text-blue-300 transition-colors hover:text-blue-300"
+            class="mt-2 inline-flex max-w-full flex-col text-left text-sm font-medium text-blue-500 transition-colors hover:text-blue-500"
           >
             <span class="truncate">{{ ticketQuery.data.value.userEmail }}</span>
           </RouterLink>
-            <p class="mt-2 font-mono text-xs text-gray-500">ID bilet: {{ ticketQuery.data.value.id }}</p>
+            <p class="mt-2 font-mono text-xs text-subtle">ID bilet: {{ ticketQuery.data.value.id }}</p>
         </div>
 
         <div class="text-right">
-          <p class="text-sm text-gray-400">Miza / castig potential</p>
-          <p class="text-xl font-black text-white">
+          <p class="text-sm text-muted">Miza / castig potential</p>
+          <p class="text-xl font-black text-fg">
             {{ formatMoney(ticketQuery.data.value.stake) }} / {{ formatMoney(ticketQuery.data.value.potentialPayout) }}
           </p>
         </div>
@@ -60,17 +60,17 @@ const ticketQuery = useQuery({
         <div
           v-for="selection in ticketQuery.data.value.selections"
           :key="selection.id"
-          class="rounded-xl border border-white/10 bg-black/40 p-3"
+          class="rounded-xl border border-line bg-surface p-3"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <RouterLink
                 :to="{ name: 'admin-match-detail', params: { id: selection.matchId } }"
-                class="text-sm font-semibold text-white transition hover:text-amber-300"
+                class="text-sm font-semibold text-fg transition hover:text-amber-500"
               >
                 {{ selection.homeTeamName }} vs {{ selection.awayTeamName }}
               </RouterLink>
-              <p class="mt-1 text-xs text-gray-400">
+              <p class="mt-1 text-xs text-muted">
               {{ translateEnumLabel(selection.marketType) }} ·
                 {{ formatBetLabel(selection.selectedOption, selection.marketType, selection.line) }}
               </p>

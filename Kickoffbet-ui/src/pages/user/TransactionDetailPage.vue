@@ -31,41 +31,41 @@ const transactionQuery = useQuery({
 
     <section class="grid gap-4 md:grid-cols-4">
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Tip</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Tip</p>
         <div class="mt-3">
           <StatusBadge :status="transactionQuery.data.value.transactionType" />
         </div>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Status</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Status</p>
         <div class="mt-3">
           <StatusBadge :status="transactionQuery.data.value.status" />
         </div>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Suma</p>
-        <p class="mt-2 text-2xl font-bold text-white">{{ formatMoney(transactionQuery.data.value.amount) }}</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Suma</p>
+        <p class="mt-2 text-2xl font-bold text-fg">{{ formatMoney(transactionQuery.data.value.amount) }}</p>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Referinta</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Referinta</p>
         <RouterLink
           v-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TICKET'"
           :to="{ name: 'ticket-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>
         <RouterLink
           v-else-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TRANSACTION'"
           :to="{ name: 'transaction-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-300 transition-colors hover:text-blue-300"
+          class="mt-2 inline-flex text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>
-        <p v-else class="mt-2 text-sm font-semibold text-white">Fara referinta</p>
+        <p v-else class="mt-2 text-sm font-semibold text-fg">Fara referinta</p>
       </Panel>
     </section>
   </div>

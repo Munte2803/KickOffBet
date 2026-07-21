@@ -154,34 +154,34 @@ onBeforeUnmount(() => {
     <Panel id="user-overview" no-hover>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 class="text-2xl font-black text-white">{{ userQuery.data.value.firstName }} {{ userQuery.data.value.lastName }}</h2>
-          <p class="mt-1 text-sm text-gray-400">{{ userQuery.data.value.email }}</p>
+          <h2 class="text-2xl font-black text-fg">{{ userQuery.data.value.firstName }} {{ userQuery.data.value.lastName }}</h2>
+          <p class="mt-1 text-sm text-muted">{{ userQuery.data.value.email }}</p>
         </div>
         <StatusBadge :status="userQuery.data.value.status" />
       </div>
 
       <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Balanta</p>
-          <p class="mt-2 text-lg font-semibold text-white">{{ formatMoney(userQuery.data.value.balance) }}</p>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Balanta</p>
+          <p class="mt-2 text-lg font-semibold text-fg">{{ formatMoney(userQuery.data.value.balance) }}</p>
         </div>
-        <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Email</p>
-          <p class="mt-2 text-sm font-semibold text-white">{{ userQuery.data.value.emailVerified ? 'Verificat' : 'Neverificat' }}</p>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Email</p>
+          <p class="mt-2 text-sm font-semibold text-fg">{{ userQuery.data.value.emailVerified ? 'Verificat' : 'Neverificat' }}</p>
         </div>
-        <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Act de identitate</p>
-          <p class="mt-2 text-sm font-semibold text-white">{{ userQuery.data.value.idCardVerified ? 'Verificat' : 'Neverificat' }}</p>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Act de identitate</p>
+          <p class="mt-2 text-sm font-semibold text-fg">{{ userQuery.data.value.idCardVerified ? 'Verificat' : 'Neverificat' }}</p>
         </div>
-        <div class="rounded-xl border border-white/10 bg-black/40 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-500">Creat la</p>
-          <p class="mt-2 text-sm font-semibold text-white">{{ formatDateShort(userQuery.data.value.createdAt) }}</p>
+        <div class="rounded-xl border border-line bg-surface p-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-subtle">Creat la</p>
+          <p class="mt-2 text-sm font-semibold text-fg">{{ formatDateShort(userQuery.data.value.createdAt) }}</p>
         </div>
       </div>
 
-      <div class="mt-4 rounded-xl border border-white/10 bg-black/30 p-4">
-        <p class="text-sm font-semibold text-white">Actiuni verificare si cont</p>
-        <p class="mt-1 text-xs text-gray-400">
+      <div class="mt-4 rounded-xl border border-line bg-surface p-4">
+        <p class="text-sm font-semibold text-fg">Actiuni verificare si cont</p>
+        <p class="mt-1 text-xs text-muted">
           Aprobarea actului de identitate valideaza documentul incarcat. Daca emailul este deja verificat, utilizatorul poate deveni activ imediat.
         </p>
 
@@ -262,19 +262,19 @@ onBeforeUnmount(() => {
 
     <div class="grid gap-6 xl:grid-cols-2">
       <Panel id="user-transactions" no-hover>
-        <h2 class="text-lg font-semibold text-white">Tranzactii recente</h2>
+        <h2 class="text-lg font-semibold text-fg">Tranzactii recente</h2>
 
         <div class="mt-4 space-y-3">
           <div
             v-for="transaction in transactionsQuery.data.value?.content ?? []"
             :key="transaction.id"
-            class="rounded-xl border border-white/10 bg-black/40 p-3"
+            class="rounded-xl border border-line bg-surface p-3"
           >
             <div class="flex items-center justify-between gap-3">
               <StatusBadge :status="transaction.transactionType" />
-              <span class="text-sm font-semibold text-white">{{ formatMoney(transaction.amount) }}</span>
+              <span class="text-sm font-semibold text-fg">{{ formatMoney(transaction.amount) }}</span>
             </div>
-            <p class="mt-2 text-xs text-gray-400">{{ formatDateShort(transaction.createdAt) }}</p>
+            <p class="mt-2 text-xs text-muted">{{ formatDateShort(transaction.createdAt) }}</p>
           </div>
         </div>
 
@@ -282,19 +282,19 @@ onBeforeUnmount(() => {
       </Panel>
 
       <Panel id="user-tickets" no-hover>
-        <h2 class="text-lg font-semibold text-white">Bilete recente</h2>
+        <h2 class="text-lg font-semibold text-fg">Bilete recente</h2>
 
         <div class="mt-4 space-y-3">
           <div
             v-for="ticket in ticketsQuery.data.value?.content ?? []"
             :key="ticket.id"
-            class="rounded-xl border border-white/10 bg-black/40 p-3"
+            class="rounded-xl border border-line bg-surface p-3"
           >
             <div class="flex items-center justify-between gap-3">
               <StatusBadge :status="ticket.status" />
-              <span class="text-sm font-semibold text-white">{{ formatMoney(ticket.potentialPayout) }}</span>
+              <span class="text-sm font-semibold text-fg">{{ formatMoney(ticket.potentialPayout) }}</span>
             </div>
-            <p class="mt-2 text-xs text-gray-400">{{ formatDateShort(ticket.createdAt) }}</p>
+            <p class="mt-2 text-xs text-muted">{{ formatDateShort(ticket.createdAt) }}</p>
           </div>
         </div>
 

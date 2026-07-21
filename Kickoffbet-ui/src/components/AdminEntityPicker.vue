@@ -59,14 +59,14 @@ function toggleSelection(id: string) {
   <div data-list-top class="space-y-3">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h3 class="text-sm font-semibold text-white">{{ title }}</h3>
-        <p class="text-xs text-gray-400">
+        <h3 class="text-sm font-semibold text-fg">{{ title }}</h3>
+        <p class="text-xs text-muted">
           {{ multiple ? `${Array.isArray(modelValue) ? modelValue.length : 0} selectate` : 'Alege un element din lista' }}
         </p>
       </div>
     </div>
 
-    <div v-if="loading" class="rounded-xl border border-white/10 bg-black/30 px-4 py-8 text-center text-sm text-gray-400">
+    <div v-if="loading" class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-muted">
       Se incarca lista...
     </div>
 
@@ -77,14 +77,14 @@ function toggleSelection(id: string) {
           :key="item.id"
           type="button"
           class="flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors"
-          :class="isSelected(item.id) ? 'border-blue-500/40 bg-blue-500/10' : 'border-white/10 bg-black/30 hover:border-blue-600'"
+          :class="isSelected(item.id) ? 'border-blue-500/40 bg-blue-500/10' : 'border-line bg-surface hover:border-blue-600'"
           @click="toggleSelection(item.id)"
         >
           <div class="flex min-w-0 items-center gap-3">
             <LogoFrame v-if="item.imageUrl" :src="item.imageUrl" size="sm" />
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-white">{{ item.label }}</p>
-              <p v-if="item.subtitle" class="truncate text-xs text-gray-400">{{ item.subtitle }}</p>
+              <p class="truncate text-sm font-semibold text-fg">{{ item.label }}</p>
+              <p v-if="item.subtitle" class="truncate text-xs text-muted">{{ item.subtitle }}</p>
             </div>
           </div>
 
@@ -92,13 +92,13 @@ function toggleSelection(id: string) {
             <span
               v-if="typeof item.active === 'boolean'"
               class="rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-              :class="item.active ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-white/10 bg-white/5 text-gray-400'"
+              :class="item.active ? 'border-green-500/30 bg-green-500/10 text-green-500' : 'border-line bg-surface text-muted'"
             >
               {{ translateActiveLabel(item.active) }}
             </span>
             <span
               class="flex h-5 w-5 items-center justify-center rounded-full border text-[10px]"
-              :class="isSelected(item.id) ? 'border-blue-500 bg-blue-500 text-white' : 'border-white/15 text-gray-500'"
+              :class="isSelected(item.id) ? 'border-blue-500 bg-blue-500 text-white' : 'border-line text-subtle'"
             >
               {{ isSelected(item.id) ? 'OK' : '+' }}
             </span>

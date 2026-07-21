@@ -11,7 +11,7 @@ defineEmits<{
 </script>
 
 <template>
-  <label class="block text-sm text-gray-300">
+  <label class="block text-sm text-muted">
     <span class="mb-1 block">{{ label ?? 'Sorteaza dupa' }}</span>
     <select
       :value="modelValue ?? ''"

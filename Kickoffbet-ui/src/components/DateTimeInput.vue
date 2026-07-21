@@ -14,7 +14,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
 
 <template>
   <div class="flex flex-col gap-1">
-    <label v-if="label" class="text-sm font-medium text-gray-300">
+    <label v-if="label" class="text-sm font-medium text-muted">
       {{ label }}<span v-if="required" class="ml-1 text-red-400">*</span>
     </label>
     <DateChoiceInput

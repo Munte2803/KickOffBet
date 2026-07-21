@@ -191,8 +191,8 @@ watch(assembledValue, (value) => {
 })
 
 const selectClass = computed(() => [
-  'app-select w-full min-w-0 rounded-lg border bg-black/50 px-2 py-1.75 pr-5 text-[12px] font-medium text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-2 sm:pr-7 sm:text-sm',
-  props.invalid ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-blue-500',
+  'app-select w-full min-w-0 rounded-lg border bg-surface-2 px-2 py-1.75 pr-5 text-[12px] font-medium text-fg focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-2 sm:pr-7 sm:text-sm',
+  props.invalid ? 'border-red-500 focus:border-red-400' : 'border-line focus:border-blue-500',
 ])
 </script>
 

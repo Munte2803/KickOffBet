@@ -305,7 +305,7 @@ function resetSearchFilters() {
     <PageHeader title="Administrare - tranzactii" subtitle="Gestionarea tranzactiilor din sistem." />
 
     <Panel id="transaction-pending" no-hover>
-      <h2 class="text-lg font-semibold text-white">Aprobari in asteptare</h2>
+      <h2 class="text-lg font-semibold text-fg">Aprobari in asteptare</h2>
 
       <Transition name="page-fade" mode="out-in" appear>
         <div
@@ -336,12 +336,12 @@ function resetSearchFilters() {
     </Panel>
 
     <Panel id="transaction-trend" no-hover>
-      <h2 class="text-lg font-semibold text-white">Evolutie in timp</h2>
+      <h2 class="text-lg font-semibold text-fg">Evolutie in timp</h2>
 
       <div class="mt-4 grid items-end gap-3 md:grid-cols-4">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
         <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Tip</span>
           <select v-model="chartType" class="app-select-field app-select">
             <option value="DEPOSIT">{{ translateEnumLabel('DEPOSIT') }}</option>
@@ -351,7 +351,7 @@ function resetSearchFilters() {
             <option value="REFUND">{{ translateEnumLabel('REFUND') }}</option>
           </select>
         </label>
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Metrica</span>
           <select v-model="chartMetric" class="app-select-field app-select">
             <option value="totalAmount">Suma totala</option>
@@ -387,7 +387,7 @@ function resetSearchFilters() {
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div class="space-y-6">
         <Panel id="transaction-report" no-hover>
-          <h2 class="text-lg font-semibold text-white">Raport</h2>
+          <h2 class="text-lg font-semibold text-fg">Raport</h2>
 
           <div class="mt-4 grid gap-3 md:grid-cols-2">
             <FormInput v-model="reportStart" label="Data inceput" type="datetime-local" />
@@ -411,16 +411,16 @@ function resetSearchFilters() {
             <div
               v-for="user in topDepositors"
               :key="user.userId"
-              class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-3 sm:px-4 py-3 text-xs sm:text-sm"
+              class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 sm:px-4 py-3 text-xs sm:text-sm"
             >
-              <span class="min-w-0 truncate text-gray-300">{{ user.firstName }} {{ user.lastName }}</span>
-              <span class="shrink-0 font-semibold text-white">{{ formatMoney(user.totalDeposited) }}</span>
+              <span class="min-w-0 truncate text-muted">{{ user.firstName }} {{ user.lastName }}</span>
+              <span class="shrink-0 font-semibold text-fg">{{ formatMoney(user.totalDeposited) }}</span>
             </div>
           </div>
         </Panel>
 
         <Panel id="transaction-user-summary" no-hover>
-          <h2 class="text-lg font-semibold text-white">Sumar utilizator</h2>
+          <h2 class="text-lg font-semibold text-fg">Sumar utilizator</h2>
 
           <div class="mt-4 grid gap-3 md:grid-cols-2">
             <AdminUserSearchPicker
@@ -449,7 +449,7 @@ function resetSearchFilters() {
       </div>
 
       <Panel id="transaction-user-history" no-hover>
-        <h2 class="text-lg font-semibold text-white">Tranzactiile utilizatorului</h2>
+        <h2 class="text-lg font-semibold text-fg">Tranzactiile utilizatorului</h2>
 
         <div class="mt-4 space-y-3">
           <AdminUserSearchPicker
@@ -495,7 +495,7 @@ function resetSearchFilters() {
 
     <Panel id="transaction-search" no-hover>
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-white">Cautare completa</h2>
+        <h2 class="text-lg font-semibold text-fg">Cautare completa</h2>
         <ExportButton
           v-if="hasSearched"
           :fetch-all="fetchAllTransactionsForExport"
@@ -521,7 +521,7 @@ function resetSearchFilters() {
       <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
         <FormInput v-model="minAmount" label="Suma minima" type="number" min="0" step="0.01" />
 
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Tip</span>
           <select v-model="transactionType" class="app-select-field app-select">
             <option value="">Toate</option>
@@ -533,7 +533,7 @@ function resetSearchFilters() {
           </select>
         </label>
 
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Stare</span>
           <select v-model="transactionStatus" class="app-select-field app-select">
             <option value="">Toate</option>

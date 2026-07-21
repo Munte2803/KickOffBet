@@ -1,8 +1,8 @@
 <template>
   <div class="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-    <p class="text-sm uppercase tracking-[0.3em] text-gray-500">404</p>
-    <h1 class="text-3xl font-black text-white">Pagina nu a fost gasita</h1>
-    <p class="max-w-md text-sm text-gray-400">
+    <p class="text-sm uppercase tracking-[0.3em] text-subtle">404</p>
+    <h1 class="text-3xl font-black text-fg">Pagina nu a fost gasita</h1>
+    <p class="max-w-md text-sm text-muted">
       Ruta ceruta nu exista sau nu mai este disponibila.
     </p>
     <RouterLink

@@ -230,23 +230,23 @@ async function switchOfferActive(offerId: string, active: boolean) {
 
     <section id="match-overview" class="grid gap-4 md:grid-cols-3">
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Status curent</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Status curent</p>
         <div class="mt-3">
           <StatusBadge :status="match.status" />
         </div>
-        <p class="mt-3 text-sm text-gray-400">Start programat: {{ formatDateShort(match.startTime) }}</p>
+        <p class="mt-3 text-sm text-muted">Start programat: {{ formatDateShort(match.startTime) }}</p>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Vizibilitate</p>
-        <p class="mt-2 text-2xl font-bold text-white">{{ match.active ? 'Activ' : 'Inactiv' }}</p>
-        <p class="mt-1 text-sm text-gray-400">Controleaza rapid daca meciul poate fi vazut si jucat.</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Vizibilitate</p>
+        <p class="mt-2 text-2xl font-bold text-fg">{{ match.active ? 'Activ' : 'Inactiv' }}</p>
+        <p class="mt-1 text-sm text-muted">Controleaza rapid daca meciul poate fi vazut si jucat.</p>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Scor final</p>
-        <p class="mt-2 text-2xl font-bold text-white">{{ match.ftHome ?? '-' }} - {{ match.ftAway ?? '-' }}</p>
-        <p class="mt-1 text-sm text-gray-400">Actualizeaza scorul doar din zona de status a meciului.</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Scor final</p>
+        <p class="mt-2 text-2xl font-bold text-fg">{{ match.ftHome ?? '-' }} - {{ match.ftAway ?? '-' }}</p>
+        <p class="mt-1 text-sm text-muted">Actualizeaza scorul doar din zona de status a meciului.</p>
       </Panel>
     </section>
 
@@ -283,7 +283,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
       <Panel id="match-status" no-hover>
         <SectionHeader title="Stare meci" />
         <div class="space-y-3">
-          <label class="text-sm text-gray-300">
+          <label class="text-sm text-muted">
             <span class="mb-1 block">Status</span>
             <select v-model="status" class="app-select-field app-select">
               <option v-for="option in statusOptions" :key="option" :value="option">{{ translateEnumLabel(option) }}</option>
@@ -291,14 +291,14 @@ async function switchOfferActive(offerId: string, active: boolean) {
           </label>
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="text-sm text-gray-300">
+            <label class="text-sm text-muted">
                 <span class="mb-1 block">Scor gazde</span>
-              <input v-model.number="ftHome" type="number" min="0" step="1" class="w-full rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-white" />
+              <input v-model.number="ftHome" type="number" min="0" step="1" class="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-fg" />
             </label>
 
-            <label class="text-sm text-gray-300">
+            <label class="text-sm text-muted">
                 <span class="mb-1 block">Scor oaspeti</span>
-              <input v-model.number="ftAway" type="number" min="0" step="1" class="w-full rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-white" />
+              <input v-model.number="ftAway" type="number" min="0" step="1" class="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-fg" />
             </label>
           </div>
 
@@ -322,7 +322,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
           v-for="offer in offers"
           :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}`"
           class="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
-          :class="offer.active === false ? 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10' : 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'"
+          :class="offer.active === false ? 'border-line bg-surface text-muted hover:bg-surface-2' : 'border-blue-500/20 bg-blue-500/10 text-blue-500 hover:bg-blue-500/15'"
           @click="offer.id && switchOfferActive(offer.id, !(offer.active ?? true))"
         >
           <p class="font-semibold">{{ translateEnumLabel(offer.marketType) }} - {{ translateEnumLabel(offer.option) }}</p>

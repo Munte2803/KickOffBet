@@ -63,11 +63,11 @@ async function handleDeactivate() {
     <Panel no-hover>
       <SectionHeader title="Sesiune" />
 
-      <div class="mt-4 rounded-xl border border-white/10 bg-black/40 p-4">
+      <div class="mt-4 rounded-xl border border-line bg-surface p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-bold text-white">Iesire din cont</h3>
-            <p class="mt-1 text-xs text-gray-400">Inchide sesiunea curenta pe acest dispozitiv.</p>
+            <h3 class="text-sm font-bold text-fg">Iesire din cont</h3>
+            <p class="mt-1 text-xs text-muted">Inchide sesiunea curenta pe acest dispozitiv.</p>
           </div>
           <AppButton variant="outline" @click="handleLogout">Iesire</AppButton>
         </div>
@@ -80,8 +80,8 @@ async function handleDeactivate() {
       <div class="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-bold text-white">Dezactiveaza contul</h3>
-            <p class="mt-1 text-xs text-gray-400">Aceasta actiune iti blocheaza accesul pana la reactivare.</p>
+            <h3 class="text-sm font-bold text-fg">Dezactiveaza contul</h3>
+            <p class="mt-1 text-xs text-muted">Aceasta actiune iti blocheaza accesul pana la reactivare.</p>
           </div>
           <AppButton variant="danger" @click="handleDeactivate">Dezactiveaza contul</AppButton>
         </div>

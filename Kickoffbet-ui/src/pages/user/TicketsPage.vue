@@ -52,19 +52,19 @@ watch([status, () => pagination.page.value], () => {
             v-for="ticket in ticketsQuery.data.value?.content ?? []"
             :key="ticket.id"
             :to="{ name: 'ticket-detail', params: { id: ticket.id } }"
-            class="block rounded-xl border border-white/10 bg-black/40 p-3 transition-colors hover:border-blue-600 sm:p-4"
+            class="block rounded-xl border border-line bg-surface p-3 transition-colors hover:border-blue-600 sm:p-4"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">
                 <StatusBadge :status="ticket.status" />
-                <span class="text-xs text-gray-400">{{ formatDateShort(ticket.createdAt) }}</span>
+                <span class="text-xs text-muted">{{ formatDateShort(ticket.createdAt) }}</span>
               </div>
               <div class="text-right">
-                <p class="text-sm font-semibold text-white">{{ formatMoney(ticket.potentialPayout) }}</p>
-                <p class="text-xs text-gray-400">cota {{ ticket.totalOdd.toFixed(2) }}</p>
+                <p class="text-sm font-semibold text-fg">{{ formatMoney(ticket.potentialPayout) }}</p>
+                <p class="text-xs text-muted">cota {{ ticket.totalOdd.toFixed(2) }}</p>
               </div>
             </div>
-            <p class="mt-3 text-sm text-gray-300">{{ ticket.selections.length }} selectii</p>
+            <p class="mt-3 text-sm text-muted">{{ ticket.selections.length }} selectii</p>
           </RouterLink>
         </div>
       </Transition>

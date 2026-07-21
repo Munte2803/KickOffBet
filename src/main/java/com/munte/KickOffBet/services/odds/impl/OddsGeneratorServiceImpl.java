@@ -39,6 +39,9 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     @Value("${betting.poisson.max-goals:8}")
     private int maxGoals;
 
+    @Value("${betting.dixon-coles.rho:-0.13}")
+    private double dixonColesRho;
+
     @Value("${betting.lines.over-under:1.5,2.5,3.5}")
     private double[] overUnderLines;
 
@@ -147,7 +150,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private void generateAndApplyOdds(final Match match, final TeamMatchMetrics h, final TeamMatchMetrics a) {
         final double lH = calibrator.calculateLambdaHome(h, a);
         final double lA = calibrator.calculateLambdaAway(h, a);
-        final PoissonMatrix pm = new PoissonMatrix(lH, lA, maxGoals);
+        final PoissonMatrix pm = new PoissonMatrix(lH, lA, maxGoals, dixonColesRho);
 
         final double rawP1 = marketProcessor.calculateWinHome(pm);
         final double rawPX = calibrator.calibrateDraw(marketProcessor.calculateDraw(pm), h, a);

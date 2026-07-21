@@ -182,7 +182,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <PageHeader title="Administrare - utilizatori" subtitle="Filtre complete pentru utilizatori si creare directa de administratori." />
 
     <Panel id="user-trend" no-hover>
-      <h2 class="text-lg font-semibold text-white">Utilizatori noi pe zi</h2>
+      <h2 class="text-lg font-semibold text-fg">Utilizatori noi pe zi</h2>
 
       <div class="mt-4 grid items-end gap-3 md:grid-cols-2">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
@@ -214,8 +214,8 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     </Panel>
 
     <Panel id="create-admin" no-hover>
-      <h2 class="text-lg font-semibold text-white">Creeaza administrator</h2>
-      <p class="mt-1 text-sm text-gray-400">Completeaza formularul de mai jos pentru a crea un nou administrator.</p>
+      <h2 class="text-lg font-semibold text-fg">Creeaza administrator</h2>
+      <p class="mt-1 text-sm text-muted">Completeaza formularul de mai jos pentru a crea un nou administrator.</p>
 
       <form class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="submitCreateAdmin">
         <FormInput v-model="firstName" label="Prenume" :error="adminForm.errors.value.firstName" />
@@ -234,8 +234,8 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <Panel id="user-search" no-hover>
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-white">Cauta dupa email</h2>
-          <p class="text-sm text-gray-400">Gaseste rapid un utilizator dupa email, cu sugestii live.</p>
+          <h2 class="text-lg font-semibold text-fg">Cauta dupa email</h2>
+          <p class="text-sm text-muted">Gaseste rapid un utilizator dupa email, cu sugestii live.</p>
         </div>
       </div>
 
@@ -256,12 +256,12 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
       <div v-if="selectedSearchUser" class="mt-4 space-y-3">
         <RouterLink
           :to="{ name: 'admin-user-detail', params: { id: selectedSearchUser.id } }"
-          class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-600"
+          class="block rounded-xl border border-line bg-surface p-4 transition-colors hover:border-blue-600"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold text-white">{{ selectedSearchUser.firstName }} {{ selectedSearchUser.lastName }}</p>
-              <p class="mt-1 text-xs text-gray-400">{{ selectedSearchUser.email }} - {{ formatDateShort(selectedSearchUser.createdAt) }}</p>
+              <p class="text-sm font-semibold text-fg">{{ selectedSearchUser.firstName }} {{ selectedSearchUser.lastName }}</p>
+              <p class="mt-1 text-xs text-muted">{{ selectedSearchUser.email }} - {{ formatDateShort(selectedSearchUser.createdAt) }}</p>
             </div>
             <StatusBadge :status="selectedSearchUser.status" />
           </div>
@@ -272,8 +272,8 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <Panel id="user-filters" no-hover>
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-white">Lista si filtre</h2>
-          <p class="text-sm text-gray-400">Filtreaza utilizatorii dupa stare sau sorteaza rezultatele.</p>
+          <h2 class="text-lg font-semibold text-fg">Lista si filtre</h2>
+          <p class="text-sm text-muted">Filtreaza utilizatorii dupa stare sau sorteaza rezultatele.</p>
         </div>
         <ExportButton
           v-if="listTriggered"
@@ -287,7 +287,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
 
       <div class="mt-4 grid gap-3 md:grid-cols-2">
 
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Stare</span>
           <select v-model="status" class="app-select-field app-select">
             <option value="ALL">Toate</option>
@@ -314,12 +314,12 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             v-for="user in listedUsersQuery.data.value?.content ?? []"
             :key="user.id"
             :to="{ name: 'admin-user-detail', params: { id: user.id } }"
-            class="block rounded-xl border border-white/10 bg-black/40 p-4 transition-colors hover:border-blue-600"
+            class="block rounded-xl border border-line bg-surface p-4 transition-colors hover:border-blue-600"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p class="text-sm font-semibold text-white">{{ user.firstName }} {{ user.lastName }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
+                <p class="text-sm font-semibold text-fg">{{ user.firstName }} {{ user.lastName }}</p>
+                <p class="mt-1 text-xs text-muted">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
               </div>
               <StatusBadge :status="user.status" />
             </div>

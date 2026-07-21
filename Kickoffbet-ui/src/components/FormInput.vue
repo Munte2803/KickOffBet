@@ -21,7 +21,7 @@ const isDateLikeInput = computed(() =>
 
 <template>
   <div class="flex flex-col gap-1">
-    <label v-if="label" class="text-[11px] font-medium text-gray-300 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-sm">
+    <label v-if="label" class="text-[11px] font-medium text-muted max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-sm">
       {{ label }}<span v-if="required" class="text-red-400 ml-1">*</span>
     </label>
     <div v-if="isDateLikeInput">
@@ -43,10 +43,10 @@ const isDateLikeInput = computed(() =>
         :disabled="disabled"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         :class="[
-          'w-full rounded-lg border bg-black/50 px-2.5 py-2 text-[12px] text-white transition-colors focus:outline-none sm:px-3 sm:py-2.5 sm:text-sm',
+          'w-full rounded-lg border bg-surface-2 px-2.5 py-2 text-[12px] text-fg transition-colors focus:outline-none sm:px-3 sm:py-2.5 sm:text-sm',
           'max-[390px]:px-2 max-[390px]:py-1.75 max-[390px]:text-[11px] max-[360px]:px-1.75 max-[360px]:py-1.5 max-[360px]:text-[10px]',
-          'placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed',
-          error ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-blue-500',
+          'placeholder:text-subtle disabled:opacity-50 disabled:cursor-not-allowed',
+          error ? 'border-red-500 focus:border-red-400' : 'border-line focus:border-blue-500',
         ]"
       />
     </div>

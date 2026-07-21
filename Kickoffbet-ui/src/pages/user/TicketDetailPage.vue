@@ -72,14 +72,14 @@ async function handleCancel() {
         <div>
           <div class="flex flex-wrap items-center gap-2">
             <StatusBadge :status="ticketQuery.data.value.status" />
-            <span class="text-sm text-gray-400">{{ formatDateShort(ticketQuery.data.value.createdAt) }}</span>
+            <span class="text-sm text-muted">{{ formatDateShort(ticketQuery.data.value.createdAt) }}</span>
           </div>
-          <p class="mt-2 font-mono text-xs text-gray-500">ID bilet: {{ ticketQuery.data.value.id }}</p>
+          <p class="mt-2 font-mono text-xs text-subtle">ID bilet: {{ ticketQuery.data.value.id }}</p>
         </div>
 
         <div class="text-right">
-          <p class="text-sm text-gray-400">Castig potential</p>
-          <p class="text-xl font-black text-white">{{ formatMoney(ticketQuery.data.value.potentialPayout) }}</p>
+          <p class="text-sm text-muted">Castig potential</p>
+          <p class="text-xl font-black text-fg">{{ formatMoney(ticketQuery.data.value.potentialPayout) }}</p>
         </div>
       </div>
 
@@ -87,17 +87,17 @@ async function handleCancel() {
         <div
           v-for="selection in ticketQuery.data.value.selections"
           :key="selection.id"
-          class="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-3"
+          class="rounded-xl border border-line bg-surface p-2.5 sm:p-3"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <RouterLink
                 :to="{ name: 'match-detail', params: { id: selection.matchId } }"
-                class="text-sm font-semibold text-white transition hover:text-amber-300"
+                class="text-sm font-semibold text-fg transition hover:text-amber-500"
               >
                 {{ selection.homeTeamName }} vs {{ selection.awayTeamName }}
               </RouterLink>
-              <p class="mt-1 text-xs text-gray-400">
+              <p class="mt-1 text-xs text-muted">
               {{ translateEnumLabel(selection.marketType) }} ·
                 {{ formatBetLabel(selection.selectedOption, selection.marketType, selection.line) }}
               </p>

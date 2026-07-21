@@ -130,12 +130,12 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <PageHeader title="Administrare - bilete" subtitle="Lista dupa status si istoric pe utilizator ales dupa email." />
 
     <Panel id="ticket-trend" no-hover>
-      <h2 class="text-lg font-semibold text-white">Evolutie in timp</h2>
+      <h2 class="text-lg font-semibold text-fg">Evolutie in timp</h2>
 
       <div class="mt-4 grid items-end gap-3 md:grid-cols-4">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
         <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="chartStatus" class="app-select-field app-select">
             <option value="">Toate</option>
@@ -145,7 +145,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             <option value="CANCELLED">{{ translateEnumLabel('CANCELLED') }}</option>
           </select>
         </label>
-        <label class="text-sm text-gray-300">
+        <label class="text-sm text-muted">
           <span class="mb-1 block">Metrica</span>
           <select v-model="chartMetric" class="app-select-field app-select">
             <option value="count">Numar bilete</option>
@@ -180,7 +180,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
 
     <Panel id="ticket-status" no-hover>
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold text-white">Lista dupa status</h2>
+        <h2 class="text-lg font-semibold text-fg">Lista dupa status</h2>
         <ExportButton
           :fetch-all="fetchAllTicketsForExport"
           :columns="exportColumns"
@@ -192,7 +192,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
 
       <div class="mt-4 max-w-xs">
         <div class="grid gap-3">
-          <label class="text-sm text-gray-300">
+          <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
               <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
@@ -210,23 +210,23 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
         <div
           v-for="ticket in ticketsQuery.data.value?.content ?? []"
           :key="ticket.id"
-          class="rounded-xl border border-white/10 bg-black/40 p-4"
+          class="rounded-xl border border-line bg-surface p-4"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
               <StatusBadge :status="ticket.status" />
-              <span class="text-xs text-gray-400">{{ formatDateShort(ticket.createdAt) }}</span>
+              <span class="text-xs text-muted">{{ formatDateShort(ticket.createdAt) }}</span>
             </div>
             <div class="text-right">
-              <p class="text-sm font-semibold text-white">{{ formatMoney(ticket.potentialPayout) }}</p>
-              <p class="text-xs text-gray-400">miza {{ formatMoney(ticket.stake) }} - {{ ticket.selections.length }} selectie(i)</p>
+              <p class="text-sm font-semibold text-fg">{{ formatMoney(ticket.potentialPayout) }}</p>
+              <p class="text-xs text-muted">miza {{ formatMoney(ticket.stake) }} - {{ ticket.selections.length }} selectie(i)</p>
             </div>
           </div>
 
           <div class="mt-3 flex justify-start">
             <RouterLink
               :to="{ name: 'admin-ticket-detail', params: { id: ticket.id } }"
-              class="text-xs font-semibold text-blue-300 transition-colors hover:text-blue-300"
+              class="text-xs font-semibold text-blue-500 transition-colors hover:text-blue-500"
               @click.stop
             >
               Deschide detaliul complet
@@ -248,7 +248,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     </Panel>
 
     <Panel id="ticket-user-history" no-hover>
-        <h2 class="text-lg font-semibold text-white">Bilete dupa utilizator</h2>
+        <h2 class="text-lg font-semibold text-fg">Bilete dupa utilizator</h2>
 
         <div class="mt-4 space-y-3">
           <AdminUserSearchPicker
@@ -269,17 +269,17 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             <div
               v-for="ticket in userTicketsQuery.data.value?.content ?? []"
               :key="ticket.id"
-              class="rounded-xl border border-white/10 bg-black/40 p-4"
+              class="rounded-xl border border-line bg-surface p-4"
             >
               <div class="flex items-center justify-between gap-3">
                 <StatusBadge :status="ticket.status" />
-                <span class="text-sm font-semibold text-white">{{ formatMoney(ticket.potentialPayout) }}</span>
+                <span class="text-sm font-semibold text-fg">{{ formatMoney(ticket.potentialPayout) }}</span>
               </div>
-              <p class="mt-2 text-xs text-gray-400">{{ formatDateShort(ticket.createdAt) }}</p>
+              <p class="mt-2 text-xs text-muted">{{ formatDateShort(ticket.createdAt) }}</p>
               <div class="mt-3 flex justify-start">
                 <RouterLink
                   :to="{ name: 'admin-ticket-detail', params: { id: ticket.id } }"
-                  class="text-xs font-semibold text-blue-300 transition-colors hover:text-blue-300"
+                  class="text-xs font-semibold text-blue-500 transition-colors hover:text-blue-500"
                   @click.stop
                 >
                   Deschide detaliul complet

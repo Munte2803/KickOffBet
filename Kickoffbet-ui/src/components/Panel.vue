@@ -13,8 +13,8 @@ const props = defineProps<{
   <div
     v-bind="$attrs"
     :class="[
-      'rounded-xl bg-white/5 p-2.5 sm:p-4 transition-all duration-300',
-      props.noHover ? 'border border-white/10' : 'border border-transparent hover:border-blue-600',
+      'rounded-xl bg-surface p-2.5 sm:p-4 transition-all duration-300',
+      props.noHover ? 'border border-line' : 'border border-transparent hover:border-blue-600',
       props.class,
     ]"
   >

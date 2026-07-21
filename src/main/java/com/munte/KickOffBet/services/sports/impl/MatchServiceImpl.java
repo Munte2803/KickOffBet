@@ -269,7 +269,7 @@ public class MatchServiceImpl implements MatchService {
     public List<Match> getStuckMatches() {
         MatchSearchRequest request = new MatchSearchRequest();
         request.setActive(true);
-        request.setStartTimeTo(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(130));
+        request.setStartTimeTo(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(150));
         request.setStatus(LIVE);
         return matchRepository.findAll(MatchSpecifications.withCriteria(request));
     }

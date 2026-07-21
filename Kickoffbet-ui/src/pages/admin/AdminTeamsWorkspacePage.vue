@@ -116,7 +116,7 @@ const submitCreate = createForm.handleSubmit(async (values) => {
     <PageHeader title="Administrare - echipe" subtitle="Creeaza o noua echipa, sau selecteaza o echipa existenta" />
 
     <Panel id="team-create" no-hover>
-      <h2 class="text-lg font-semibold text-white">Creeaza echipa</h2>
+      <h2 class="text-lg font-semibold text-fg">Creeaza echipa</h2>
 
       <form class="mt-4 space-y-4" @submit.prevent="submitCreate">
         <FormInput v-model="createName" label="Nume" :error="createForm.errors.value.name" />
@@ -150,11 +150,11 @@ const submitCreate = createForm.handleSubmit(async (values) => {
     <Panel id="team-list" no-hover>
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-white">Toate echipele</h2>
-          <p class="text-sm text-gray-400">Deschide pagina unei echipe pentru editare, asocierea ligilor sau schimbarea starii.</p>
+          <h2 class="text-lg font-semibold text-fg">Toate echipele</h2>
+          <p class="text-sm text-muted">Deschide pagina unei echipe pentru editare, asocierea ligilor sau schimbarea starii.</p>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-400">{{ teamsQuery.data.value?.totalElements ?? 0 }} echipe</span>
+          <span class="text-sm text-muted">{{ teamsQuery.data.value?.totalElements ?? 0 }} echipe</span>
           <div class="w-48">
             <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
           </div>
@@ -178,13 +178,13 @@ const submitCreate = createForm.handleSubmit(async (values) => {
             v-for="team in teamsQuery.data.value?.content ?? []"
             :key="team.id"
             :to="{ name: 'admin-team-detail', params: { id: team.id } }"
-            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:border-blue-600"
+            class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-blue-600"
           >
             <div class="flex min-w-0 items-center gap-3">
               <LogoFrame v-if="team.crestUrl" :src="team.crestUrl" size="md" />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-white">{{ team.name }}</p>
-                <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ team.tla }}</p>
+                <p class="truncate text-sm font-semibold text-fg">{{ team.name }}</p>
+                <p class="text-xs uppercase tracking-[0.2em] text-subtle">{{ team.tla }}</p>
               </div>
             </div>
             <StatusBadge :status="team.active ? 'ACTIVE' : 'DEACTIVATED'" />

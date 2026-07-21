@@ -36,8 +36,8 @@ const onSubmit = handleSubmit(async (values) => {
 <template>
   <div class="mx-auto max-w-md py-12">
     <Panel class="p-8 pt-6">
-      <h1 class="text-3xl font-black text-white">Reseteaza parola</h1>
-      <p class="mt-2 text-sm text-gray-400">Introdu emailul si iti trimitem linkul de resetare.</p>
+      <h1 class="text-3xl font-black text-fg">Reseteaza parola</h1>
+      <p class="mt-2 text-sm text-muted">Introdu emailul si iti trimitem linkul de resetare.</p>
 
       <form class="mt-6 space-y-4" @submit.prevent="onSubmit">
         <FormInput v-model="email" label="Email" type="email" required :error="errors.email" />

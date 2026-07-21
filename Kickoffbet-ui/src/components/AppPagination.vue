@@ -58,24 +58,24 @@ const visibleItems = computed(() => {
 
 <template>
   <div ref="rootEl" v-if="totalPages > 1 || (totalElements ?? 0) > 0" class="mt-6 flex flex-col items-center gap-2">
-    <div v-if="totalPages > 1" class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-white/10 bg-white/5 px-1 py-1 sm:gap-1 sm:px-2 sm:py-2">
+    <div v-if="totalPages > 1" class="inline-flex max-w-full items-center gap-0.5 rounded-full border border-line bg-surface px-1 py-1 sm:gap-1 sm:px-2 sm:py-2">
       <button
         type="button"
         :disabled="page === 0"
-        class="rounded-full px-2 py-1.25 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
+        class="rounded-full px-2 py-1.25 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
         @click="changePage(page - 1)"
       >
         Prev
       </button>
 
       <template v-for="item in visibleItems" :key="String(item)">
-        <span v-if="typeof item !== 'number'" class="px-0.5 text-[11px] text-gray-500 sm:text-sm">...</span>
+        <span v-if="typeof item !== 'number'" class="px-0.5 text-[11px] text-subtle sm:text-sm">...</span>
         <button
           v-else
           type="button"
           :class="[
             'min-w-7 rounded-full px-2 py-1.25 text-[11px] transition-colors sm:min-w-9 sm:px-3 sm:py-1.5 sm:text-sm',
-            item === page ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white',
+            item === page ? 'bg-blue-600 text-white' : 'text-muted hover:bg-surface-2 hover:text-fg',
           ]"
           @click="changePage(item)"
         >
@@ -86,13 +86,13 @@ const visibleItems = computed(() => {
       <button
         type="button"
         :disabled="page >= totalPages - 1"
-        class="rounded-full px-2 py-1.25 text-[11px] text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
+        class="rounded-full px-2 py-1.25 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5 sm:text-sm"
         @click="changePage(page + 1)"
       >
         Next
       </button>
     </div>
-    <p v-if="totalElements != null" class="text-[11px] text-gray-400 sm:text-xs">
+    <p v-if="totalElements != null" class="text-[11px] text-muted sm:text-xs">
       {{ totalElements.toLocaleString() }} {{ totalElements === 1 ? 'rezultat' : 'rezultate' }}
     </p>
   </div>

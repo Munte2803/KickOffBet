@@ -146,27 +146,27 @@ async function switchLeague(active: boolean) {
 
     <section id="league-overview" class="grid gap-4 md:grid-cols-3">
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Stare</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Stare</p>
         <div class="mt-3">
           <StatusBadge :status="leagueQuery.data.value.active ? 'ACTIVE' : 'DEACTIVATED'" />
         </div>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Cod</p>
-        <p class="mt-2 text-2xl font-bold text-white">{{ leagueQuery.data.value.code }}</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Cod</p>
+        <p class="mt-2 text-2xl font-bold text-fg">{{ leagueQuery.data.value.code }}</p>
       </Panel>
 
       <Panel no-hover>
-        <p class="text-xs uppercase tracking-[0.24em] text-gray-500">Echipe</p>
-        <p class="mt-2 text-2xl font-bold text-white">{{ leagueQuery.data.value.teams.length }}</p>
+        <p class="text-xs uppercase tracking-[0.24em] text-subtle">Echipe</p>
+        <p class="mt-2 text-2xl font-bold text-fg">{{ leagueQuery.data.value.teams.length }}</p>
       </Panel>
     </section>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
       <Panel id="league-edit" no-hover>
-        <h2 class="text-lg font-semibold text-white">Editare liga</h2>
-        <p class="mt-1 text-sm text-gray-400">Editeaza detaliile ligii.</p>
+        <h2 class="text-lg font-semibold text-fg">Editare liga</h2>
+        <p class="mt-1 text-sm text-muted">Editeaza detaliile ligii.</p>
 
         <form class="mt-4 space-y-4" @submit.prevent="submitEdit">
           <FormInput v-model="name" label="Nume" :error="editForm.errors.value.name" />
@@ -196,18 +196,18 @@ async function switchLeague(active: boolean) {
       </Panel>
 
       <Panel id="league-teams" no-hover>
-        <h2 class="text-lg font-semibold text-white">Echipe din liga</h2>
+        <h2 class="text-lg font-semibold text-fg">Echipe din liga</h2>
 
         <div class="mt-4 space-y-3">
           <RouterLink
             v-for="team in leagueQuery.data.value.teams"
             :key="team.id"
             :to="{ name: 'admin-team-detail', params: { id: team.id } }"
-            class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 transition-colors hover:border-blue-600"
+            class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition-colors hover:border-blue-600"
           >
             <div>
-              <p class="text-sm font-semibold text-white">{{ team.name }}</p>
-              <p class="text-xs uppercase tracking-[0.2em] text-gray-500">{{ team.tla }}</p>
+              <p class="text-sm font-semibold text-fg">{{ team.name }}</p>
+              <p class="text-xs uppercase tracking-[0.2em] text-subtle">{{ team.tla }}</p>
             </div>
             <StatusBadge :status="team.active ? 'ACTIVE' : 'DEACTIVATED'" />
           </RouterLink>

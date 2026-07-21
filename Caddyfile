@@ -1,0 +1,28 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt) for the whole app on ONE domain.
+# DOMAIN and ACME_EMAIL come from the environment (set in .env, passed by compose).
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# REST API + private file streaming (KYC id-cards go through the backend).
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# Public assets only: team & league logos, served straight from MinIO.
+	# id-cards are NOT routed here, so they never become publicly reachable.
+	@publicAssets path /storage/teams/* /storage/leagues/*
+	handle @publicAssets {
+		uri strip_prefix /storage
+		reverse_proxy minio:9000
+	}
+
+	# Everything else -> the SPA (frontend nginx handles Vue history-mode fallback).
+	handle {
+		reverse_proxy frontend:80
+	}
+}

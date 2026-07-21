@@ -4,6 +4,7 @@ import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
 import router from './router'
 import './assets/main.css'
 import App from './App.vue'
+import { useThemeStore } from './stores/theme.store'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,8 +17,11 @@ const queryClient = new QueryClient({
 
 const app = createApp(App)
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 app.use(VueQueryPlugin, { queryClient })
+
+useThemeStore(pinia).init()
 
 app.mount('#app')

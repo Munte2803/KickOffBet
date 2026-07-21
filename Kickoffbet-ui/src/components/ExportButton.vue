@@ -57,7 +57,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocClick))
       type="button"
       :disabled="loading || disabled"
       :title="error ?? 'Export'"
-      class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.75 text-[12px] font-bold text-white transition-all duration-200 hover:border-blue-600 hover:bg-white/10 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-[390px]:px-2.5 max-[390px]:py-1.5 max-[390px]:text-[11px] max-[360px]:px-2 max-[360px]:py-1.25 max-[360px]:text-[10px] sm:px-4 sm:py-2 sm:text-sm"
+      class="inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.75 text-[12px] font-bold text-fg transition-all duration-200 hover:border-blue-600 hover:bg-surface-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-[390px]:px-2.5 max-[390px]:py-1.5 max-[390px]:text-[11px] max-[360px]:px-2 max-[360px]:py-1.25 max-[360px]:text-[10px] sm:px-4 sm:py-2 sm:text-sm"
       @click="toggle"
     >
       <svg
@@ -100,18 +100,18 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocClick))
     >
       <div
         v-if="open"
-        class="absolute right-0 z-20 mt-2 min-w-36 origin-top-right overflow-hidden rounded-lg border border-slate-700/50 bg-slate-800 py-1 shadow-xl"
+        class="absolute right-0 z-20 mt-2 min-w-36 origin-top-right overflow-hidden rounded-lg border border-line/50 bg-surface py-1 shadow-xl"
       >
         <button
           type="button"
-          class="block w-full px-4 py-2.5 text-left text-sm text-gray-100 hover:bg-slate-700/70"
+          class="block w-full px-4 py-2.5 text-left text-sm text-fg hover:bg-surface-2/70"
           @click="doExport('csv')"
         >
           CSV
         </button>
         <button
           type="button"
-          class="block w-full px-4 py-2.5 text-left text-sm text-gray-100 hover:bg-slate-700/70"
+          class="block w-full px-4 py-2.5 text-left text-sm text-fg hover:bg-surface-2/70"
           @click="doExport('pdf')"
         >
           PDF

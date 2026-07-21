@@ -32,10 +32,10 @@ const colorMap: Record<string, string> = {
   REFUND: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
   BET: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
   // gray — neutral / inactive
-  CANCELLED: 'bg-gray-500/10 text-gray-500 border-gray-500/30',
-  FINISHED: 'bg-gray-500/10 text-gray-500 border-gray-500/30',
-  DEACTIVATED: 'bg-gray-500/10 text-gray-500 border-gray-500/30',
-  UNKNOWN: 'bg-gray-500/10 text-gray-500 border-gray-500/30',
+  CANCELLED: 'bg-gray-500/10 text-subtle border-gray-500/30',
+  FINISHED: 'bg-gray-500/10 text-subtle border-gray-500/30',
+  DEACTIVATED: 'bg-gray-500/10 text-subtle border-gray-500/30',
+  UNKNOWN: 'bg-gray-500/10 text-subtle border-gray-500/30',
 }
 </script>
 
@@ -43,7 +43,7 @@ const colorMap: Record<string, string> = {
   <span
     :class="[
       'inline-flex items-center rounded border px-1.25 py-0.5 text-[9px] font-semibold sm:px-2 sm:text-xs',
-      colorMap[status] ?? 'bg-gray-500/10 text-gray-500 border-gray-500/30',
+      colorMap[status] ?? 'bg-gray-500/10 text-subtle border-gray-500/30',
     ]"
   >
     {{ translateEnumLabel(status) }}

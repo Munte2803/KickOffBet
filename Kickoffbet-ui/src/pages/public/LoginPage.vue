@@ -62,9 +62,9 @@ const onSubmit = handleSubmit(async (values) => {
   <div class="mx-auto mt-8 max-w-md">
     <Panel class="p-8">
       <div class="mb-6">
-        <p class="text-xs uppercase tracking-[0.3em] text-gray-500">Bine ai revenit</p>
-        <h1 class="mt-2 text-3xl font-black text-white">Autentificare</h1>
-        <p class="mt-2 text-sm text-gray-400">Intra in cont pentru a vedea meciurile si biletele tale.</p>
+        <p class="text-xs uppercase tracking-[0.3em] text-subtle">Bine ai revenit</p>
+        <h1 class="mt-2 text-3xl font-black text-fg">Autentificare</h1>
+        <p class="mt-2 text-sm text-muted">Intra in cont pentru a vedea meciurile si biletele tale.</p>
       </div>
 
       <form class="space-y-4" @submit.prevent="onSubmit">
@@ -76,9 +76,9 @@ const onSubmit = handleSubmit(async (values) => {
         <AppButton class="w-full" type="submit" size="lg" :loading="isSubmitting">Intra in cont</AppButton>
       </form>
 
-      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-400">
-        <RouterLink :to="{ name: 'forgot-password' }" class="hover:text-white">Ai uitat parola?</RouterLink>
-        <RouterLink :to="{ name: 'register' }" class="hover:text-white">Nu ai cont? Creeaza unul</RouterLink>
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+        <RouterLink :to="{ name: 'forgot-password' }" class="hover:text-fg">Ai uitat parola?</RouterLink>
+        <RouterLink :to="{ name: 'register' }" class="hover:text-fg">Nu ai cont? Creeaza unul</RouterLink>
       </div>
     </Panel>
   </div>

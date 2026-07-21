@@ -19,10 +19,10 @@ const linkClass = computed(() => [
     : props.size === 'lg'
       ? 'px-4 py-2.25 text-[13px] sm:px-6 sm:py-3 sm:text-base'
       : 'px-3 py-1.75 text-[12px] sm:px-4 sm:py-2 sm:text-sm',
-  (!props.variant || props.variant === 'outline') ? 'border border-white/10 bg-white/5 text-white hover:border-blue-600 hover:bg-white/10' :
+  (!props.variant || props.variant === 'outline') ? 'border border-line bg-surface text-fg hover:border-blue-600 hover:bg-surface-2' :
   props.variant === 'primary' ? 'border border-transparent bg-blue-600 text-white shadow-lg shadow-blue-950/25 hover:bg-blue-500' :
   props.variant === 'danger' ? 'border border-transparent bg-red-600 text-white shadow-lg shadow-red-950/25 hover:bg-red-500' :
-  'text-gray-400 hover:bg-white/5 hover:text-white',
+  'text-muted hover:bg-surface hover:text-fg',
 ])
 </script>
 
