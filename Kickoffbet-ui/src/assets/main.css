@@ -32,6 +32,7 @@
     --app-slip-top: calc(var(--app-header-height) + 62px);
 
     /* Light theme (default when no `.dark` class is present) */
+    color-scheme: light;
     --c-app: #f4f6fb;
     --c-surface: #ffffff;
     --c-surface-2: #eef2f8;
@@ -46,6 +47,10 @@
     --c-input-bg: #f1f4f9;
     --c-input-border: rgba(15, 23, 42, 0.12);
 
+    /* Opaque variants for native controls (autofill fill, <option> menus) */
+    --c-input-bg-solid: #f1f4f9;
+    --c-menu-bg: #ffffff;
+
     /* Logo contour: subtle dark on light bg */
     --c-logo-outline: rgba(15, 23, 42, 0.35);
 
@@ -56,6 +61,7 @@
 
   .dark {
     /* Dark theme — matches the original hardcoded palette */
+    color-scheme: dark;
     --c-app: #000000;
     --c-surface: rgba(255, 255, 255, 0.05);
     --c-surface-2: rgba(255, 255, 255, 0.10);
@@ -68,6 +74,10 @@
 
     --c-input-bg: rgba(255, 255, 255, 0.05);
     --c-input-border: rgba(255, 255, 255, 0.10);
+
+    /* Opaque variants for native controls (autofill fill, <option> menus) */
+    --c-input-bg-solid: #141414;
+    --c-menu-bg: #1a1a1a;
 
     /* Logo contour: white on dark bg (original look) */
     --c-logo-outline: rgba(255, 255, 255, 0.95);
@@ -106,7 +116,7 @@
   }
 
   select option {
-    background-color: var(--c-surface);
+    background-color: var(--c-menu-bg);
     color: var(--c-fg);
   }
 
@@ -144,7 +154,7 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px var(--c-input-bg) inset !important;
+    -webkit-box-shadow: 0 0 0 30px var(--c-input-bg-solid) inset !important;
     -webkit-text-fill-color: var(--c-fg) !important;
     transition: background-color 5000s ease-in-out 0s;
     caret-color: var(--c-fg) !important;
