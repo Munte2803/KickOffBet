@@ -80,4 +80,4 @@ The production overlay (`docker-compose.prod.yml`) adds Caddy as the single publ
 
 ---
 
-*Built as my bachelor's thesis at the Romanian-American University, Faculty of Managerial Informatics (2026).*
+*Built as my bachelor's thesis at the Romanian-American University, School of Computer Science for Business Management (2026).*
