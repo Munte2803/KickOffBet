@@ -20,6 +20,7 @@
   --color-subtle: var(--c-subtle);
   --color-line: var(--c-line);
   --color-line-strong: var(--c-line-strong);
+  --color-menu: var(--c-menu-bg);
 }
 
 @layer base {

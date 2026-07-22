@@ -122,7 +122,7 @@ onBeforeUnmount(removeListeners)
         v-if="open"
         ref="menuRef"
         :style="menuStyle"
-        class="fixed z-[1000] overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg shadow-black/20 ring-1 ring-line"
+        class="fixed z-[1000] overflow-y-auto rounded-lg border border-line bg-menu py-1 shadow-lg shadow-black/20 ring-1 ring-line"
         role="listbox"
       >
         <li
