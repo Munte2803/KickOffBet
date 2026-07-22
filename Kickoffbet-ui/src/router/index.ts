@@ -251,5 +251,16 @@ router.beforeEach((to) => {
   }
 })
 
+router.onError((error, to) => {
+  const message = error instanceof Error ? error.message : String(error)
+  if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(message)) {
+    if (to?.fullPath) {
+      window.location.assign(to.fullPath)
+    } else {
+      window.location.reload()
+    }
+  }
+})
+
 export default router
 
