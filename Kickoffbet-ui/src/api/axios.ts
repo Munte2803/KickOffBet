@@ -67,7 +67,8 @@ function redirectToLogin() {
   if (window.location.pathname === '/login') return
 
   const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-  window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+  window.location.href =
+    currentPath === '/' ? '/login' : `/login?redirect=${encodeURIComponent(currentPath)}`
 }
 
 export async function refreshSession() {
