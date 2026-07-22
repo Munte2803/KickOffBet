@@ -1,215 +1,83 @@
 # KickOffBet
 
-KickOffBet este o platforma de pariuri sportive dezvoltata ca monorepo, cu backend Spring Boot, frontend Vue 3 si infrastructura locala rulata prin Docker Compose. Aplicatia acopera autentificare, verificare KYC, administrare de ligi si echipe, gestionare de meciuri, calcul intern de cote, portofel, tranzactii si bilete.
+Full-stack sports betting platform — my bachelor's thesis project, designed, built and deployed end-to-end.
 
-## Ce face proiectul
+**Live demo:** https://kickoffbet.duckdns.org
 
-- inregistrare, login, confirmare email si resetare parola
-- upload de act de identitate si validare KYC din admin
-- administrare utilizatori, ligi, echipe, meciuri, tranzactii si bilete
-- sincronizare automata de meciuri din Football Data API
-- generare si gestionare de cote
-- portofel, depuneri, retrageri si istoric tranzactii
-- protectie cu JWT, rate limiting si controale de securitate
+| Role | Email | Password |
+|---|---|---|
+| User | usertest@kickoffbet.com | AbCd#2803 |
 
-## Stack tehnic
+> Demo only — no real money. All balances and transactions are fictitious. Admin access available on request.
 
-### Backend
+Backend: **Java 21 / Spring Boot** · Frontend: **Vue 3 + TypeScript** · Database: **PostgreSQL** · Deployed on **Oracle Cloud** behind **Caddy** (automatic HTTPS via Let's Encrypt).
 
-- Java 21
-- Spring Boot 4
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
-- MinIO
-- MapStruct
-- Bucket4j
-- Spring Mail
-- Springdoc OpenAPI
+## Screenshots
 
-### Frontend
+| | |
+|---|---|
+| ![Matches and bet slip](docs/screenshots/matches-betslip.png) | ![Match detail with markets](docs/screenshots/match-detail.png) |
+| *Match list with persistent bet slip* | *Match detail: all betting markets* |
+| ![Wallet and transactions](docs/screenshots/wallet-transactions.png) | ![Ticket details](docs/screenshots/ticket-details.png) |
+| *Wallet with filterable transaction history* | *Placed ticket with per-selection status* |
+| ![Admin dashboard](docs/screenshots/admin-dashboard.png) | ![Admin match management](docs/screenshots/admin-match-odds.png) |
+| *Admin dashboard* | *Odds management for a match* |
+| ![Admin user and KYC](docs/screenshots/admin-user-kyc.png) | ![Financial report](docs/screenshots/admin-financial-report.png) |
+| *User management with KYC document review* | *Aggregated financial report by period* |
 
-- Vue 3
-- TypeScript
-- Vite
-- Vue Router
-- Pinia
-- Vue Query
-- Axios
-- Vee Validate + Zod
-- Tailwind CSS 4
+## What it does
 
-### Infrastructura locala
+**For users**
+- Registration with email confirmation, JWT login (access + refresh tokens), password reset
+- KYC: identity document upload, reviewed and approved by an admin before the account is activated
+- Browsing matches by league or team, with live-updating odds across four market types (1X2, double chance, over/under, both teams to score)
+- Persistent bet slip: build a ticket across multiple matches, see total odds and potential winnings in real time
+- Virtual wallet: deposits, withdrawals, full filterable transaction history
 
-- Docker Compose
-- PostgreSQL
-- MinIO
-- Adminer
-- Nginx pentru servirea frontendului containerizat
+**For admins**
+- Seven management areas: matches, leagues, teams, users, transactions, tickets, data sync
+- Match creation with configurable initial markets; manual odds edits are protected from being overwritten by the automatic engine
+- KYC review with in-page document preview; account approval, suspension and reactivation
+- AML approval queue for flagged transactions; financial reports aggregated by period, top depositors, per-user summaries
+- One-click synchronization of real fixtures from the Football Data API
 
-## Structura proiectului
+## Technical highlights
 
-```text
-.
-|-- src/                          # backend Spring Boot
-|-- Kickoffbet-ui/                # frontend Vue 3
-|   |-- src/api
-|   |-- src/components
-|   |-- src/composables
-|   |-- src/constants
-|   |-- src/layouts
-|   |-- src/pages
-|   |   |-- public
-|   |   |-- user
-|   |   `-- admin
-|   |-- src/stores
-|   |-- src/types
-|   |-- src/utils
-|   `-- src/validation
-|-- docker-compose.yml
-|-- Dockerfile
-`-- README.md
-```
+- **Statistical odds engine** — odds are generated from a Poisson model whose parameters are derived from historical team metrics, aggregated in a PostgreSQL materialized view; recalculation is triggered by asynchronous Spring events so it never blocks the request flow
+- **AML transaction monitoring** — configurable rules (wagering requirement, monthly withdrawal cap, velocity threshold); flagged operations are held as PENDING for manual admin approval, with automatic refund on rejection
+- **Financial integrity** — every wallet operation is ACID-transactional, and balance updates use optimistic locking so concurrent operations cannot corrupt user funds
+- **Security** — stateless JWT with refresh tokens, temporary account lockout after repeated failed logins, per-endpoint rate limiting with Bucket4j, and KYC documents that are streamed exclusively through the backend (never publicly reachable via object storage)
+- **Automatic settlement** — when results are recorded, tickets are evaluated, winnings credited (with payout capping) and stakes refunded for cancelled matches, all without manual intervention
 
-## Cerinte
+## Tech stack
 
-- Java 21
-- Node.js 20+
-- npm
-- Docker Desktop sau Docker Engine cu Docker Compose
+**Backend:** Java 21, Spring Boot, Spring Security, Spring Data JPA, PostgreSQL, MinIO, MapStruct, Bucket4j, Spring Mail, Springdoc OpenAPI
 
-## Configurare
+**Frontend:** Vue 3, TypeScript, Vite, Vue Router, Pinia, TanStack Query, Axios, VeeValidate + Zod, Tailwind CSS 4
 
-1. Cloneaza repository-ul:
+**Infrastructure:** Docker Compose, Caddy (automatic HTTPS), Nginx, MinIO, Adminer; production on Oracle Cloud
+
+## Architecture in one paragraph
+
+A Vue 3 SPA talks to a layered Spring Boot REST API (controllers → services → repositories → domain), documented with OpenAPI. Cross-cutting concerns live in dedicated packages: security (JWT filters, endpoint rules), events/listeners (async odds recalculation, settlement triggers), centralized exception handling. In production, Caddy terminates TLS on a single domain and routes `/api/*` to the backend, public assets (team/league logos) to MinIO, and everything else to the SPA.
+
+## Running it locally
+
+Requirements: Java 21, Node.js 20+, Docker with Docker Compose.
 
 ```bash
-git clone https://github.com/Munte2803/KickOffBet.git
-cd KickOffBet
-```
-
-2. Creeaza fisierul `.env` pornind de la exemplu:
-
-```bash
-cp .env.example .env
-```
-
-3. Completeaza variabilele necesare in `.env`.
-
-
-- `DB_URL`
-- `DB_USERNAME`
-- `DB_PASSWORD`
-- `JWT_SECRET`
-- `CORS_ALLOWED_ORIGINS`
-- `SWAGGER_ENABLED`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
-- `MAIL_FROM`
-- `FRONTEND_URL`
-- `MINIO_ACCESS_KEY`
-- `MINIO_SECRET_KEY`
-- `MINIO_PUBLIC_URL`
-- `FOOTBALL_DATA_TOKEN`
-- `VITE_API_BASE_URL`
-
-## Rulare cu Docker Compose
-
-Pentru a porni tot stack-ul local:
-
-```bash
+git clone https://github.com/Munte2803/KickOffBet-licenta.git
+cd KickOffBet-licenta
+cp .env.example .env   # fill in the required variables
 docker compose up -d --build
 ```
 
-Serviciile expuse local sunt:
+The app starts with PostgreSQL, MinIO and Adminer alongside the backend and frontend. See `.env.example` for every variable, including the production-only ones (domain, ACME email, proxy settings) used by `docker-compose.prod.yml`.
 
-- frontend: `http://localhost:3000`
-- backend API: `http://localhost:8080`
-- Adminer: `http://localhost:8888`
-- MinIO API: `http://localhost:9000`
-- MinIO Console: `http://localhost:9001`
+## Production deployment
 
-Swagger este disponibil la:
+The production overlay (`docker-compose.prod.yml`) adds Caddy as the single public entry point: it obtains and renews the Let's Encrypt certificate automatically and reverse-proxies the API, the SPA and the public asset bucket on one domain. The live instance runs on an Oracle Cloud VM.
 
-`http://localhost:8080/swagger-ui/index.html`
+---
 
-doar daca `SWAGGER_ENABLED=true`.
-
-## Rulare pentru dezvoltare
-
-### Varianta 1: infrastructura in Docker, backend si frontend local
-
-Porneste serviciile suport:
-
-```bash
-docker compose up -d db minio adminer
-```
-
-Porneste backendul:
-
-```bash
-./mvnw spring-boot:run
-```
-
-Porneste frontendul:
-
-```bash
-cd Kickoffbet-ui
-npm install
-npm run dev
-```
-
-### Varianta 2: totul in Docker
-
-```bash
-docker compose up -d --build
-```
-
-## Scripturi utile
-
-### Backend
-
-Compilare:
-
-```bash
-./mvnw -DskipTests compile
-```
-
-### Frontend
-
-Dezvoltare:
-
-```bash
-npm run dev
-```
-
-Build productie:
-
-```bash
-npm run build
-```
-
-## Acces API
-
-Regulile actuale de acces sunt:
-
-- `/api/auth/**` este public
-- `/api/admin/**` este accesibil doar administratorilor
-- restul endpointurilor necesita autentificare, sau chiar validarea contului
-- Swagger este disponibil doar cand este activat din configurare
-
-## Zone functionale
-
-### Utilizator
-
-- meciuri, rezultate, ligi si echipe
-- profil si documente KYC
-- portofel si tranzactii
-- bilete si istoric
-
-### Administrator
-
-- management utilizatori
-- verificare documente
-- management ligi, echipe si meciuri
-- management tranzactii si bilete
-- sincronizare si administrare cote
+*Built as my bachelor's thesis at the Romanian-American University, Faculty of Managerial Informatics (2026).*
