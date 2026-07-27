@@ -16,10 +16,12 @@
         } catch (e) {}
       })();
     </script>
-    <!-- Self-hosted umami analytics (cookie-less, no consent banner needed). -->
+    <!-- Self-hosted umami analytics (cookie-less, no consent banner needed).
+         Served first-party via Caddy (/kob.js -> umami, events -> /api/send) so
+         tracking protection doesn't block it. -->
     <script
       defer
-      src="https://analytics.kickoffbet.duckdns.org/script.js"
+      src="/kob.js"
       data-website-id="0b7d0535-d960-416d-937a-a921d5de8cca"
     ></script>
   </head>

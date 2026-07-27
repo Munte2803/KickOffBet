@@ -15,6 +15,22 @@
 		format console
 	}
 
+	# First-party analytics, served from the main domain so ad-blockers and browser
+	# tracking protection don't drop it (a third-party 'analytics.*' host with a
+	# /script.js is on every standard blocklist).
+	#
+	# Order matters: 'handle' blocks are evaluated top-to-bottom, so this exact-path
+	# collector must precede the backend's /api/* rule. The backend has no /api/send.
+	handle /api/send {
+		reverse_proxy umami:3000
+	}
+
+	# The tracker itself, under a neutral name instead of umami's default script.js.
+	handle /kob.js {
+		rewrite * /script.js
+		reverse_proxy umami:3000
+	}
+
 	# REST API + private file streaming (KYC id-cards go through the backend).
 	handle /api/* {
 		reverse_proxy backend:8080
