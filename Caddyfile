@@ -20,11 +20,6 @@
 		reverse_proxy backend:8080
 	}
 
-	# Self-hosted analytics dashboard + tracker (umami runs with BASE_PATH=/analytics).
-	handle /analytics/* {
-		reverse_proxy umami:3000
-	}
-
 	# Public assets only: team & league logos, served straight from MinIO.
 	# id-cards are NOT routed here, so they never become publicly reachable.
 	@publicAssets path /storage/teams/* /storage/leagues/*
@@ -37,4 +32,19 @@
 	handle {
 		reverse_proxy frontend:80
 	}
+}
+
+# Self-hosted analytics (umami) on its own subdomain, with its own auto-TLS cert.
+# It needs a whole origin to itself: the tracker posts to /api/send, which would
+# collide with the backend's /api/* on the main domain. DuckDNS resolves any
+# *.<name>.duckdns.org to the same IP, so no extra DNS record is required.
+{$ANALYTICS_DOMAIN} {
+	encode gzip
+
+	log {
+		output stdout
+		format console
+	}
+
+	reverse_proxy umami:3000
 }

@@ -32,8 +32,9 @@ services:
         VITE_API_BASE_URL: ""
 
   # Self-hosted, cookie-less web analytics. Reuses the existing Postgres (separate
-  # 'umami' database — create it once: see deploy notes). Served under /analytics
-  # via Caddy; the SPA loads /analytics/script.js. Default login is admin/umami —
+  # 'umami' database — create it once: see deploy notes). Served by Caddy on its own
+  # subdomain (ANALYTICS_DOMAIN), because the tracker posts to /api/send and would
+  # otherwise collide with the backend's /api/*. Default login is admin/umami —
   # CHANGE IT on first sign-in.
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest
@@ -43,7 +44,6 @@ services:
       DATABASE_TYPE: postgresql
       DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/umami
       APP_SECRET: ${UMAMI_APP_SECRET}
-      BASE_PATH: /analytics
     depends_on:
       db:
         condition: service_healthy
@@ -57,6 +57,7 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
+      ANALYTICS_DOMAIN: ${ANALYTICS_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

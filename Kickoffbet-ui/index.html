@@ -16,12 +16,12 @@
         } catch (e) {}
       })();
     </script>
-    <!-- Self-hosted umami analytics (cookie-less). Replace the website-id with the
-         one shown in the umami dashboard after creating the site, then rebuild the
-         frontend. Harmless 404 locally where /analytics isn't served. -->
+    <!-- Self-hosted umami analytics (cookie-less, no consent banner needed).
+         Replace the website-id with the one shown in the umami dashboard after
+         creating the site, then rebuild the frontend. -->
     <script
       defer
-      src="/analytics/script.js"
+      src="https://analytics.kickoffbet.duckdns.org/script.js"
       data-website-id="REPLACE_WITH_UMAMI_WEBSITE_ID"
     ></script>
   </head>
