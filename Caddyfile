@@ -8,6 +8,13 @@
 {$DOMAIN} {
 	encode gzip
 
+	# Access log: one JSON line per request (method, path, status, remote IP, duration).
+	# View live with: docker compose ... logs -f caddy
+	log {
+		output stdout
+		format console
+	}
+
 	# REST API + private file streaming (KYC id-cards go through the backend).
 	handle /api/* {
 		reverse_proxy backend:8080
