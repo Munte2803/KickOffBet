@@ -20,6 +20,11 @@
 		reverse_proxy backend:8080
 	}
 
+	# Self-hosted analytics dashboard + tracker (umami runs with BASE_PATH=/analytics).
+	handle /analytics/* {
+		reverse_proxy umami:3000
+	}
+
 	# Public assets only: team & league logos, served straight from MinIO.
 	# id-cards are NOT routed here, so they never become publicly reachable.
 	@publicAssets path /storage/teams/* /storage/leagues/*
