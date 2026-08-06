@@ -71,6 +71,22 @@ public class FootballDataClient {
         );
     }
 
+    public Optional<FdMatchList> fetchMatchesByLeagueAndSeason(String leagueCode, int season) {
+        return Optional.ofNullable(
+                restClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("competitions/{code}/matches")
+                                .queryParam("season", season)
+                                .build(leagueCode))
+                        .retrieve()
+                        .onStatus(HttpStatusCode::isError, (request, response) -> {
+                            log.error("Failed to fetch matches for league {} season {}. Status: {}", leagueCode, season, response.getStatusCode());
+                            throw new ExternalApiException("Could not fetch matches for: " + leagueCode + ", season: " + season);
+                        })
+                        .body(FdMatchList.class)
+        );
+    }
+
     public Optional<FdMatchList> fetchMatchesInDateRange(LocalDate from, LocalDate to) {
         return Optional.ofNullable(
                 restClient.get()

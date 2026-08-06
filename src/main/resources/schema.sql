@@ -77,6 +77,7 @@ WITH finished_matches AS (
                     ELSE 0.0
                 END))::double precision AS season_btts_rate
            FROM team_match_rows tmr
+          WHERE (tmr.start_time >= (now() - interval '12 months'))
           GROUP BY tmr.team_id
         ), last5_ranked AS (
          SELECT tmr.team_id,

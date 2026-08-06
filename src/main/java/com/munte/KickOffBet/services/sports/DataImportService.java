@@ -10,6 +10,8 @@ public interface DataImportService {
 
     void syncMatchesByLeague(String leagueCode, Set<Long> collectedIds);
 
+    void syncMatchesByLeagueAndSeason(String leagueCode, int season, Set<Long> collectedIds);
+
     void syncMatchesInRange();
 
     void syncEverything();

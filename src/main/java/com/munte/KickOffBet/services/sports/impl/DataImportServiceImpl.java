@@ -58,6 +58,9 @@ public class DataImportServiceImpl implements DataImportService {
     @Value("${sync.cooldown-seconds:50}")
     private long cooldownSeconds;
 
+    @Value("${sync.history.seasons:3}")
+    private int historySeasons;
+
     private static final String EXTERNAL_PROVIDER = "FOOTBALL_DATA";
 
     private Team getTbdTeam() {
@@ -167,6 +170,25 @@ public class DataImportServiceImpl implements DataImportService {
 
         if (apiMatches.isEmpty()) {
             log.warn("No matches found for league: {}", leagueCode);
+            return;
+        }
+
+        processAndSaveMatches(apiMatches, Collections.singletonMap(leagueCode, league));
+        apiMatches.forEach(m -> collectedIds.add(m.id()));
+    }
+
+    @Override
+    @Transactional
+    public void syncMatchesByLeagueAndSeason(String leagueCode, int season, Set<Long> collectedIds) {
+        log.info("Syncing matches for league: {}, season: {}", leagueCode, season);
+        final League league = leagueRepository.findByCode(leagueCode)
+                .orElseThrow(() -> new EntityNotFoundException("League " + leagueCode + " not found"));
+
+        final List<FdMatchDto> apiMatches = footballDataClient.fetchMatchesByLeagueAndSeason(leagueCode, season)
+                .map(FdMatchList::matches).orElse(Collections.emptyList());
+
+        if (apiMatches.isEmpty()) {
+            log.warn("No matches found for league: {}, season: {}", leagueCode, season);
             return;
         }
 
@@ -300,8 +322,18 @@ public class DataImportServiceImpl implements DataImportService {
             try {
                 self.syncTeams(league.getCode());
                 Thread.sleep(apiDelayMs);
-                self.syncMatchesByLeague(league.getCode(), allMatchIds);
-                Thread.sleep(apiDelayMs);
+
+                final int currentSeasonYear = resolveCurrentSeasonYear(league);
+                for (int i = 0; i < historySeasons; i++) {
+                    final int season = currentSeasonYear - i;
+                    try {
+                        self.syncMatchesByLeagueAndSeason(league.getCode(), season, allMatchIds);
+                    } catch (RuntimeException e) {
+                        // Free-tier API plans reject seasons outside their allowed history window (403).
+                        log.warn("Skipping season {} for league {}: {}", season, league.getCode(), e.getMessage());
+                    }
+                    Thread.sleep(apiDelayMs);
+                }
             } catch (InterruptedException e) {
                 log.error("Full sync interrupted for league: {}", league.getCode());
                 Thread.currentThread().interrupt();
@@ -309,6 +341,15 @@ public class DataImportServiceImpl implements DataImportService {
         }
         log.info("### FULL SYNC COMPLETED ###");
         lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    private int resolveCurrentSeasonYear(League league) {
+        final String currentSeason = league.getCurrentSeason();
+        if (currentSeason != null && currentSeason.matches("\\d{4}")) {
+            return Integer.parseInt(currentSeason);
+        }
+        final LocalDate today = LocalDate.now();
+        return today.getMonthValue() >= 7 ? today.getYear() : today.getYear() - 1;
     }
 
     @Override
