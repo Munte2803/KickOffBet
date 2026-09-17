@@ -6,6 +6,7 @@ import com.munte.KickOffBet.domain.dto.footballdata.FdMatchList;
 import com.munte.KickOffBet.domain.dto.footballdata.FdTeamDto;
 import com.munte.KickOffBet.domain.dto.footballdata.FdTeamList;
 import com.munte.KickOffBet.exceptions.ExternalApiException;
+import com.munte.KickOffBet.exceptions.RateLimitException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatusCode;
@@ -27,6 +28,13 @@ public class FootballDataClient {
         this.restClient = restClient;
     }
 
+    private void throwApiError(HttpStatusCode status, String message) {
+        if (status.value() == 429) {
+            throw new RateLimitException(message + " (rate limit exceeded)");
+        }
+        throw new ExternalApiException(message);
+    }
+
     public List<FdCompetitionDto> fetchCompetitions() {
         return Optional.ofNullable(
                         restClient.get()
@@ -34,7 +42,7 @@ public class FootballDataClient {
                                 .retrieve()
                                 .onStatus(HttpStatusCode::isError, (request, response) -> {
                                     log.error("Failed to fetch competitions. Status: {}", response.getStatusCode());
-                                    throw new ExternalApiException("FootballData API error: " + response.getStatusCode());
+                                    throwApiError(response.getStatusCode(), "FootballData API error: " + response.getStatusCode());
                                 })
                                 .body(FdCompetitionList.class)
                 )
@@ -49,7 +57,7 @@ public class FootballDataClient {
                                 .retrieve()
                                 .onStatus(HttpStatusCode::isError, (request, response) -> {
                                     log.error("Failed to fetch teams for league {}. Status: {}", leagueCode, response.getStatusCode());
-                                    throw new ExternalApiException("Could not fetch teams for league: " + leagueCode);
+                                    throwApiError(response.getStatusCode(), "Could not fetch teams for league: " + leagueCode);
                                 })
                                 .body(FdTeamList.class)
                 )
@@ -65,7 +73,7 @@ public class FootballDataClient {
                         .retrieve()
                         .onStatus(HttpStatusCode::isError, (request, response) -> {
                             log.error("Failed to fetch matches for league {}. Status: {}", leagueCode, response.getStatusCode());
-                            throw new ExternalApiException("Could not fetch matches for: " + leagueCode);
+                            throwApiError(response.getStatusCode(), "Could not fetch matches for: " + leagueCode);
                         })
                         .body(FdMatchList.class)
         );
@@ -81,7 +89,7 @@ public class FootballDataClient {
                         .retrieve()
                         .onStatus(HttpStatusCode::isError, (request, response) -> {
                             log.error("Failed to fetch matches for league {} season {}. Status: {}", leagueCode, season, response.getStatusCode());
-                            throw new ExternalApiException("Could not fetch matches for: " + leagueCode + ", season: " + season);
+                            throwApiError(response.getStatusCode(), "Could not fetch matches for: " + leagueCode + ", season: " + season);
                         })
                         .body(FdMatchList.class)
         );

@@ -7,6 +7,7 @@ import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.events.Match.*;
+import com.munte.KickOffBet.exceptions.RateLimitException;
 import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
@@ -60,6 +61,12 @@ public class DataImportServiceImpl implements DataImportService {
 
     @Value("${sync.history.seasons:3}")
     private int historySeasons;
+
+    @Value("${sync.rate-limit-wait-ms:61000}")
+    private long rateLimitWaitMs;
+
+    @Value("${sync.rate-limit-max-attempts:3}")
+    private int rateLimitMaxAttempts;
 
     private static final String EXTERNAL_PROVIDER = "FOOTBALL_DATA";
 
@@ -320,14 +327,19 @@ public class DataImportServiceImpl implements DataImportService {
 
         for (League league : activeLeagues) {
             try {
-                self.syncTeams(league.getCode());
+                try {
+                    runWithRateLimitRetry(() -> self.syncTeams(league.getCode()), "teams for " + league.getCode());
+                } catch (RuntimeException e) {
+                    log.warn("Skipping team sync for league {}: {}", league.getCode(), e.getMessage());
+                }
                 Thread.sleep(apiDelayMs);
 
                 final int currentSeasonYear = resolveCurrentSeasonYear(league);
                 for (int i = 0; i < historySeasons; i++) {
                     final int season = currentSeasonYear - i;
                     try {
-                        self.syncMatchesByLeagueAndSeason(league.getCode(), season, allMatchIds);
+                        runWithRateLimitRetry(() -> self.syncMatchesByLeagueAndSeason(league.getCode(), season, allMatchIds),
+                                "matches for " + league.getCode() + " season " + season);
                     } catch (RuntimeException e) {
                         // Free-tier API plans reject seasons outside their allowed history window (403).
                         log.warn("Skipping season {} for league {}: {}", season, league.getCode(), e.getMessage());
@@ -337,10 +349,27 @@ public class DataImportServiceImpl implements DataImportService {
             } catch (InterruptedException e) {
                 log.error("Full sync interrupted for league: {}", league.getCode());
                 Thread.currentThread().interrupt();
+                return;
             }
         }
         log.info("### FULL SYNC COMPLETED ###");
         lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    private void runWithRateLimitRetry(Runnable action, String description) throws InterruptedException {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                action.run();
+                return;
+            } catch (RateLimitException e) {
+                if (attempt >= rateLimitMaxAttempts) {
+                    throw e;
+                }
+                log.warn("Rate limit hit while syncing {} (attempt {}/{}). Waiting {} ms before retry...",
+                        description, attempt, rateLimitMaxAttempts, rateLimitWaitMs);
+                Thread.sleep(rateLimitWaitMs);
+            }
+        }
     }
 
     private int resolveCurrentSeasonYear(League league) {
@@ -362,11 +391,17 @@ public class DataImportServiceImpl implements DataImportService {
 
         for (League league : activeLeagues) {
             try {
-                self.syncMatchesByLeague(league.getCode(), allMatchIds);
+                try {
+                    runWithRateLimitRetry(() -> self.syncMatchesByLeague(league.getCode(), allMatchIds),
+                            "matches for " + league.getCode());
+                } catch (RuntimeException e) {
+                    log.warn("Skipping match sync for league {}: {}", league.getCode(), e.getMessage());
+                }
                 Thread.sleep(apiDelayMs);
             } catch (InterruptedException e) {
                 log.error("Match sync interrupted for league: {}", league.getCode());
                 Thread.currentThread().interrupt();
+                return;
             }
         }
         log.info("### ALL MATCHES SYNC COMPLETED ###");
