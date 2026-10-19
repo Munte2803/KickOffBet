@@ -140,7 +140,11 @@ public class DataImportServiceImpl implements DataImportService {
         }
 
         final Set<Long> apiExternalIds = apiTeamDtos.stream().map(FdTeamDto::id).collect(Collectors.toSet());
-        league.getTeams().removeIf(team -> team.getExternalId() != null && !apiExternalIds.contains(team.getExternalId()));
+        // Team.leagues is the owning side of the association, so detach through it or the removal is never persisted.
+        league.getTeams().stream()
+                .filter(team -> team.getExternalId() != null && !apiExternalIds.contains(team.getExternalId()))
+                .toList()
+                .forEach(team -> team.removeLeague(league));
 
         final Map<Long, Team> existingTeamsMap = teamRepository.findAllByExternalIdIn(apiExternalIds).stream()
                 .collect(Collectors.toMap(Team::getExternalId, Function.identity(), (a, b) -> a));
