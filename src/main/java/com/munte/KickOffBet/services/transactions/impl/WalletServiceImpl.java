@@ -179,12 +179,9 @@ public class WalletServiceImpl implements WalletService {
 
         if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
             user.setBalance(user.getBalance().add(transaction.getAmount()));
-        } else if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
-            if (transaction.getAmount().compareTo(user.getBalance()) > 0) {
-                throw new BusinessException("User has insufficient funds for this withdrawal");
-            }
-            user.setBalance(user.getBalance().subtract(transaction.getAmount()));
         }
+        // A pending WITHDRAWAL already reserved (debited) its amount when it was requested;
+        // approving it only completes it, and rejecting it refunds the reservation.
 
         transaction.setStatus(TransactionStatus.COMPLETED);
 
