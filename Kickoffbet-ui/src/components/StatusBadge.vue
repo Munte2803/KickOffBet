@@ -42,7 +42,7 @@ const colorMap: Record<string, string> = {
 <template>
   <span
     :class="[
-      'inline-flex items-center rounded border px-1.25 py-0.5 text-[9px] font-semibold sm:px-2 sm:text-xs',
+      'inline-flex shrink-0 items-center whitespace-nowrap rounded border px-1.25 py-0.5 text-[9px] font-semibold sm:px-2 sm:text-xs',
       colorMap[status] ?? 'bg-gray-500/10 text-subtle border-gray-500/30',
     ]"
   >

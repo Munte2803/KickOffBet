@@ -19,13 +19,13 @@ defineEmits<{
 <template>
   <div v-if="open" class="fixed inset-0 z-[70] flex items-center justify-center bg-app/80 px-4 py-6 backdrop-blur-sm" @click.self="$emit('close')">
     <div class="w-full max-w-5xl rounded-2xl border border-line bg-app shadow-2xl">
-      <div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
-        <div class="min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-line px-4 py-4 sm:px-5">
+        <div class="min-w-0 flex-1 basis-48">
           <h2 class="truncate text-lg font-bold text-fg">{{ title }}</h2>
           <p v-if="fileName" class="truncate text-xs text-muted">{{ fileName }}</p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex shrink-0 items-center gap-2">
           <AppButton v-if="allowDownload" size="sm" variant="outline" @click="$emit('download')">
             Descarca
           </AppButton>
@@ -35,7 +35,7 @@ defineEmits<{
         </div>
       </div>
 
-      <div class="max-h-[80vh] overflow-auto p-5">
+      <div class="max-h-[80vh] overflow-auto p-4 sm:p-5">
         <img
           v-if="src && contentType?.startsWith('image/')"
           :src="src"

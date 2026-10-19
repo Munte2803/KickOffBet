@@ -184,7 +184,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <Panel id="user-trend" no-hover>
       <h2 class="text-lg font-semibold text-fg">Utilizatori noi pe zi</h2>
 
-      <div class="mt-4 grid items-end gap-3 md:grid-cols-2">
+      <div class="mt-4 grid grid-cols-1 items-end gap-3 md:grid-cols-2">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
         <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
       </div>
@@ -217,7 +217,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
       <h2 class="text-lg font-semibold text-fg">Creeaza administrator</h2>
       <p class="mt-1 text-sm text-muted">Completeaza formularul de mai jos pentru a crea un nou administrator.</p>
 
-      <form class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="submitCreateAdmin">
+      <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="submitCreateAdmin">
         <FormInput v-model="firstName" label="Prenume" :error="adminForm.errors.value.firstName" />
         <FormInput v-model="lastName" label="Nume" :error="adminForm.errors.value.lastName" />
         <FormInput v-model="email" label="Email" :error="adminForm.errors.value.email" />
@@ -259,9 +259,9 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           class="block rounded-xl border border-line bg-surface p-4 transition-colors hover:border-blue-600"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p class="text-sm font-semibold text-fg">{{ selectedSearchUser.firstName }} {{ selectedSearchUser.lastName }}</p>
-              <p class="mt-1 text-xs text-muted">{{ selectedSearchUser.email }} - {{ formatDateShort(selectedSearchUser.createdAt) }}</p>
+            <div class="min-w-0">
+              <p class="wrap-anywhere text-sm font-semibold text-fg">{{ selectedSearchUser.firstName }} {{ selectedSearchUser.lastName }}</p>
+              <p class="mt-1 wrap-anywhere text-xs text-muted">{{ selectedSearchUser.email }} - {{ formatDateShort(selectedSearchUser.createdAt) }}</p>
             </div>
             <StatusBadge :status="selectedSearchUser.status" />
           </div>
@@ -285,7 +285,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
         />
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-2">
+      <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
 
         <label class="text-sm text-muted">
           <span class="mb-1 block">Stare</span>
@@ -317,9 +317,9 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             class="block rounded-xl border border-line bg-surface p-4 transition-colors hover:border-blue-600"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p class="text-sm font-semibold text-fg">{{ user.firstName }} {{ user.lastName }}</p>
-                <p class="mt-1 text-xs text-muted">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
+              <div class="min-w-0">
+                <p class="wrap-anywhere text-sm font-semibold text-fg">{{ user.firstName }} {{ user.lastName }}</p>
+                <p class="mt-1 wrap-anywhere text-xs text-muted">{{ user.email }} - {{ formatDateShort(user.createdAt) }}</p>
               </div>
               <StatusBadge :status="user.status" />
             </div>

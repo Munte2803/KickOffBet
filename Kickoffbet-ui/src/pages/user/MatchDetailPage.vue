@@ -164,7 +164,7 @@ const showOdds = computed(() => {
             <h3 class="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-sm sm:tracking-[0.18em]">Total goluri {{ row.line.toFixed(1) }}</h3>
           </div>
 
-          <div class="grid gap-2 sm:grid-cols-2 sm:gap-3">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             <OddPill
               v-if="row.over"
               :label="formatBetLabel(row.over.option, row.over.marketType, row.over.line)"

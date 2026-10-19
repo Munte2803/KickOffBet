@@ -89,7 +89,7 @@ const onSubmit = handleSubmit(async (formValues) => {
         <p class="mt-2 text-sm text-muted">Buletin obligatoriu pentru inregistrare</p>
       </div>
 
-      <form class="grid gap-4 md:grid-cols-2" @submit.prevent="onSubmit">
+      <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="onSubmit">
         <FormInput v-model="firstName" label="Prenume" required :error="errors.firstName" />
         <FormInput v-model="lastName" label="Nume" required :error="errors.lastName" />
         <FormInput v-model="email" class="md:col-span-2" label="Email" type="email" required :error="errors.email" />

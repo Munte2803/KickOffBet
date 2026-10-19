@@ -148,12 +148,12 @@ const submitCreate = createForm.handleSubmit(async (values) => {
     </Panel>
 
     <Panel id="team-list" no-hover>
-      <div class="flex items-center justify-between gap-3">
-        <div>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
           <h2 class="text-lg font-semibold text-fg">Toate echipele</h2>
           <p class="text-sm text-muted">Deschide pagina unei echipe pentru editare, asocierea ligilor sau schimbarea starii.</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
           <span class="text-sm text-muted">{{ teamsQuery.data.value?.totalElements ?? 0 }} echipe</span>
           <div class="w-48">
             <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
@@ -172,7 +172,7 @@ const submitCreate = createForm.handleSubmit(async (values) => {
         <div
           v-if="teamsQuery.data.value?.content?.length"
           :key="teamsQuery.data.value?.number ?? 0"
-          class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+          class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
           <RouterLink
             v-for="team in teamsQuery.data.value?.content ?? []"

@@ -338,7 +338,7 @@ function resetSearchFilters() {
     <Panel id="transaction-trend" no-hover>
       <h2 class="text-lg font-semibold text-fg">Evolutie in timp</h2>
 
-      <div class="mt-4 grid items-end gap-3 md:grid-cols-4">
+      <div class="mt-4 grid grid-cols-1 items-end gap-3 md:grid-cols-4">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
         <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
         <label class="text-sm text-muted">
@@ -384,12 +384,12 @@ function resetSearchFilters() {
       </div>
     </Panel>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div class="space-y-6">
         <Panel id="transaction-report" no-hover>
           <h2 class="text-lg font-semibold text-fg">Raport</h2>
 
-          <div class="mt-4 grid gap-3 md:grid-cols-2">
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <FormInput v-model="reportStart" label="Data inceput" type="datetime-local" />
             <FormInput v-model="reportEnd" label="Data sfarsit" type="datetime-local" />
           </div>
@@ -422,7 +422,7 @@ function resetSearchFilters() {
         <Panel id="transaction-user-summary" no-hover>
           <h2 class="text-lg font-semibold text-fg">Sumar utilizator</h2>
 
-          <div class="mt-4 grid gap-3 md:grid-cols-2">
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <AdminUserSearchPicker
               v-model="selectedSummaryUserId"
               title="Utilizator pentru sumar"
@@ -438,7 +438,7 @@ function resetSearchFilters() {
           </div>
 
           <div v-if="userSummary" class="mt-4 grid gap-3 grid-cols-2 md:grid-cols-3">
-            <StatCard label="Utilizator" :value="`${userSummary.firstName} ${userSummary.lastName}`" />
+            <StatCard class="col-span-2 md:col-span-1" label="Utilizator" :value="`${userSummary.firstName} ${userSummary.lastName}`" />
             <StatCard label="Depuneri" :value="formatMoney(userSummary.totalDeposited)" />
             <StatCard label="Retras" :value="formatMoney(userSummary.totalWithdrawn)" />
             <StatCard label="Pariat" :value="formatMoney(userSummary.totalStaked)" />
@@ -506,7 +506,7 @@ function resetSearchFilters() {
         />
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-3">
+      <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <AdminUserSearchPicker
           v-model="selectedSearchUserId"
           title="Utilizator pentru filtrare"
@@ -518,7 +518,7 @@ function resetSearchFilters() {
         <FormInput v-model="endDate" label="Data sfarsit" type="datetime-local" />
       </div>
 
-      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
+      <div class="mt-3 grid grid-cols-1 items-end gap-3 md:grid-cols-3">
         <FormInput v-model="minAmount" label="Suma minima" type="number" min="0" step="0.01" />
 
         <label class="text-sm text-muted">
@@ -544,7 +544,7 @@ function resetSearchFilters() {
         </label>
       </div>
 
-      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
+      <div class="mt-3 grid grid-cols-1 items-end gap-3 md:grid-cols-3">
         <FormInput v-model="maxAmount" label="Suma maxima" type="number" min="0" step="0.01" />
         <div class="hidden md:block"></div>
         <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />

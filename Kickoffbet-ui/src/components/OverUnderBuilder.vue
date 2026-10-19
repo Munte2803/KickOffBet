@@ -47,7 +47,7 @@ function submit() {
       <p class="mt-1 text-xs text-muted">Alegi optiunea, introduci cota si apoi adaugi oferta in lista de mai jos.</p>
     </div>
 
-    <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_140px_160px_140px_auto]">
+    <div class="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.2fr)_140px_160px_140px_auto]">
       <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-fg">
         Total goluri
       </div>

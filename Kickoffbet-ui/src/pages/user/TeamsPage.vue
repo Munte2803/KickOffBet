@@ -32,7 +32,7 @@ const teams = computed(() => teamsQuery.data.value?.content ?? [])
       <EmptyState v-if="!teams.length" message="Nu exista echipe disponibile." />
 
       <Transition v-else name="page-fade" mode="out-in" appear>
-        <div :key="teamsQuery.data.value?.number ?? 0" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div :key="teamsQuery.data.value?.number ?? 0" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <RouterLink
             v-for="team in teams"
             :key="team.id"

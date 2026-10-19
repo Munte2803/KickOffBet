@@ -228,7 +228,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
       </template>
     </PageHeader>
 
-    <section id="match-overview" class="grid gap-4 md:grid-cols-3">
+    <section id="match-overview" class="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-subtle">Status curent</p>
         <div class="mt-3">
@@ -250,7 +250,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
       </Panel>
     </section>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <Panel id="match-schedule" no-hover>
         <SectionHeader title="Programare" />
         <div class="flex flex-col gap-3 md:flex-row md:items-end">
@@ -290,7 +290,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
             </select>
           </label>
 
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label class="text-sm text-muted">
                 <span class="mb-1 block">Scor gazde</span>
               <input v-model.number="ftHome" type="number" min="0" step="1" class="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-fg" />
@@ -317,7 +317,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
 
     <Panel id="match-offer-status" no-hover>
       <SectionHeader title="Activare oferte" />
-      <div class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
         <button
           v-for="offer in offers"
           :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}`"
