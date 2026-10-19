@@ -102,8 +102,11 @@ public class TicketServiceImpl implements TicketService {
 
             boolean hasPending = false;
             boolean hasLost = false;
+            // distinct: when loaded through TicketSelectionRepository#findByMatchIdsWithTickets the fetch-joined
+            // selections bag repeats a leg once per leg the ticket has on the settled match(es)
+            final Set<TicketSelection> selections = new LinkedHashSet<>(ticket.getSelections());
 
-            for (TicketSelection selection : ticket.getSelections()) {
+            for (TicketSelection selection : selections) {
                 if (selection.getStatus() == TicketSelectionStatus.PENDING) {
                     hasPending = true;
                 }
@@ -123,10 +126,10 @@ public class TicketServiceImpl implements TicketService {
             // Voided (CANCELLED) selections count as odds 1.00. The effective odds are rebuilt
             // from the selections that won, only once the ticket is fully settled, so a void
             // recorded in an earlier settlement round is never divided out a second time.
-            boolean hasVoid = ticket.getSelections().stream()
+            boolean hasVoid = selections.stream()
                     .anyMatch(selection -> selection.getStatus() == TicketSelectionStatus.CANCELLED);
             if (hasVoid) {
-                BigDecimal effectiveOdd = ticket.getSelections().stream()
+                BigDecimal effectiveOdd = selections.stream()
                         .filter(selection -> selection.getStatus() == TicketSelectionStatus.WON)
                         .map(TicketSelection::getOddsAtPlacement)
                         .reduce(BigDecimal.ONE, BigDecimal::multiply);
@@ -185,7 +188,9 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     public void cancelTicket(UUID id) {
 
-        Ticket ticket = ticketRepository.findByIdWithSelections(id)
+        // Only the owner may cancel: someone else's ticket is reported as not found
+        User user = authService.getCurrentUser();
+        Ticket ticket = ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket Not Found with id: " + id));
 
         if (ticket.getStatus() != TicketStatus.PENDING) {

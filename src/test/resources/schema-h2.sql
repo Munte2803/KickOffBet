@@ -62,3 +62,6 @@ SELECT t.id AS team_id,
 FROM teams t
 LEFT JOIN season_stats ss ON ss.team_id = t.id
 LEFT JOIN last5_stats l5 ON l5.team_id = t.id;
+
+-- PostgreSQL's date(timestamp), used by the daily time-series native queries
+CREATE ALIAS IF NOT EXISTS "date" FOR 'com.munte.KickOffBet.support.H2Functions.date';

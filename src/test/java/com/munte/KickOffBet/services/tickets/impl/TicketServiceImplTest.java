@@ -432,11 +432,16 @@ class TicketServiceImplTest {
     @DisplayName("cancelTicket")
     class CancelTicket {
 
+        @BeforeEach
+        void currentUser() {
+            lenient().when(authService.getCurrentUser()).thenReturn(user);
+        }
+
         @Test
         @DisplayName("a pending ticket on matches not yet started is cancelled and the stake refunded")
         void cancelPending() {
             Ticket t = ticketWith("15.00", "1.85", "2.10");
-            when(ticketRepository.findByIdWithSelections(t.getId())).thenReturn(Optional.of(t));
+            when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
 
             service.cancelTicket(t.getId());
 
@@ -448,10 +453,10 @@ class TicketServiceImplTest {
         }
 
         @Test
-        @DisplayName("unknown ticket -> not found")
+        @DisplayName("unknown ticket, or someone else's ticket -> not found")
         void unknown() {
             UUID id = UUID.randomUUID();
-            when(ticketRepository.findByIdWithSelections(id)).thenReturn(Optional.empty());
+            when(ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.cancelTicket(id)).isInstanceOf(ResourceNotFoundException.class);
             verifyNoInteractions(walletService);
@@ -463,7 +468,7 @@ class TicketServiceImplTest {
             for (TicketStatus status : List.of(TicketStatus.WON, TicketStatus.LOST, TicketStatus.CANCELLED)) {
                 Ticket t = ticketWith("15.00", "1.85");
                 t.setStatus(status);
-                when(ticketRepository.findByIdWithSelections(t.getId())).thenReturn(Optional.of(t));
+                when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
 
                 assertThatThrownBy(() -> service.cancelTicket(t.getId()))
                         .isInstanceOf(BusinessException.class)
@@ -479,7 +484,7 @@ class TicketServiceImplTest {
         void startedMatch() {
             Ticket t = ticketWith("15.00", "1.85", "2.10");
             t.getSelections().get(1).getMatch().setStartTime(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
-            when(ticketRepository.findByIdWithSelections(t.getId())).thenReturn(Optional.of(t));
+            when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
 
             assertThatThrownBy(() -> service.cancelTicket(t.getId()))
                     .isInstanceOf(BusinessException.class)

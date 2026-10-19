@@ -21,9 +21,11 @@ import com.munte.KickOffBet.security.JwtService;
 import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.services.users.EmailService;
 import com.munte.KickOffBet.services.users.StorageService;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -154,7 +156,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    // The failed-attempt counter and lock are saved right before throwing, so those exceptions must not roll back
+    @Transactional(noRollbackFor = {BadCredentialsException.class, BusinessException.class})
     public AuthDto login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -323,7 +326,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RefreshTokenDto refreshToken(RefreshTokenRequest request) {
-        String email = jwtService.extractUsername(request.getRefreshToken());
+        String email;
+        try {
+            email = jwtService.extractUsername(request.getRefreshToken());
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException("Invalid refresh token");
+        }
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -352,7 +360,8 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
-        if (authentication != null && authentication.isAuthenticated()) {
+        if (authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
             String email = authentication.getName();
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
