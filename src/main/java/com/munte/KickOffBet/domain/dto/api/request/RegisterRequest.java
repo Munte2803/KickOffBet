@@ -16,12 +16,12 @@ public class RegisterRequest {
 
     @NotBlank(message = "Name is required")
     @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
-    @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s'-]+$", message = "Name contains invalid characters")
+    @Pattern(regexp = "^[\\p{L}\\s'-]+$", message = "Name contains invalid characters")
     private String firstName;
 
     @NotBlank(message = "Name is required")
     @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
-    @Pattern(regexp = "^[a-zA-ZÀ-ÿ\\s'-]+$", message = "Name contains invalid characters")
+    @Pattern(regexp = "^[\\p{L}\\s'-]+$", message = "Name contains invalid characters")
     private String lastName;
 
     @NotBlank(message = "Email is required")
