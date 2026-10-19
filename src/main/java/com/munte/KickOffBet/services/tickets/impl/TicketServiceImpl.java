@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -113,11 +112,6 @@ public class TicketServiceImpl implements TicketService {
                     hasLost = true;
                     break;
                 }
-                if (selection.getStatus() == TicketSelectionStatus.CANCELLED) {
-                    ticket.setTotalOdd(ticket.getTotalOdd()
-                            .divide(selection.getOddsAtPlacement(), 4, RoundingMode.HALF_UP));
-                    ticket.setPotentialPayout(calculateCappedPayout(ticket.getStake(), ticket.getTotalOdd()));
-                }
             }
 
             if (hasPending) continue;
@@ -125,6 +119,20 @@ public class TicketServiceImpl implements TicketService {
             if (hasLost) {
                 ticket.setStatus(TicketStatus.LOST);
                 continue;
+            }
+
+            // Voided (CANCELLED) selections count as odds 1.00. The effective odds are rebuilt
+            // from the selections that won, only once the ticket is fully settled, so a void
+            // recorded in an earlier settlement round is never divided out a second time.
+            boolean hasVoid = ticket.getSelections().stream()
+                    .anyMatch(selection -> selection.getStatus() == TicketSelectionStatus.CANCELLED);
+            if (hasVoid) {
+                BigDecimal effectiveOdd = ticket.getSelections().stream()
+                        .filter(selection -> selection.getStatus() == TicketSelectionStatus.WON)
+                        .map(TicketSelection::getOddsAtPlacement)
+                        .reduce(BigDecimal.ONE, BigDecimal::multiply);
+                ticket.setTotalOdd(effectiveOdd);
+                ticket.setPotentialPayout(calculateCappedPayout(ticket.getStake(), effectiveOdd));
             }
 
             if (ticket.getTotalOdd().compareTo(BigDecimal.ONE) == 0) {
