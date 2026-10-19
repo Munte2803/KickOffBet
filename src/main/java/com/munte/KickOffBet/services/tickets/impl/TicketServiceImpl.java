@@ -9,6 +9,7 @@ import com.munte.KickOffBet.domain.entity.TicketSelection;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.enums.TicketSelectionStatus;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
+import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.MarketOfferRepository;
@@ -123,6 +124,10 @@ public class TicketServiceImpl implements TicketService {
 
             if (hasPending) continue;
 
+            // Money can't be moved for a suspended or inactive user: the ticket stays PENDING and is
+            // settled by settlePendingTicketsOfUser once the account is active again
+            if (ticket.getUser().getStatus() != UserStatus.ACTIVE) continue;
+
             // Voided (CANCELLED) selections count as odds 1.00. The effective odds are rebuilt
             // from the selections that won, only once the ticket is fully settled, so a void
             // recorded in an earlier settlement round is never divided out a second time.
@@ -148,6 +153,15 @@ public class TicketServiceImpl implements TicketService {
 
         ticketRepository.saveAll(tickets);
 
+    }
+
+    @Override
+    @Transactional
+    public void settlePendingTicketsOfUser(UUID userId) {
+        List<Ticket> pending = ticketRepository.findByUserIdAndStatusWithSelections(userId, TicketStatus.PENDING);
+        if (!pending.isEmpty()) {
+            settleTickets(new LinkedHashSet<>(pending));
+        }
     }
 
     @Override

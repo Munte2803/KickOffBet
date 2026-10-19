@@ -198,6 +198,19 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void userWithoutAnUploadedIdCardCannotBeApproved() throws Exception {
+        User declined = pending("declined@kickoffbet.test", true);
+        declined.setStatus(UserStatus.DECLINED);
+        declined.setIdCardUrl(null);
+        userRepository.save(declined);
+
+        mvc.perform(auth(patch("/api/admin/users/{id}/approve", declined.getId()), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("User has no ID card uploaded"));
+        assertThat(data.reloadUser(declined.getId()).getStatus()).isEqualTo(UserStatus.DECLINED);
+    }
+
+    @Test
     void rejectingKycDeclinesUserAndDeletesCard() throws Exception {
         User user = pending("reject@kickoffbet.test", true);
         String cardUrl = user.getIdCardUrl();

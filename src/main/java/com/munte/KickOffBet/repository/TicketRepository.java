@@ -46,6 +46,15 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
 
+    @Query("""
+        SELECT DISTINCT t FROM Ticket t
+        JOIN FETCH t.selections
+        JOIN FETCH t.user
+        WHERE t.user.id = :userId
+          AND t.status = :status
+    """)
+    List<Ticket> findByUserIdAndStatusWithSelections(@Param("userId") UUID userId, @Param("status") TicketStatus status);
+
     @Query(value = """
             SELECT DATE(t.created_at) AS day,
                    COUNT(*) AS cnt,

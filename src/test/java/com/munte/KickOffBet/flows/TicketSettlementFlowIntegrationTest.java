@@ -8,6 +8,7 @@ import com.munte.KickOffBet.domain.enums.TicketStatus;
 import com.munte.KickOffBet.domain.enums.TransactionType;
 import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.repository.TransactionRepository;
+import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
 
     @Autowired TicketRepository ticketRepository;
     @Autowired TransactionRepository transactionRepository;
+    @Autowired UserRepository userRepository;
 
     private String admin;
     private String leagueId;
@@ -199,6 +201,32 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.content[*].id").value(org.hamcrest.Matchers.contains(winning)));
         mvc.perform(auth(get("/api/admin/tickets").param("status", "LOST"), admin))
                 .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    void suspendedWinnerIsPaidOnReactivationWithoutBlockingOtherWinners() throws Exception {
+        String matchId = createMatch();
+        String suspendedToken = fundedUser("suspended@kickoffbet.test", 100);
+        String otherToken = fundedUser("other-winner@kickoffbet.test", 100);
+        String suspendedTicket = bet(suspendedToken, 10, List.of(pick(suspendedToken, matchId, "HOME")));
+        String otherTicket = bet(otherToken, 10, List.of(pick(otherToken, matchId, "HOME")));
+        UUID suspendedId = userRepository.findByEmail("suspended@kickoffbet.test").orElseThrow().getId();
+        mvc.perform(auth(patch("/api/admin/users/{id}/suspend", suspendedId), admin)).andExpect(status().isNoContent());
+
+        setStatus(matchId, Map.of("status", "FINISHED", "ftHome", 1, "ftAway", 0)).andExpect(status().isOk());
+        awaitSettled(otherTicket);
+
+        // The other winner of the same batch is paid; the suspended user's ticket waits, without money moving
+        assertThat(balance("other-winner@kickoffbet.test")).isEqualByComparingTo("111");
+        assertThat(ticketRepository.findById(UUID.fromString(suspendedTicket)).orElseThrow().getStatus())
+                .isEqualTo(TicketStatus.PENDING);
+        assertThat(balance("suspended@kickoffbet.test")).isEqualByComparingTo("90");
+
+        mvc.perform(auth(patch("/api/admin/users/{id}/activate", suspendedId), admin)).andExpect(status().isNoContent());
+
+        assertThat(ticketRepository.findById(UUID.fromString(suspendedTicket)).orElseThrow().getStatus())
+                .isEqualTo(TicketStatus.WON);
+        assertThat(balance("suspended@kickoffbet.test")).isEqualByComparingTo("111");
     }
 
     @Test

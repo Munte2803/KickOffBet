@@ -6,6 +6,7 @@ import com.munte.KickOffBet.domain.enums.MarketType;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.domain.enums.TicketSelectionStatus;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
+import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.repository.MarketOfferRepository;
 import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.services.tickets.TicketPlacementValidator;
@@ -53,6 +54,7 @@ class TicketServiceImplTest {
     void setUp() {
         user = new User();
         user.setId(UUID.randomUUID());
+        user.setStatus(UserStatus.ACTIVE);
     }
 
     // ---------------------------------------------------------------- fixtures
@@ -147,6 +149,31 @@ class TicketServiceImplTest {
             assertThat(pendingFirst.getStatus()).isEqualTo(TicketStatus.LOST);
             assertThat(lostFirst.getStatus()).isEqualTo(TicketStatus.LOST);
             verifyNoInteractions(walletService);
+        }
+
+        @Test
+        @DisplayName("a decided ticket of a suspended user stays PENDING and moves no money")
+        void suspendedUserTicketWaits() {
+            Ticket t = ticketWith("10.00", "1.85", "2.10");
+            grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.WON);
+            user.setStatus(UserStatus.SUSPENDED);
+
+            service.settleTickets(Set.of(t));
+
+            assertThat(t.getStatus()).isEqualTo(TicketStatus.PENDING);
+            verifyNoInteractions(walletService);
+        }
+
+        @Test
+        @DisplayName("a lost ticket of a suspended user is still marked LOST")
+        void suspendedUserLostTicket() {
+            Ticket t = ticketWith("10.00", "1.85", "2.10");
+            grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.LOST);
+            user.setStatus(UserStatus.SUSPENDED);
+
+            service.settleTickets(Set.of(t));
+
+            assertThat(t.getStatus()).isEqualTo(TicketStatus.LOST);
         }
 
         @Test

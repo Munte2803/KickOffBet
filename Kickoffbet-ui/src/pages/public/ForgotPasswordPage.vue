@@ -25,7 +25,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await forgotPassword(values.email)
     statusType.value = 'success'
-    statusMessage.value = 'Emailul de resetare a fost trimis.'
+    statusMessage.value = 'Daca exista un cont cu acest email, vei primi un link de resetare.'
   } catch (error) {
     statusType.value = 'error'
     statusMessage.value = error instanceof Error ? error.message : 'Nu am putut trimite emailul.'

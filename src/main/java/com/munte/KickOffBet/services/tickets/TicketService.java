@@ -25,6 +25,8 @@ public interface TicketService {
 
     void settleTickets(Set<Ticket> tickets);
 
+    void settlePendingTicketsOfUser(UUID userId);
+
     Page<Ticket> getTicketsForUser(UUID userId, Pageable pageable);
 
     Page<Ticket> getAllTicketsByStatus(Pageable pageable,  TicketStatus status);

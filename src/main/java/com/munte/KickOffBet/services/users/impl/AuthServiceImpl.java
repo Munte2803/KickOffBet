@@ -40,6 +40,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -159,8 +160,9 @@ public class AuthServiceImpl implements AuthService {
     // The failed-attempt counter and lock are saved right before throwing, so those exceptions must not roll back
     @Transactional(noRollbackFor = {BadCredentialsException.class, BusinessException.class})
     public AuthDto login(LoginRequest request) {
+        // Same answer as a wrong password, so the response never reveals whether an account exists
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(ZoneOffset.UTC))) {
             throw new BusinessException("Account is temporarily locked. Try again later.");
@@ -249,12 +251,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resendVerificationEmail(EmailRequest email) {
-        User user = userRepository.findByEmail(email.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (user.isEmailVerified()) {
-            throw new BusinessException("Email already verified");
+        // Unknown or already verified emails are ignored silently, so the response never reveals an account
+        Optional<User> found = userRepository.findByEmail(email.getEmail());
+        if (found.isEmpty() || found.get().isEmailVerified()) {
+            return;
         }
+        User user = found.get();
 
         verificationTokenRepository.deleteAllByUserAndType(user, TokenType.EMAIL_VERIFICATION);
 
@@ -275,8 +277,13 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void forgotPassword(EmailRequest email) {
 
-        User user = userRepository.findByEmail(email.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        // Unknown emails are ignored silently, so the response never reveals whether an account exists
+        Optional<User> found = userRepository.findByEmail(email.getEmail());
+        if (found.isEmpty()) {
+            log.info("Password reset requested for an unknown email");
+            return;
+        }
+        User user = found.get();
 
         verificationTokenRepository.deleteAllByUserAndType(user, TokenType.PASSWORD_RESET);
 

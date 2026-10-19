@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -196,7 +197,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void resendVerificationReplacesTokenAndRefusesVerifiedEmails() throws Exception {
+    void resendVerificationReplacesTokenAndIgnoresVerifiedOrUnknownEmails() throws Exception {
         register(registration("resend@kickoffbet.test"), true).andExpect(status().isCreated());
         String first = tokenFor("resend@kickoffbet.test", TokenType.EMAIL_VERIFICATION);
 
@@ -208,9 +209,12 @@ class AuthIntegrationTest extends IntegrationTestBase {
 
         mvc.perform(get("/api/auth/confirm-email").param("token", second)).andExpect(status().isNoContent());
 
+        // Verified and unknown emails get the same answer as a real resend, without sending anything
         mvc.perform(withJson(post("/api/auth/resend-verification"), Map.of("email", "resend@kickoffbet.test")))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Email already verified"));
+                .andExpect(status().isNoContent());
+        mvc.perform(withJson(post("/api/auth/resend-verification"), Map.of("email", "ghost@kickoffbet.test")))
+                .andExpect(status().isNoContent());
+        verify(emailService, times(2)).sendVerificationEmail(any(), any());
     }
 
     // ------------------------------------------------------------------ registration failures
@@ -292,6 +296,20 @@ class AuthIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isUnauthorized())
                 .andExpect(errorCode("INVALID_CREDENTIALS"));
         assertThat(data.reloadUser(user.getId()).getFailedLoginAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void unknownEmailGetsTheSameAnswerAsAWrongPassword() throws Exception {
+        mvc.perform(withJson(post("/api/auth/login"), Map.of("email", "ghost@kickoffbet.test", "password", "Nope12345")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(errorCode("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    void forgotPasswordForAnUnknownEmailSucceedsWithoutSendingAnything() throws Exception {
+        mvc.perform(withJson(post("/api/auth/forgot-password"), Map.of("email", "ghost@kickoffbet.test")))
+                .andExpect(status().isNoContent());
+        verify(emailService, never()).sendPasswordResetEmail(any(), any());
     }
 
     @Test

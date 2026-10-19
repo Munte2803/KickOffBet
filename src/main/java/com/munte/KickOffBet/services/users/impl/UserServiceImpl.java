@@ -10,6 +10,7 @@ import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.mapper.UserMapper;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.services.users.AuthService;
+import com.munte.KickOffBet.services.tickets.TicketService;
 import com.munte.KickOffBet.services.users.StorageService;
 import com.munte.KickOffBet.domain.dto.api.response.StoredFile;
 import com.munte.KickOffBet.services.users.UserService;
@@ -36,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final AuthService authService;
     private final StorageService storageService;
+    private final TicketService ticketService;
 
 
     @Value("${minio.bucket.id-cards}")
@@ -75,6 +77,9 @@ public class UserServiceImpl implements UserService {
         if (user.getStatus() == UserStatus.ACTIVE) {
             throw new BusinessException("User is already active.");
         }
+        if (user.getIdCardUrl() == null) {
+            throw new BusinessException("User has no ID card uploaded");
+        }
         if (user.isEmailVerified()) {
             user.setStatus(UserStatus.ACTIVE);
         }
@@ -82,6 +87,9 @@ public class UserServiceImpl implements UserService {
         user.setIdCardVerified(true);
         userRepository.save(user);
         log.info("User approved: {}", user.getEmail());
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            ticketService.settlePendingTicketsOfUser(user.getId());
+        }
     }
 
     @Override
@@ -125,6 +133,8 @@ public class UserServiceImpl implements UserService {
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
         log.info("User activated: {}", user.getEmail());
+        // Pay out or refund tickets that were decided while the account was suspended
+        ticketService.settlePendingTicketsOfUser(user.getId());
     }
 
     @Override

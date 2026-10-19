@@ -30,7 +30,7 @@ class RateLimitIntegrationTest extends IntegrationTestBase {
     @Test
     void emailEndpointsAllowOneRequestPerPathPerWindow() throws Exception {
         mvc.perform(withJson(post("/api/auth/forgot-password"), Map.of("email", "nobody@kickoffbet.test")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNoContent());
         mvc.perform(withJson(post("/api/auth/forgot-password"), Map.of("email", "nobody@kickoffbet.test")))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(content().contentType("application/json"))
@@ -39,7 +39,7 @@ class RateLimitIntegrationTest extends IntegrationTestBase {
 
         // separate bucket per path
         mvc.perform(withJson(post("/api/auth/resend-verification"), Map.of("email", "nobody@kickoffbet.test")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -47,7 +47,7 @@ class RateLimitIntegrationTest extends IntegrationTestBase {
         Map<String, String> body = Map.of("email", "nobody@kickoffbet.test", "password", "Whatever1");
         for (int i = 0; i < 3; i++) {
             mvc.perform(withJson(post("/api/auth/login"), body).header("X-Forwarded-For", "10.0.0." + i))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isUnauthorized());
         }
         mvc.perform(withJson(post("/api/auth/login"), body).header("X-Forwarded-For", "203.0.113.7"))
                 .andExpect(status().isTooManyRequests())
