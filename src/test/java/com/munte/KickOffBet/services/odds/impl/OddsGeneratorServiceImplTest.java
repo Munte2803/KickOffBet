@@ -331,6 +331,20 @@ class OddsGeneratorServiceImplTest {
         }
 
         @Test
+        @DisplayName("teams without data get a sensible over 1.5 price, clearly shorter than over 2.5")
+        void over15PricedFromDefaultsWhenNoData() {
+            Match noData = scheduledMatch(team("New A"), team("New B"));
+            givenMatches(List.of(noData));
+
+            process(noData);
+
+            double over15 = odds(noData, MarketType.OVER_UNDER, BetOption.OVER, "1.5");
+            double over25 = odds(noData, MarketType.OVER_UNDER, BetOption.OVER, "2.5");
+            assertThat(over15).isBetween(1.25, 1.55);
+            assertThat(over25 - over15).isGreaterThan(0.5);
+        }
+
+        @Test
         @DisplayName("real (non-zero) metrics are never overwritten by defaults")
         void realMetricsKept() {
             Team home = team("Home"), away = team("Away");
@@ -412,6 +426,21 @@ class OddsGeneratorServiceImplTest {
         }
 
         @Test
+        @DisplayName("an automatic offer switched off while live/delayed is reactivated even if its odds are unchanged")
+        void inactiveAutomaticOfferReactivatedWithSameOdds() {
+            Match match = balancedMatchWithMetrics();
+            process(match);
+            MarketOffer home = offer(match, MarketType.H2H, BetOption.HOME, null);
+            BigDecimal priced = home.getOdds();
+            match.getAvailableOffers().forEach(o -> o.setActive(false));
+
+            process(match);
+
+            assertThat(home.getOdds()).isEqualByComparingTo(priced);
+            assertThat(match.getAvailableOffers()).allMatch(MarketOffer::isActive);
+        }
+
+        @Test
         @DisplayName("recalculating with unchanged data is idempotent")
         void recalculationIsIdempotent() {
             Match match = balancedMatchWithMetrics();
@@ -455,12 +484,16 @@ class OddsGeneratorServiceImplTest {
             noExternal.setExternalId(0L);
             Match match = scheduledMatch(noExternal, team("B"));
             Match missingTeam = scheduledMatch(team("C"), null);
-            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(match, missingTeam));
+            Team adminCreated = team("Admin created");
+            adminCreated.setExternalId(null);
+            Match nullExternal = scheduledMatch(team("D"), adminCreated);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(match, missingTeam, nullExternal));
 
-            process(match, missingTeam);
+            process(match, missingTeam, nullExternal);
 
             assertThat(match.getAvailableOffers()).isEmpty();
             assertThat(missingTeam.getAvailableOffers()).isEmpty();
+            assertThat(nullExternal.getAvailableOffers()).isEmpty();
             verify(matchRepository, never()).saveAll(anyIterable());
         }
 

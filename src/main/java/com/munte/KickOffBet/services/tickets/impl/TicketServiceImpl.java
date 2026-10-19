@@ -106,20 +106,19 @@ public class TicketServiceImpl implements TicketService {
             for (TicketSelection selection : ticket.getSelections()) {
                 if (selection.getStatus() == TicketSelectionStatus.PENDING) {
                     hasPending = true;
-                    break;
                 }
                 if (selection.getStatus() == TicketSelectionStatus.LOST) {
                     hasLost = true;
-                    break;
                 }
             }
 
-            if (hasPending) continue;
-
+            // One lost selection loses the ticket immediately, even while other matches are still to play
             if (hasLost) {
                 ticket.setStatus(TicketStatus.LOST);
                 continue;
             }
+
+            if (hasPending) continue;
 
             // Voided (CANCELLED) selections count as odds 1.00. The effective odds are rebuilt
             // from the selections that won, only once the ticket is fully settled, so a void

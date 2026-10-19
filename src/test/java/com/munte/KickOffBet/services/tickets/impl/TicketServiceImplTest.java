@@ -280,6 +280,21 @@ class TicketServiceImplTest {
         }
 
         @Test
+        @DisplayName("a lost selection makes the ticket LOST immediately, whatever the order of still-pending selections")
+        void lostImmediatelyWhilePending() {
+            Ticket pendingFirst = ticketWith("10.00", "1.85", "2.10");
+            grade(pendingFirst, TicketSelectionStatus.PENDING, TicketSelectionStatus.LOST);
+            Ticket lostFirst = ticketWith("10.00", "1.85", "2.10");
+            grade(lostFirst, TicketSelectionStatus.LOST, TicketSelectionStatus.PENDING);
+
+            service.settleTickets(Set.of(pendingFirst, lostFirst));
+
+            assertThat(pendingFirst.getStatus()).isEqualTo(TicketStatus.LOST);
+            assertThat(lostFirst.getStatus()).isEqualTo(TicketStatus.LOST);
+            verifyNoInteractions(walletService);
+        }
+
+        @Test
         @DisplayName("a ticket with pending selections and no losses stays PENDING")
         void stillPending() {
             Ticket t = ticketWith("10.00", "1.85", "2.10");

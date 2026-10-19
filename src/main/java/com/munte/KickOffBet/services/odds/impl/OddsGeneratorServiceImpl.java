@@ -2,6 +2,7 @@ package com.munte.KickOffBet.services.odds.impl;
 
 import com.munte.KickOffBet.domain.entity.MarketOffer;
 import com.munte.KickOffBet.domain.entity.Match;
+import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.entity.TeamMatchMetrics;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MarketType;
@@ -57,6 +58,8 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private double defaultSeasonWinRate;
     @Value("${betting.default.season-draw-rate:0.29}")
     private double defaultSeasonDrawRate;
+    @Value("${betting.default.season-over15-rate:0.74}")
+    private double defaultSeasonOver15Rate;
     @Value("${betting.default.season-over25-rate:0.48}")
     private double defaultSeasonOver25Rate;
     @Value("${betting.default.season-btts-rate:0.45}")
@@ -67,6 +70,8 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private double defaultLast5AvgConceded;
     @Value("${betting.default.last5-draw-rate:0.29}")
     private double defaultLast5DrawRate;
+    @Value("${betting.default.last5-over15-rate:0.74}")
+    private double defaultLast5Over15Rate;
     @Value("${betting.default.last5-over25-rate:0.48}")
     private double defaultLast5Over25Rate;
     @Value("${betting.default.last5-btts-rate:0.45}")
@@ -197,7 +202,9 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         if (existingOffer.isPresent()) {
             final MarketOffer offer = existingOffer.get();
             if (!offer.isManualUpdate()) {
-                if (offer.getOdds() == null || offer.getOdds().compareTo(newOdds) != 0) {
+                // Also reactivates an automatic offer switched off while the match was live or
+                // delayed, even when its recalculated odds are unchanged
+                if (offer.getOdds() == null || offer.getOdds().compareTo(newOdds) != 0 || !offer.isActive()) {
                     offer.setOdds(newOdds);
                     offer.setActive(true);
                     offer.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
@@ -217,8 +224,11 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     }
 
     private boolean hasValidTeams(final Match m) {
-        return m.getHomeTeam() != null && m.getHomeTeam().getExternalId() > 0 &&
-                m.getAwayTeam() != null && m.getAwayTeam().getExternalId() > 0;
+        return hasExternalId(m.getHomeTeam()) && hasExternalId(m.getAwayTeam());
+    }
+
+    private boolean hasExternalId(final Team team) {
+        return team != null && team.getExternalId() != null && team.getExternalId() > 0;
     }
 
     private int applyFieldDefaults(final TeamMatchMetrics m) {
@@ -229,11 +239,13 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         if (isZero(m.getSeasonAwayAvgConceded()))  { m.setSeasonAwayAvgConceded(defaultSeasonAwayAvgConceded); count++; }
         if (isZero(m.getSeasonWinRate()))           { m.setSeasonWinRate(defaultSeasonWinRate);                 count++; }
         if (isZero(m.getSeasonDrawRate()))           { m.setSeasonDrawRate(defaultSeasonDrawRate);               count++; }
+        if (isZero(m.getSeasonOver15Rate()))         { m.setSeasonOver15Rate(defaultSeasonOver15Rate);           count++; }
         if (isZero(m.getSeasonOver25Rate()))         { m.setSeasonOver25Rate(defaultSeasonOver25Rate);           count++; }
         if (isZero(m.getSeasonBttsRate()))           { m.setSeasonBttsRate(defaultSeasonBttsRate);               count++; }
         if (isZero(m.getLast5AvgScored()))           { m.setLast5AvgScored(defaultLast5AvgScored);               count++; }
         if (isZero(m.getLast5AvgConceded()))         { m.setLast5AvgConceded(defaultLast5AvgConceded);           count++; }
         if (isZero(m.getLast5DrawRate()))             { m.setLast5DrawRate(defaultLast5DrawRate);                 count++; }
+        if (isZero(m.getLast5Over15Rate()))           { m.setLast5Over15Rate(defaultLast5Over15Rate);             count++; }
         if (isZero(m.getLast5Over25Rate()))           { m.setLast5Over25Rate(defaultLast5Over25Rate);             count++; }
         if (isZero(m.getLast5BttsRate()))             { m.setLast5BttsRate(defaultLast5BttsRate);                 count++; }
         return count;

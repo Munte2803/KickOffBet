@@ -43,11 +43,13 @@ final class OddsTestFixtures {
     static final double DEF_SEASON_AWAY_AVG_CONCEDED = 1.30;
     static final double DEF_SEASON_WIN_RATE = 0.38;
     static final double DEF_SEASON_DRAW_RATE = 0.29;
+    static final double DEF_SEASON_OVER15_RATE = 0.74;
     static final double DEF_SEASON_OVER25_RATE = 0.48;
     static final double DEF_SEASON_BTTS_RATE = 0.45;
     static final double DEF_LAST5_AVG_SCORED = 1.25;
     static final double DEF_LAST5_AVG_CONCEDED = 1.10;
     static final double DEF_LAST5_DRAW_RATE = 0.29;
+    static final double DEF_LAST5_OVER15_RATE = 0.74;
     static final double DEF_LAST5_OVER25_RATE = 0.48;
     static final double DEF_LAST5_BTTS_RATE = 0.45;
 
@@ -89,11 +91,13 @@ final class OddsTestFixtures {
         ReflectionTestUtils.setField(s, "defaultSeasonAwayAvgConceded", DEF_SEASON_AWAY_AVG_CONCEDED);
         ReflectionTestUtils.setField(s, "defaultSeasonWinRate", DEF_SEASON_WIN_RATE);
         ReflectionTestUtils.setField(s, "defaultSeasonDrawRate", DEF_SEASON_DRAW_RATE);
+        ReflectionTestUtils.setField(s, "defaultSeasonOver15Rate", DEF_SEASON_OVER15_RATE);
         ReflectionTestUtils.setField(s, "defaultSeasonOver25Rate", DEF_SEASON_OVER25_RATE);
         ReflectionTestUtils.setField(s, "defaultSeasonBttsRate", DEF_SEASON_BTTS_RATE);
         ReflectionTestUtils.setField(s, "defaultLast5AvgScored", DEF_LAST5_AVG_SCORED);
         ReflectionTestUtils.setField(s, "defaultLast5AvgConceded", DEF_LAST5_AVG_CONCEDED);
         ReflectionTestUtils.setField(s, "defaultLast5DrawRate", DEF_LAST5_DRAW_RATE);
+        ReflectionTestUtils.setField(s, "defaultLast5Over15Rate", DEF_LAST5_OVER15_RATE);
         ReflectionTestUtils.setField(s, "defaultLast5Over25Rate", DEF_LAST5_OVER25_RATE);
         ReflectionTestUtils.setField(s, "defaultLast5BttsRate", DEF_LAST5_BTTS_RATE);
     }
@@ -131,11 +135,13 @@ final class OddsTestFixtures {
         m.setSeasonAwayAvgConceded(DEF_SEASON_AWAY_AVG_CONCEDED);
         m.setSeasonWinRate(DEF_SEASON_WIN_RATE);
         m.setSeasonDrawRate(DEF_SEASON_DRAW_RATE);
+        m.setSeasonOver15Rate(DEF_SEASON_OVER15_RATE);
         m.setSeasonOver25Rate(DEF_SEASON_OVER25_RATE);
         m.setSeasonBttsRate(DEF_SEASON_BTTS_RATE);
         m.setLast5AvgScored(DEF_LAST5_AVG_SCORED);
         m.setLast5AvgConceded(DEF_LAST5_AVG_CONCEDED);
         m.setLast5DrawRate(DEF_LAST5_DRAW_RATE);
+        m.setLast5Over15Rate(DEF_LAST5_OVER15_RATE);
         m.setLast5Over25Rate(DEF_LAST5_OVER25_RATE);
         m.setLast5BttsRate(DEF_LAST5_BTTS_RATE);
         return m;
