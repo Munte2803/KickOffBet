@@ -38,14 +38,6 @@ export function toLocalInputValue(date: Date): string {
   ].join('T')
 }
 
-const fullDateFormatter = new Intl.DateTimeFormat('ro-RO', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
 const shortDateFormatter = new Intl.DateTimeFormat('ro-RO', {
   day: '2-digit',
   month: '2-digit',
@@ -72,7 +64,10 @@ const dateOnlyFormatter = new Intl.DateTimeFormat('ro-RO', {
 
 export const formatDateTime = (iso: string): string => {
   if (!iso) return ''
-  return fullDateFormatter.format(parseUtcDate(iso)).replace(',', ' la')
+  // Compose "<date> la <time>" explicitly: depending on the ICU/CLDR version the combined
+  // ro-RO formatter already emits "la", so patching its separator produced "... la ... la ...".
+  const date = parseUtcDate(iso)
+  return `${dateOnlyFormatter.format(date)} la ${timeOnlyFormatter.format(date)}`
 }
 
 export const formatDateShort = (iso: string): string => {
