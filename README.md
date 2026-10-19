@@ -74,6 +74,22 @@ docker compose up -d --build
 
 The app starts with PostgreSQL, MinIO and Adminer alongside the backend and frontend. See `.env.example` for every variable, including the production-only ones (domain, ACME email, proxy settings) used by `docker-compose.prod.yml`.
 
+## Running the tests
+
+```bash
+sh ./mvnw test                 # backend: unit + API integration tests on in-memory H2, no services needed
+cd Kickoffbet-ui && npm test   # frontend: Vitest unit and component tests
+```
+
+The backend suite can also run against a real PostgreSQL (empty database), using the production `schema.sql`:
+
+```bash
+sh ./mvnw test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/kickoffbet_test \
+  -Dspring.datasource.username=postgres -Dspring.datasource.password=... \
+  -Dspring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect \
+  -Dspring.sql.init.schema-locations=classpath:schema.sql
+```
+
 ## Production deployment
 
 The production overlay (`docker-compose.prod.yml`) adds Caddy as the single public entry point: it obtains and renews the Let's Encrypt certificate automatically and reverse-proxies the API, the SPA and the public asset bucket on one domain. The live instance runs on an Oracle Cloud VM.

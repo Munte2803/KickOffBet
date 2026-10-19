@@ -75,6 +75,14 @@ public class TestDataFactory {
                 "SELECT table_name FROM information_schema.tables "
                         + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
                 String.class);
+        if (tables.isEmpty()) return;
+        // The suite normally runs on H2, but can be pointed at a real PostgreSQL (see README)
+        boolean postgres = Boolean.TRUE.equals(jdbc.execute((java.sql.Connection c) ->
+                c.getMetaData().getDatabaseProductName().equalsIgnoreCase("PostgreSQL")));
+        if (postgres) {
+            jdbc.execute("TRUNCATE TABLE " + String.join(", ", tables.stream().map(t -> "\"" + t + "\"").toList()) + " CASCADE");
+            return;
+        }
         jdbc.execute("SET REFERENTIAL_INTEGRITY FALSE");
         try {
             tables.forEach(t -> jdbc.execute("TRUNCATE TABLE \"" + t + "\""));
