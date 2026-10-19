@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useTicketStore } from '@/stores/ticket.store'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
@@ -169,5 +170,39 @@ describe('ticket store (bet slip)', () => {
     expect(store.selectionCount).toBe(0)
     expect(store.totalOdds).toBe(1)
     expect(store.stake).toBe(25)
+  })
+})
+
+describe('ticket store persistence', () => {
+  const future = new Date(Date.now() + 86_400_000).toISOString()
+  const past = new Date(Date.now() - 3_600_000).toISOString()
+
+  it('keeps the selections and stake across a page reload', async () => {
+    const store = useTicketStore()
+    store.toggleSelection(makeMatch({ id: 'm1', startTime: future }), makeOffer({ id: 'o1', odds: 2 }))
+    store.stake = 25
+    await nextTick()
+
+    setActivePinia(createPinia())
+    const reloaded = useTicketStore()
+    expect(reloaded.selections.map((s) => s.offerId)).toEqual(['o1'])
+    expect(reloaded.stake).toBe(25)
+  })
+
+  it('drops selections whose match has already started', async () => {
+    const store = useTicketStore()
+    store.toggleSelection(makeMatch({ id: 'm1', startTime: future }), makeOffer({ id: 'o1' }))
+    store.toggleSelection(makeMatch({ id: 'm2', startTime: past }), makeOffer({ id: 'o2' }))
+    await nextTick()
+
+    setActivePinia(createPinia())
+    expect(useTicketStore().selections.map((s) => s.offerId)).toEqual(['o1'])
+  })
+
+  it('starts empty when the stored slip is unreadable', () => {
+    localStorage.setItem('kickoffbet.betslip', '{not json')
+    const store = useTicketStore()
+    expect(store.selections).toEqual([])
+    expect(store.stake).toBe(10)
   })
 })

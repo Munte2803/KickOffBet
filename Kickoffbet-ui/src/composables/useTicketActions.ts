@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useTicketStore } from '@/stores/ticket.store'
 import { useToastStore } from '@/stores/toast.store'
 import { placeTicket } from '@/api/tickets.api'
+import { ApiError } from '@/api/api-error'
 import { getProfile } from '@/api/profile.api'
 import type { MatchList, MatchDetail, MarketOffer } from '@/types/match.types'
 import { MAX_STAKE, MAX_WIN, MIN_STAKE } from '@/constants/betting.constants'
@@ -66,9 +67,11 @@ export function useTicketActions() {
       return ticket
     } catch (error) {
       toastStore.showError(error instanceof Error ? error.message : 'Nu am putut plasa biletul.')
-      await router.push({ name: 'wallet', query: { ref: route.fullPath } })
+      // Only a lack of money is fixed in the wallet; for any other error the user stays on the slip
+      if (error instanceof ApiError && error.code === 'INSUFFICIENT_FUNDS') {
+        await router.push({ name: 'wallet', query: { ref: route.fullPath } })
+      }
       return null
-      
     } finally {
       placingTicket.value = false
     }

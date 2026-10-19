@@ -18,6 +18,7 @@ vi.mock('@/api/profile.api', () => ({ getProfile: mocks.getProfile }))
 vi.mock('@/api/axios', () => ({ default: { post: vi.fn() } }))
 
 import { useTicketActions } from '@/composables/useTicketActions'
+import { ApiError } from '@/api/api-error'
 import { useAuthStore } from '@/stores/auth.store'
 import { useTicketStore } from '@/stores/ticket.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -156,16 +157,27 @@ describe('useTicketActions.placeCurrentTicket', () => {
     expect(useAuthStore().balance).toBe(0)
   })
 
-  it('keeps the slip and reports the server error when placement fails', async () => {
+  it('keeps the slip and stays on the page when placement fails for a reason other than money', async () => {
     login()
     addSelections()
-    mocks.placeTicket.mockRejectedValue(new Error('Fonduri insuficiente'))
+    mocks.placeTicket.mockRejectedValue(new ApiError('Cota nu mai este activa.', 'TICKET_PLACEMENT_ERROR'))
     const { placeCurrentTicket, placingTicket } = useTicketActions()
 
     await expect(placeCurrentTicket()).resolves.toBeNull()
-    expect(lastToast()).toMatchObject({ type: 'error', message: 'Fonduri insuficiente' })
+    expect(lastToast()).toMatchObject({ type: 'error', message: 'Cota nu mai este activa.' })
     expect(useTicketStore().selectionCount).toBe(2)
     expect(placingTicket.value).toBe(false)
-    expect(mocks.push).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'ticket-detail' }))
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it('sends the user to the wallet only when funds are insufficient', async () => {
+    login()
+    addSelections()
+    mocks.placeTicket.mockRejectedValue(new ApiError('Fonduri insuficiente.', 'INSUFFICIENT_FUNDS'))
+    const { placeCurrentTicket } = useTicketActions()
+
+    await expect(placeCurrentTicket()).resolves.toBeNull()
+    expect(useTicketStore().selectionCount).toBe(2)
+    expect(mocks.push).toHaveBeenCalledWith({ name: 'wallet', query: { ref: '/match/m1?tab=odds' } })
   })
 })

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@/api/api-error'
 import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import api, { ensureFreshSession, refreshSession } from '@/api/axios'
 import { getStoredAccessToken, getStoredAuthUser, getStoredRefreshToken, storeAuthSession } from '@/utils/auth-session.utils'
@@ -233,6 +234,14 @@ describe('error mapping', () => {
     const error = await api.get('/api/x').catch((e: unknown) => e)
     expect(error).toBeInstanceOf(Error)
     expect((error as Error).message).toBe('Eroare interna. Incearca mai tarziu.')
+  })
+
+  it('keeps the backend error code on the rejection', async () => {
+    handler = () => ({ status: 400, data: { errorCode: 'INSUFFICIENT_FUNDS', error: 'Insufficient funds!' } })
+    const error = await api.get('/api/x').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).code).toBe('INSUFFICIENT_FUNDS')
+    expect((error as ApiError).message).toBe('Fonduri insuficiente. Alimenteaza portofelul pentru a plasa biletul.')
   })
 })
 

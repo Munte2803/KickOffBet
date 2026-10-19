@@ -285,7 +285,7 @@ class TicketIntegrationTest extends IntegrationTestBase {
         User poor = data.userWithBalance("poor@kickoffbet.test", "5");
         place(login(poor), 10, List.of(selection(data.offerOf(match, BetOption.HOME))))
                 .andExpect(status().isBadRequest())
-                .andExpect(errorCode("BUSINESS_ERROR"))
+                .andExpect(errorCode("INSUFFICIENT_FUNDS"))
                 .andExpect(jsonPath("$.error").value("Insufficient funds!"));
         assertThat(ticketRepository.count()).isZero();
         assertThat(data.balanceOf(poor.getId())).isEqualByComparingTo("5");

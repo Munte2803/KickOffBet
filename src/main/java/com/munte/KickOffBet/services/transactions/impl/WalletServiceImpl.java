@@ -9,6 +9,7 @@ import com.munte.KickOffBet.domain.enums.TransactionStatus;
 import com.munte.KickOffBet.domain.enums.TransactionType;
 import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.exceptions.BusinessException;
+import com.munte.KickOffBet.exceptions.InsufficientFundsException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.TransactionRepository;
 import com.munte.KickOffBet.repository.UserRepository;
@@ -70,7 +71,7 @@ public class WalletServiceImpl implements WalletService {
         User user = this.getActiveCurrentUser();
 
         if (request.getAmount().compareTo(user.getBalance()) > 0) {
-            throw new BusinessException("Insufficient funds!");
+            throw new InsufficientFundsException();
         }
 
         Transaction transaction = new Transaction();
@@ -104,7 +105,7 @@ public class WalletServiceImpl implements WalletService {
         User user = this.getActiveCurrentUser();
 
         if (amount.compareTo(user.getBalance()) > 0) {
-            throw new BusinessException("Insufficient funds!");
+            throw new InsufficientFundsException();
         }
 
         Transaction transaction = new Transaction();

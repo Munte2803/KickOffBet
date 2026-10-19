@@ -103,6 +103,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorDto("CONFLICT", ex.getMessage()));
     }
 
+    // The UI sends the user to the wallet only for this code, so it is kept apart from BUSINESS_ERROR
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<ErrorDto> handleInsufficientFunds(InsufficientFundsException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorDto("INSUFFICIENT_FUNDS", ex.getMessage()));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorDto> handleBusiness(BusinessException ex) {
         log.warn("Business violation: {}", ex.getMessage());

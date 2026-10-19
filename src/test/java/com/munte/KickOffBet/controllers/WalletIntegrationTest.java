@@ -165,7 +165,7 @@ class WalletIntegrationTest extends IntegrationTestBase {
         User user = data.userWithBalance("poor@kickoffbet.test", "30");
         withdraw(login(user), 50)
                 .andExpect(status().isBadRequest())
-                .andExpect(errorCode("BUSINESS_ERROR"))
+                .andExpect(errorCode("INSUFFICIENT_FUNDS"))
                 .andExpect(jsonPath("$.error").value("Insufficient funds!"));
         assertThat(data.balanceOf(user.getId())).isEqualByComparingTo("30");
         assertThat(transactionRepository.count()).isZero();

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { MatchList, MarketOffer } from '@/types/match.types'
 import type { MarketType, BetOption } from '@/types/enums'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
@@ -23,9 +23,45 @@ export interface TicketSelection {
   odds: number
 }
 
+const STORAGE_KEY = 'kickoffbet.betslip'
+const DEFAULT_STAKE = 10
+
+interface StoredSlip {
+  selections: TicketSelection[]
+  stake: number
+}
+
+// The slip survives a page reload; selections whose match has already kicked off are dropped
+function loadSlip(): StoredSlip {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return { selections: [], stake: DEFAULT_STAKE }
+    const parsed = JSON.parse(raw) as Partial<StoredSlip>
+    const now = Date.now()
+    const selections = Array.isArray(parsed.selections)
+      ? parsed.selections.filter((selection) => new Date(selection.matchStartTime).getTime() > now)
+      : []
+    const stake = typeof parsed.stake === 'number' && Number.isFinite(parsed.stake) ? parsed.stake : DEFAULT_STAKE
+    return { selections, stake }
+  } catch {
+    return { selections: [], stake: DEFAULT_STAKE }
+  }
+}
+
+function saveSlip(slip: StoredSlip) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(slip))
+  } catch {
+    // storage unavailable (private mode, quota): the slip simply isn't kept across reloads
+  }
+}
+
 export const useTicketStore = defineStore('ticket', () => {
-  const selections = ref<TicketSelection[]>([])
-  const stake = ref<number>(10)
+  const stored = loadSlip()
+  const selections = ref<TicketSelection[]>(stored.selections)
+  const stake = ref<number>(stored.stake)
+
+  watch([selections, stake], () => saveSlip({ selections: selections.value, stake: stake.value }), { deep: true })
 
   const totalOdds = computed(() => {
     if (!selections.value.length) return 1
