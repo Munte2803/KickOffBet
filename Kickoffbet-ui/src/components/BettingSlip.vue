@@ -40,7 +40,7 @@ async function submitTicket() {
   if (!isStakeValid.value) {
     hasTriedInvalidStake.value = true
     toastStore.showError(`Miza trebuie sa fie intre ${MIN_STAKE} si ${MAX_STAKE} RON.`)
-    
+    return
   }
 
   await placeCurrentTicket()

@@ -158,6 +158,12 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Errors raised by the request interceptor (e.g. an expired session) never reached the
+    // server and already carry a user-facing message: pass them through unchanged.
+    if (!error?.isAxiosError) {
+      return Promise.reject(error)
+    }
+
     const originalRequest = error.config
     const requestUrl = String(originalRequest?.url ?? '')
     const hasAccessToken = Boolean(getStoredAccessToken())
