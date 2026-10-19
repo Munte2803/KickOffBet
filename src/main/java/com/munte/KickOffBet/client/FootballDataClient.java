@@ -104,6 +104,10 @@ public class FootballDataClient {
                                 .queryParam("dateTo", to.toString())
                                 .build())
                         .retrieve()
+                        .onStatus(HttpStatusCode::isError, (request, response) -> {
+                            log.error("Failed to fetch matches between {} and {}. Status: {}", from, to, response.getStatusCode());
+                            throwApiError(response.getStatusCode(), "Could not fetch matches between " + from + " and " + to);
+                        })
                         .body(FdMatchList.class)
         );
     }

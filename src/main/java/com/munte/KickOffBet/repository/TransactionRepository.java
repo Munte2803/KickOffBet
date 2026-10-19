@@ -45,6 +45,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
                     "ORDER BY totalDeposited DESC",
             countQuery = "SELECT COUNT(DISTINCT u.id) FROM Transaction t JOIN t.user u " +
                     "WHERE t.transactionType = :type " +
+                    "AND t.status = :status " +
                     "AND t.createdAt BETWEEN :start AND :end"
     )
     Page<UserDepositSummaryDto> findTopDepositors(

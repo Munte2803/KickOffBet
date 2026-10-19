@@ -190,4 +190,13 @@ class FootballDataClientTest {
         assertThatThrownBy(() -> client.fetchMatchesByLeague("BL1"))
                 .isInstanceOf(RateLimitException.class);
     }
+
+    @Test
+    void dateRangeRateLimitedBecomesRateLimitException() {
+        server.expect(requestTo(BASE + "matches?dateFrom=2026-10-16&dateTo=2026-10-26"))
+                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThatThrownBy(() -> client.fetchMatchesInDateRange(LocalDate.of(2026, 10, 16), LocalDate.of(2026, 10, 26)))
+                .isInstanceOf(RateLimitException.class);
+    }
 }

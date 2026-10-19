@@ -83,6 +83,7 @@ class AuthServiceImplTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(authService, "idCardsBucket", "id-cards");
+        ReflectionTestUtils.setField(authService, "maxLoginAttempts", 10);
         user = new User();
         user.setId(UUID.randomUUID());
         user.setEmail("player@kickoffbet.test");

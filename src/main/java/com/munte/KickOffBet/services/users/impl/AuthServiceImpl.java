@@ -53,6 +53,9 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final VerificationTokenRepository verificationTokenRepository;
 
+    @Value("${rate-limit.login.max-attempts:10}")
+    private int maxLoginAttempts;
+
     @Value("${minio.bucket.id-cards}")
     private String idCardsBucket;
 
@@ -170,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BadCredentialsException e) {
             user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
 
-            if (user.getFailedLoginAttempts() >= 10) {
+            if (user.getFailedLoginAttempts() >= maxLoginAttempts) {
                 user.setLockedUntil(LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
                 user.setFailedLoginAttempts(0);
                 userRepository.save(user);
