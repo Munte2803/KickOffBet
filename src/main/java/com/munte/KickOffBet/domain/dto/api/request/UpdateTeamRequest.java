@@ -28,4 +28,12 @@ public class UpdateTeamRequest {
 
     private Set<UUID> leagueIds= new HashSet<>();
 
+    // Jackson builds this request through the all-args constructor, which skips the field initializer
+    // above: an omitted list arrives as null and is treated as empty
+    public Set<UUID> getLeagueIds() {
+        if (leagueIds == null) {
+            leagueIds = new HashSet<>();
+        }
+        return leagueIds;
+    }
 }

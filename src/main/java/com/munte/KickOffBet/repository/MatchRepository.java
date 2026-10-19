@@ -25,6 +25,10 @@ public interface MatchRepository extends JpaRepository<Match, UUID>, JpaSpecific
             "WHERE m.externalId IN :externalIds")
     List<Match> findAllByExternalIdIn(@Param("externalIds") Set<Long> externalIds);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Match m SET m.active = :active WHERE m.league.id = :leagueId")
+    int updateActiveByLeagueId(@Param("leagueId") UUID leagueId, @Param("active") boolean active);
+
     @Query("SELECT DISTINCT m FROM Match m " +
             "LEFT JOIN FETCH m.availableOffers "+
             "LEFT JOIN FETCH m.league " +

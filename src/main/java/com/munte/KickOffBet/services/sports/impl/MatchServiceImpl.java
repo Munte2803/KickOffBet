@@ -63,8 +63,6 @@ public class MatchServiceImpl implements MatchService {
 
         match.setStatus(SCHEDULED);
 
-        match.setActive(true);
-
         match.setManualUpdate(true);
 
         if (request.getHomeTeamId().equals(request.getAwayTeamId())) {
@@ -76,6 +74,7 @@ public class MatchServiceImpl implements MatchService {
         match.setLeague(leagueRepository.findById(request.getLeagueId())
                 .orElseThrow(()
                         -> new ResourceNotFoundException("League not found")));
+        match.setActive(match.getLeague().isActive());
         match.setHomeTeam(teamRepository.findById(request.getHomeTeamId())
                 .orElseThrow(()
                         -> new ResourceNotFoundException("Team not found")));

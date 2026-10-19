@@ -36,4 +36,12 @@ public class CreateMatchRequest {
 
     private List<@Valid CreateMarketOfferRequest> availableOffers= new ArrayList<>();
 
+    // Jackson builds this request through the all-args constructor, which skips the field initializer
+    // above: an omitted list arrives as null and is treated as empty
+    public List<CreateMarketOfferRequest> getAvailableOffers() {
+        if (availableOffers == null) {
+            availableOffers = new ArrayList<>();
+        }
+        return availableOffers;
+    }
 }

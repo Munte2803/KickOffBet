@@ -261,6 +261,9 @@ public class DataImportServiceImpl implements DataImportService {
                     final Match existingMatch = existingMatchesMap.get(dto.id());
                     final boolean isNew = (existingMatch == null);
                     final Match match = isNew ? new Match() : existingMatch;
+                    if (isNew) {
+                        match.setActive(league.isActive());
+                    }
 
                     final MatchStatus oldStatus = match.getStatus();
                     final MatchStatus newStatus = MatchStatus.fromString(dto.status());

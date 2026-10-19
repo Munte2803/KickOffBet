@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.controllers.admin;
 
 import com.munte.KickOffBet.domain.entity.League;
+import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -79,6 +81,18 @@ class AdminLeagueTeamIntegrationTest extends IntegrationTestBase {
 
         mvc.perform(auth(get("/api/teams/{id}", a.getId()), admin))
                 .andExpect(jsonPath("$.leagues[*].code").value(org.hamcrest.Matchers.contains("DED")));
+    }
+
+    @Test
+    void omittedTeamAndLeagueListsAreTreatedAsEmpty() throws Exception {
+        mvc.perform(auth(multipart("/api/admin/leagues")
+                        .file(jsonPart("data", Map.of("name", "Liga 1", "code", "RO1"))), admin))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.teams").isEmpty());
+        mvc.perform(auth(multipart("/api/admin/teams")
+                        .file(jsonPart("data", Map.of("name", "Rapid", "shortName", "Rapid", "tla", "RAP"))), admin))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.leagues").isEmpty());
     }
 
     @Test
@@ -178,6 +192,23 @@ class AdminLeagueTeamIntegrationTest extends IntegrationTestBase {
 
         mvc.perform(auth(patch("/api/admin/leagues/{code}/switch-active", "NOPE").param("active", "true"), admin))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void switchingLeagueActiveCascadesToItsMatches() throws Exception {
+        League pl = data.league("PL", "Premier League");
+        League other = data.league("SA", "Serie A");
+        Match plMatch = data.scheduledMatch(pl, data.team("Arsenal"), data.team("Chelsea"));
+        Match otherMatch = data.scheduledMatch(other, data.team("Inter"), data.team("Milan"));
+
+        mvc.perform(auth(patch("/api/admin/leagues/{code}/switch-active", "PL").param("active", "false"), admin))
+                .andExpect(status().isNoContent());
+        assertThat(data.reloadMatch(plMatch.getId()).isActive()).isFalse();
+        assertThat(data.reloadMatch(otherMatch.getId()).isActive()).isTrue();
+
+        mvc.perform(auth(patch("/api/admin/leagues/{code}/switch-active", "PL").param("active", "true"), admin))
+                .andExpect(status().isNoContent());
+        assertThat(data.reloadMatch(plMatch.getId()).isActive()).isTrue();
     }
 
     // ------------------------------------------------------------------ teams

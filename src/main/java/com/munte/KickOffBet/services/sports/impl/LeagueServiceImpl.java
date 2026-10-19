@@ -8,6 +8,7 @@ import com.munte.KickOffBet.exceptions.ConflictException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.mapper.LeagueMapper;
 import com.munte.KickOffBet.repository.LeagueRepository;
+import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
 import com.munte.KickOffBet.services.sports.LeagueService;
 import com.munte.KickOffBet.services.users.StorageService;
@@ -28,6 +29,7 @@ public class LeagueServiceImpl implements LeagueService {
 
     private final LeagueRepository leagueRepository;
     private final TeamRepository teamRepository;
+    private final MatchRepository matchRepository;
     private final LeagueMapper leagueMapper;
     private final StorageService storageService;
 
@@ -129,6 +131,8 @@ public class LeagueServiceImpl implements LeagueService {
         league.setManualUpdate(true);
 
         leagueRepository.save(league);
+        // Cascade: a league's matches are shown and open for betting only while the league is active
+        matchRepository.updateActiveByLeagueId(league.getId(), active);
     }
 
 
