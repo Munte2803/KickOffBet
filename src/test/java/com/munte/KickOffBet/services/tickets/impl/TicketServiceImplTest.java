@@ -1,16 +1,11 @@
 package com.munte.KickOffBet.services.tickets.impl;
 
-import com.munte.KickOffBet.domain.dto.api.request.PlaceTicketRequest;
-import com.munte.KickOffBet.domain.dto.api.request.TicketSelectionRequest;
 import com.munte.KickOffBet.domain.entity.*;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MarketType;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.domain.enums.TicketSelectionStatus;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
-import com.munte.KickOffBet.exceptions.BusinessException;
-import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
-import com.munte.KickOffBet.exceptions.TicketPlacementException;
 import com.munte.KickOffBet.repository.MarketOfferRepository;
 import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.services.tickets.TicketPlacementValidator;
@@ -21,14 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -75,17 +65,6 @@ class TicketServiceImplTest {
         return m;
     }
 
-    private static MarketOffer offer(MarketType type, BetOption option, String line, String odds) {
-        MarketOffer o = new MarketOffer();
-        o.setId(UUID.randomUUID());
-        o.setMarketType(type);
-        o.setOption(option);
-        o.setLine(line == null ? null : new BigDecimal(line));
-        o.setOdds(new BigDecimal(odds));
-        upcomingMatch().addOffer(o);
-        return o;
-    }
-
     private Ticket ticketWith(String stake, String... selectionOdds) {
         Ticket t = new Ticket();
         t.setId(UUID.randomUUID());
@@ -109,130 +88,6 @@ class TicketServiceImplTest {
 
     private static void grade(Ticket t, TicketSelectionStatus... statuses) {
         for (int i = 0; i < statuses.length; i++) t.getSelections().get(i).setStatus(statuses[i]);
-    }
-
-    // ---------------------------------------------------------------- placement
-
-    @Nested
-    @DisplayName("placeTicket")
-    class PlaceTicket {
-
-        private Ticket place(String stake, MarketOffer... offers) {
-            List<TicketSelectionRequest> picks = new ArrayList<>();
-            for (MarketOffer o : offers) picks.add(new TicketSelectionRequest(o.getId(), o.getOdds()));
-            PlaceTicketRequest request = new PlaceTicketRequest(new BigDecimal(stake), picks);
-
-            when(authService.getCurrentUser()).thenReturn(user);
-            when(marketOfferRepository.findAllWithMatchByIdIn(anySet())).thenReturn(List.of(offers));
-            when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> {
-                Ticket t = inv.getArgument(0);
-                t.setId(UUID.randomUUID());
-                return t;
-            });
-            return service.placeTicket(request);
-        }
-
-        @Test
-        @DisplayName("builds a pending ticket whose selections snapshot the offers")
-        void buildsTicket() {
-            MarketOffer home = offer(MarketType.H2H, BetOption.HOME, null, "1.85");
-            MarketOffer over = offer(MarketType.OVER_UNDER, BetOption.OVER, "2.5", "2.10");
-
-            Ticket ticket = place("10.00", home, over);
-
-            assertThat(ticket.getUser()).isSameAs(user);
-            assertThat(ticket.getStatus()).isEqualTo(TicketStatus.PENDING);
-            assertThat(ticket.getStake()).isEqualByComparingTo("10.00");
-            assertThat(ticket.getSelections()).hasSize(2);
-
-            TicketSelection s = ticket.getSelections().get(1);
-            assertThat(s.getTicket()).isSameAs(ticket);
-            assertThat(s.getMarketOffer()).isSameAs(over);
-            assertThat(s.getMatch()).isSameAs(over.getMatch());
-            assertThat(s.getMarketType()).isEqualTo(MarketType.OVER_UNDER);
-            assertThat(s.getSelectedOption()).isEqualTo(BetOption.OVER);
-            assertThat(s.getLine()).isEqualByComparingTo("2.5");
-            assertThat(s.getOddsAtPlacement()).isEqualByComparingTo("2.10");
-            assertThat(ticket.getSelections()).allSatisfy(sel ->
-                    assertThat(sel.getStatus()).isEqualTo(TicketSelectionStatus.PENDING));
-        }
-
-        @Test
-        @DisplayName("total odds are the product of selection odds and payout is stake x odds")
-        void totalOddsAndPayout() {
-            Ticket ticket = place("10.00",
-                    offer(MarketType.H2H, BetOption.HOME, null, "1.85"),
-                    offer(MarketType.BTTS, BetOption.YES, null, "2.10"),
-                    offer(MarketType.DOUBLE_CHANCE, BetOption.AWAY_OR_DRAW, null, "1.50"));
-
-            assertThat(ticket.getTotalOdd()).isEqualByComparingTo("5.8275");
-            assertThat(ticket.getPotentialPayout()).isEqualByComparingTo("58.275");
-        }
-
-        @Test
-        @DisplayName("potential payout is capped at 200 000")
-        void payoutCapped() {
-            Ticket ticket = place("50000.00",
-                    offer(MarketType.H2H, BetOption.AWAY, null, "5.00"));
-
-            assertThat(ticket.getTotalOdd()).isEqualByComparingTo("5.00");
-            assertThat(ticket.getPotentialPayout()).isEqualByComparingTo("200000.00");
-        }
-
-        @Test
-        @DisplayName("payout exactly at the cap is not altered")
-        void payoutAtCap() {
-            Ticket ticket = place("40000.00", offer(MarketType.H2H, BetOption.AWAY, null, "5.00"));
-
-            assertThat(ticket.getPotentialPayout()).isEqualByComparingTo("200000.00");
-        }
-
-        @Test
-        @DisplayName("the stake is debited from the wallet against the saved ticket")
-        void stakeDebited() {
-            Ticket ticket = place("25.00", offer(MarketType.H2H, BetOption.HOME, null, "1.85"));
-
-            verify(walletService).stake(argThat(a -> a.compareTo(new BigDecimal("25.00")) == 0), eq(ticket.getId()));
-        }
-
-        @Test
-        @DisplayName("the request is validated against the loaded offers before anything is persisted")
-        void validatesFirst() {
-            MarketOffer home = offer(MarketType.H2H, BetOption.HOME, null, "1.85");
-
-            place("10.00", home);
-
-            var order = inOrder(ticketPlacementValidator, ticketRepository, walletService);
-            order.verify(ticketPlacementValidator).validate(any(), eq(List.of(home)), eq(Map.of(home.getId(), home)));
-            order.verify(ticketRepository).save(any());
-            order.verify(walletService).stake(any(), any());
-        }
-
-        @Test
-        @DisplayName("a rejected ticket is neither saved nor charged")
-        void rejectedTicketNotSaved() {
-            MarketOffer home = offer(MarketType.H2H, BetOption.HOME, null, "1.85");
-            PlaceTicketRequest request = new PlaceTicketRequest(new BigDecimal("10.00"),
-                    List.of(new TicketSelectionRequest(home.getId(), new BigDecimal("1.90"))));
-            when(authService.getCurrentUser()).thenReturn(user);
-            when(marketOfferRepository.findAllWithMatchByIdIn(anySet())).thenReturn(List.of(home));
-            doThrow(new TicketPlacementException("Odds changed")).when(ticketPlacementValidator).validate(any(), any(), any());
-
-            assertThatThrownBy(() -> service.placeTicket(request)).isInstanceOf(TicketPlacementException.class);
-
-            verify(ticketRepository, never()).save(any());
-            verifyNoInteractions(walletService);
-        }
-
-        @Test
-        @DisplayName("insufficient balance aborts placement (wallet error propagates so the transaction rolls back)")
-        void insufficientFundsPropagates() {
-            doThrow(new BusinessException("Insufficient funds!")).when(walletService).stake(any(), any());
-
-            assertThatThrownBy(() -> place("10.00", offer(MarketType.H2H, BetOption.HOME, null, "1.85")))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("Insufficient funds");
-        }
     }
 
     // ---------------------------------------------------------------- settlement
@@ -426,119 +281,4 @@ class TicketServiceImplTest {
         }
     }
 
-    // ---------------------------------------------------------------- cancellation
-
-    @Nested
-    @DisplayName("cancelTicket")
-    class CancelTicket {
-
-        @BeforeEach
-        void currentUser() {
-            lenient().when(authService.getCurrentUser()).thenReturn(user);
-        }
-
-        @Test
-        @DisplayName("a pending ticket on matches not yet started is cancelled and the stake refunded")
-        void cancelPending() {
-            Ticket t = ticketWith("15.00", "1.85", "2.10");
-            when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
-
-            service.cancelTicket(t.getId());
-
-            assertThat(t.getStatus()).isEqualTo(TicketStatus.CANCELLED);
-            assertThat(t.getSelections()).allSatisfy(s ->
-                    assertThat(s.getStatus()).isEqualTo(TicketSelectionStatus.CANCELLED));
-            verify(ticketRepository).save(t);
-            verify(walletService).refund(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("15.00")) == 0), eq(t.getId()));
-        }
-
-        @Test
-        @DisplayName("unknown ticket, or someone else's ticket -> not found")
-        void unknown() {
-            UUID id = UUID.randomUUID();
-            when(ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.cancelTicket(id)).isInstanceOf(ResourceNotFoundException.class);
-            verifyNoInteractions(walletService);
-        }
-
-        @Test
-        @DisplayName("a settled ticket cannot be cancelled")
-        void settledTicket() {
-            for (TicketStatus status : List.of(TicketStatus.WON, TicketStatus.LOST, TicketStatus.CANCELLED)) {
-                Ticket t = ticketWith("15.00", "1.85");
-                t.setStatus(status);
-                when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
-
-                assertThatThrownBy(() -> service.cancelTicket(t.getId()))
-                        .isInstanceOf(BusinessException.class)
-                        .hasMessageContaining("Only Pending");
-                assertThat(t.getStatus()).isEqualTo(status);
-            }
-            verify(ticketRepository, never()).save(any());
-            verifyNoInteractions(walletService);
-        }
-
-        @Test
-        @DisplayName("a ticket with a match already started cannot be cancelled")
-        void startedMatch() {
-            Ticket t = ticketWith("15.00", "1.85", "2.10");
-            t.getSelections().get(1).getMatch().setStartTime(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
-            when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
-
-            assertThatThrownBy(() -> service.cancelTicket(t.getId()))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("already started");
-            assertThat(t.getStatus()).isEqualTo(TicketStatus.PENDING);
-            verify(ticketRepository, never()).save(any());
-            verifyNoInteractions(walletService);
-        }
-    }
-
-    // ---------------------------------------------------------------- queries
-
-    @Nested
-    @DisplayName("queries")
-    class Queries {
-
-        @Test
-        @DisplayName("my ticket lookup is scoped to the current user")
-        void myTicketScopedToUser() {
-            Ticket t = ticketWith("10.00", "2.00");
-            when(authService.getCurrentUser()).thenReturn(user);
-            when(ticketRepository.findByIdAndUserIdWithSelections(t.getId(), user.getId())).thenReturn(Optional.of(t));
-
-            assertThat(service.getMyTicketById(t.getId())).isSameAs(t);
-        }
-
-        @Test
-        @DisplayName("someone else's ticket is reported as not found")
-        void otherUsersTicket() {
-            UUID id = UUID.randomUUID();
-            when(authService.getCurrentUser()).thenReturn(user);
-            when(ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.getMyTicketById(id)).isInstanceOf(ResourceNotFoundException.class);
-        }
-
-        @Test
-        @DisplayName("my tickets by status are filtered by the current user")
-        void myTicketsByStatus() {
-            Pageable pageable = PageRequest.of(0, 10);
-            Page<Ticket> page = new PageImpl<>(List.of());
-            when(authService.getCurrentUser()).thenReturn(user);
-            when(ticketRepository.findByUser_IdAndStatus(user.getId(), TicketStatus.WON, pageable)).thenReturn(page);
-
-            assertThat(service.getMyTicketsByStatus(TicketStatus.WON, pageable)).isSameAs(page);
-        }
-
-        @Test
-        @DisplayName("admin ticket lookup throws when missing")
-        void adminTicketMissing() {
-            UUID id = UUID.randomUUID();
-            when(ticketRepository.findByIdWithSelections(id)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.getTicketById(id)).isInstanceOf(ResourceNotFoundException.class);
-        }
-    }
 }

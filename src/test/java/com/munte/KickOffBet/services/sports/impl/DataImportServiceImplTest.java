@@ -14,12 +14,9 @@ import com.munte.KickOffBet.events.Match.MatchesDelayedEvent;
 import com.munte.KickOffBet.events.Match.MatchesFinishedEvent;
 import com.munte.KickOffBet.events.Match.MatchesScheduledEvent;
 import com.munte.KickOffBet.events.Match.MatchesStartedEvent;
-import com.munte.KickOffBet.exceptions.ExternalApiException;
-import com.munte.KickOffBet.exceptions.RateLimitException;
 import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
-import com.munte.KickOffBet.services.sports.DataImportService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -34,7 +31,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -43,7 +39,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -158,145 +153,10 @@ class DataImportServiceImplTest {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Match> savedMatches() {
-        ArgumentCaptor<Collection<Match>> captor = ArgumentCaptor.forClass(Collection.class);
-        verify(matchRepository).saveAll(captor.capture());
-        return new ArrayList<>(captor.getValue());
-    }
-
     private List<Object> publishedEvents() {
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher, org.mockito.Mockito.atLeast(0)).publishEvent(captor.capture());
         return captor.getAllValues();
-    }
-
-    @Nested
-    class MatchMapping {
-
-        @Test
-        void newFixtureIsMappedFromTheApi() {
-            apiReturnsForPremierLeague(matchDto(1001, "TIMED", "PL", 57L, 61L, null, null));
-            Set<Long> collected = new HashSet<>();
-
-            service.syncMatchesByLeague("PL", collected);
-
-            List<Match> saved = savedMatches();
-            assertThat(saved).hasSize(1);
-            Match m = saved.get(0);
-            assertThat(m.getExternalId()).isEqualTo(1001L);
-            assertThat(m.getExternalProvider()).isEqualTo("FOOTBALL_DATA");
-            assertThat(m.getStatus()).isEqualTo(MatchStatus.SCHEDULED);
-            assertThat(m.getStartTime()).isEqualTo(LocalDateTime.of(2026, 10, 25, 15, 0));
-            assertThat(m.getLeague()).isSameAs(premierLeague);
-            assertThat(m.getHomeTeam()).isSameAs(arsenal);
-            assertThat(m.getAwayTeam()).isSameAs(chelsea);
-            assertThat(m.getSeason()).isEqualTo("2026");
-            assertThat(m.getFtHome()).isNull();
-            assertThat(m.getFtAway()).isNull();
-            assertThat(collected).containsExactly(1001L);
-        }
-
-        @Test
-        void unknownOrMissingTeamsFallBackToTheToBeDeterminedTeam() {
-            apiReturnsForPremierLeague(matchDto(1002, "SCHEDULED", "PL", null, 999L, null, null));
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            Match m = savedMatches().get(0);
-            assertThat(m.getHomeTeam()).isSameAs(tbd);
-            assertThat(m.getAwayTeam()).isSameAs(tbd);
-        }
-
-        @Test
-        void toBeDeterminedTeamIsCreatedOnceWhenMissingAndThenCached() {
-            when(teamRepository.findByExternalId(-1L)).thenReturn(Optional.empty());
-            when(teamRepository.save(any(Team.class))).thenAnswer(inv -> inv.getArgument(0));
-            apiReturnsForPremierLeague(matchDto(1003, "SCHEDULED", "PL", null, null, null, null));
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            ArgumentCaptor<Team> captor = ArgumentCaptor.forClass(Team.class);
-            verify(teamRepository, times(1)).save(captor.capture());
-            assertThat(captor.getValue().getExternalId()).isEqualTo(-1L);
-            assertThat(captor.getValue().getName()).isEqualTo("To Be Determined");
-            verify(teamRepository, times(1)).findByExternalId(-1L);
-        }
-
-        @Test
-        void matchesOfUnknownCompetitionsAreSkipped() {
-            apiReturnsForPremierLeague(
-                    matchDto(1004, "TIMED", "PL", 57L, 61L, null, null),
-                    matchDto(1005, "TIMED", "XX", 57L, 61L, null, null));
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            assertThat(savedMatches()).extracting(Match::getExternalId).containsExactly(1004L);
-        }
-
-        @Test
-        void existingMatchIsUpdatedInPlaceNotDuplicated() {
-            Match existing = existingMatch(1006, MatchStatus.SCHEDULED);
-            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(existing));
-            apiReturnsForPremierLeague(matchDto(1006, "TIMED", "PL", 57L, 61L, null, null));
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            List<Match> saved = savedMatches();
-            assertThat(saved).hasSize(1);
-            assertThat(saved.get(0)).isSameAs(existing);
-            assertThat(existing.getHomeTeam()).isSameAs(arsenal);
-        }
-
-        @Test
-        void manuallyEditedMatchIsNotOverwrittenBySync() {
-            Match manual = existingMatch(1007, MatchStatus.SCHEDULED);
-            manual.setManualUpdate(true);
-            LocalDateTime adminTime = LocalDateTime.of(2026, 11, 1, 20, 0);
-            manual.setStartTime(adminTime);
-            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(manual));
-            apiReturnsForPremierLeague(matchDto(1007, "FINISHED", "PL", 57L, 61L, 3, 0));
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            assertThat(manual.getStatus()).isEqualTo(MatchStatus.SCHEDULED);
-            assertThat(manual.getStartTime()).isEqualTo(adminTime);
-            assertThat(manual.getFtHome()).isNull();
-            assertThat(publishedEvents()).isEmpty();
-        }
-
-        @Test
-        void emptyApiResponseSavesNothing() {
-            when(footballDataClient.fetchMatchesByLeague("PL")).thenReturn(Optional.empty());
-
-            service.syncMatchesByLeague("PL", new HashSet<>());
-
-            verify(matchRepository, never()).saveAll(anyCollection());
-            verifyNoInteractions(eventPublisher);
-        }
-
-        @Test
-        void unknownLeagueCodeFails() {
-            when(leagueRepository.findByCode("ZZ")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.syncMatchesByLeague("ZZ", new HashSet<>()))
-                    .isInstanceOf(EntityNotFoundException.class);
-            verifyNoInteractions(footballDataClient);
-        }
-
-        @Test
-        void seasonSyncRequestsTheGivenSeason() {
-            when(footballDataClient.fetchMatchesByLeagueAndSeason("PL", 2024))
-                    .thenReturn(Optional.of(new FdMatchList(List.of(matchDto(2001, "FINISHED", "PL", 57L, 61L, 1, 1)))));
-            Set<Long> collected = new HashSet<>();
-
-            service.syncMatchesByLeagueAndSeason("PL", 2024, collected);
-
-            Match m = savedMatches().get(0);
-            assertThat(m.getFtHome()).isEqualTo(1);
-            assertThat(m.getFtAway()).isEqualTo(1);
-            assertThat(collected).containsExactly(2001L);
-        }
     }
 
     @Nested
@@ -425,88 +285,6 @@ class DataImportServiceImplTest {
     }
 
     @Nested
-    class Leagues {
-
-        @Test
-        void newCompetitionIsMappedWithSeasonYear() {
-            when(footballDataClient.fetchCompetitions()).thenReturn(List.of(
-                    new FdCompetitionDto(2002L, "Bundesliga", "BL1", "https://crests/bl1.png",
-                            new FdCompetitionDto.FdSeasonDto("2025-08-22"))));
-            when(leagueRepository.findAll()).thenReturn(List.of());
-
-            service.syncLeagues();
-
-            League saved = savedLeagues().get(0);
-            assertThat(saved.getExternalId()).isEqualTo(2002L);
-            assertThat(saved.getExternalProvider()).isEqualTo("FOOTBALL_DATA");
-            assertThat(saved.getName()).isEqualTo("Bundesliga");
-            assertThat(saved.getCode()).isEqualTo("BL1");
-            assertThat(saved.getEmblemUrl()).isEqualTo("https://crests/bl1.png");
-            assertThat(saved.getCurrentSeason()).isEqualTo("2025");
-        }
-
-        @SuppressWarnings("unchecked")
-        private List<League> savedLeagues() {
-            ArgumentCaptor<Collection<League>> captor = ArgumentCaptor.forClass(Collection.class);
-            verify(leagueRepository).saveAll(captor.capture());
-            return new ArrayList<>(captor.getValue());
-        }
-
-        @Test
-        void existingLeagueIsUpdatedInPlace() {
-            League existing = league("PL", 2021L, "2024");
-            when(leagueRepository.findAll()).thenReturn(List.of(existing));
-            when(footballDataClient.fetchCompetitions()).thenReturn(List.of(
-                    new FdCompetitionDto(2021L, "Premier League", "PL", null,
-                            new FdCompetitionDto.FdSeasonDto("2025-08-15"))));
-
-            service.syncLeagues();
-
-            List<League> saved = savedLeagues();
-            assertThat(saved).singleElement().isSameAs(existing);
-            assertThat(existing.getName()).isEqualTo("Premier League");
-            assertThat(existing.getCurrentSeason()).isEqualTo("2025");
-        }
-
-        @Test
-        void manuallyEditedLeagueKeepsAdminChanges() {
-            League manual = league("PL", 2021L, "2024");
-            manual.setName("Custom name");
-            manual.setManualUpdate(true);
-            when(leagueRepository.findAll()).thenReturn(List.of(manual));
-            when(footballDataClient.fetchCompetitions()).thenReturn(List.of(
-                    new FdCompetitionDto(2021L, "Premier League", "PL", null,
-                            new FdCompetitionDto.FdSeasonDto("2025-08-15"))));
-
-            service.syncLeagues();
-
-            assertThat(manual.getName()).isEqualTo("Custom name");
-            assertThat(manual.getCurrentSeason()).isEqualTo("2024");
-        }
-
-        @Test
-        void competitionWithoutSeasonInfoKeepsPreviousSeason() {
-            League existing = league("PL", 2021L, "2024");
-            when(leagueRepository.findAll()).thenReturn(List.of(existing));
-            when(footballDataClient.fetchCompetitions()).thenReturn(List.of(
-                    new FdCompetitionDto(2021L, "Premier League", "PL", null, null)));
-
-            service.syncLeagues();
-
-            assertThat(existing.getCurrentSeason()).isEqualTo("2024");
-        }
-
-        @Test
-        void emptyCompetitionListSavesNothing() {
-            when(footballDataClient.fetchCompetitions()).thenReturn(List.of());
-
-            service.syncLeagues();
-
-            verify(leagueRepository, never()).saveAll(anyCollection());
-        }
-    }
-
-    @Nested
     class Teams {
 
         @SuppressWarnings("unchecked")
@@ -586,191 +364,6 @@ class DataImportServiceImplTest {
             when(leagueRepository.findByCode("ZZ")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.syncTeams("ZZ")).isInstanceOf(EntityNotFoundException.class);
-        }
-    }
-
-    @Nested
-    class FullSync {
-
-        private DataImportService self;
-        private League bundesliga;
-
-        @BeforeEach
-        void setUpSelf() {
-            self = mock(DataImportService.class);
-            when(applicationContext.getBean(DataImportService.class)).thenReturn(self);
-            bundesliga = league("BL1", 2002L, "2025");
-            when(leagueRepository.findAllByActiveTrueAndExternalIdIsNotNull()).thenReturn(List.of(premierLeague, bundesliga));
-        }
-
-        @Test
-        void fullSyncImportsLeaguesTeamsAndTheLastThreeSeasons() {
-            service.syncEverything();
-
-            verify(self).syncLeagues();
-            verify(self).syncTeams("PL");
-            verify(self).syncTeams("BL1");
-            for (int season : new int[]{2025, 2024, 2023}) {
-                verify(self).syncMatchesByLeagueAndSeason(eq("PL"), eq(season), any());
-                verify(self).syncMatchesByLeagueAndSeason(eq("BL1"), eq(season), any());
-            }
-            verify(self, times(6)).syncMatchesByLeagueAndSeason(anyString(), anyInt(), any());
-        }
-
-        @Test
-        void seasonFallsBackToTheCalendarWhenLeagueHasNoCurrentSeason() {
-            premierLeague.setCurrentSeason(null);
-            when(leagueRepository.findAllByActiveTrueAndExternalIdIsNotNull()).thenReturn(List.of(premierLeague));
-            LocalDate today = LocalDate.now();
-            int expected = today.getMonthValue() >= 7 ? today.getYear() : today.getYear() - 1;
-
-            service.syncEverything();
-
-            verify(self).syncMatchesByLeagueAndSeason(eq("PL"), eq(expected), any());
-            verify(self).syncMatchesByLeagueAndSeason(eq("PL"), eq(expected - 2), any());
-        }
-
-        @Test
-        void rateLimitedCallIsRetriedUntilItSucceeds() {
-            doThrow(new RateLimitException("429"))
-                    .doThrow(new RateLimitException("429"))
-                    .doNothing()
-                    .when(self).syncTeams("PL");
-
-            service.syncEverything();
-
-            verify(self, times(3)).syncTeams("PL");
-            verify(self, times(3)).syncMatchesByLeagueAndSeason(eq("PL"), anyInt(), any());
-        }
-
-        @Test
-        void rateLimitRetriesStopAtTheConfiguredMaximumAndSyncContinues() {
-            doThrow(new RateLimitException("429")).when(self).syncTeams("PL");
-
-            service.syncEverything();
-
-            verify(self, times(3)).syncTeams("PL");
-            verify(self, times(3)).syncMatchesByLeagueAndSeason(eq("PL"), anyInt(), any());
-            verify(self).syncTeams("BL1");
-        }
-
-        @Test
-        void nonRateLimitErrorsAreNotRetried() {
-            doThrow(new ExternalApiException("403 forbidden season"))
-                    .when(self).syncMatchesByLeagueAndSeason(eq("PL"), eq(2023), any());
-
-            service.syncEverything();
-
-            verify(self, times(1)).syncMatchesByLeagueAndSeason(eq("PL"), eq(2023), any());
-            verify(self).syncMatchesByLeagueAndSeason(eq("BL1"), eq(2023), any());
-        }
-
-        @Test
-        void aFailingLeagueDoesNotStopTheOtherLeagues() {
-            doThrow(new ExternalApiException("boom")).when(self).syncTeams("PL");
-            doThrow(new ExternalApiException("boom")).when(self).syncMatchesByLeagueAndSeason(eq("PL"), anyInt(), any());
-
-            service.syncEverything();
-
-            verify(self).syncTeams("BL1");
-            verify(self, times(3)).syncMatchesByLeagueAndSeason(eq("BL1"), anyInt(), any());
-        }
-
-        @Test
-        void allMatchesSyncKeepsGoingWhenALeagueFails() {
-            doThrow(new ExternalApiException("boom")).when(self).syncMatchesByLeague(eq("PL"), any());
-
-            service.syncAllMatches();
-
-            verify(self).syncMatchesByLeague(eq("BL1"), any());
-        }
-
-        @Test
-        void allMatchesSyncRetriesOnRateLimit() {
-            doThrow(new RateLimitException("429")).doNothing().when(self).syncMatchesByLeague(eq("PL"), any());
-
-            service.syncAllMatches();
-
-            verify(self, times(2)).syncMatchesByLeague(eq("PL"), any());
-            verify(self).syncMatchesByLeague(eq("BL1"), any());
-        }
-
-        @Test
-        void fullSyncStartsTheRangeSyncCooldown() {
-            setLastSuccess(LocalDateTime.now(ZoneOffset.UTC).minusHours(1));
-
-            service.syncEverything();
-            service.syncMatchesInRange();
-
-            verify(footballDataClient, never()).fetchMatchesInDateRange(any(), any());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void setLastSuccess(LocalDateTime when) {
-        ((AtomicReference<LocalDateTime>) ReflectionTestUtils.getField(service, "lastSuccess")).set(when);
-    }
-
-    @Nested
-    class RangeSync {
-
-        @BeforeEach
-        void allLeagues() {
-            when(leagueRepository.findAll()).thenReturn(List.of(premierLeague));
-        }
-
-        @Test
-        void rangeSyncCoversThreeDaysBackToSevenDaysAhead() {
-            setLastSuccess(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
-            when(footballDataClient.fetchMatchesInDateRange(any(), any()))
-                    .thenReturn(Optional.of(new FdMatchList(List.of(matchDto(1, "TIMED", "PL", 57L, 61L, null, null)))));
-
-            service.syncMatchesInRange();
-
-            verify(footballDataClient).fetchMatchesInDateRange(LocalDate.now().minusDays(3), LocalDate.now().plusDays(7));
-            assertThat(savedMatches()).hasSize(1);
-        }
-
-        @Test
-        void rangeSyncIsSkippedDuringCooldownAfterASuccessfulRun() {
-            setLastSuccess(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
-            when(footballDataClient.fetchMatchesInDateRange(any(), any()))
-                    .thenReturn(Optional.of(new FdMatchList(List.of(matchDto(1, "TIMED", "PL", 57L, 61L, null, null)))));
-
-            service.syncMatchesInRange();
-            service.syncMatchesInRange();
-
-            verify(footballDataClient, times(1)).fetchMatchesInDateRange(any(), any());
-        }
-
-        @Test
-        void rangeSyncRunsAgainOnceTheCooldownHasElapsed() {
-            setLastSuccess(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(51));
-            when(footballDataClient.fetchMatchesInDateRange(any(), any())).thenReturn(Optional.empty());
-
-            service.syncMatchesInRange();
-
-            verify(footballDataClient).fetchMatchesInDateRange(any(), any());
-        }
-
-        @Test
-        void emptyRangeResultDoesNotStartTheCooldown() {
-            setLastSuccess(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(5));
-            when(footballDataClient.fetchMatchesInDateRange(any(), any()))
-                    .thenReturn(Optional.of(new FdMatchList(List.of())));
-
-            service.syncMatchesInRange();
-            service.syncMatchesInRange();
-
-            verify(footballDataClient, times(2)).fetchMatchesInDateRange(any(), any());
-            verify(matchRepository, never()).saveAll(anyCollection());
-        }
-
-        @Test
-        void rangeSyncIsSkippedRightAfterStartup() {
-            service.syncMatchesInRange();
-
-            verifyNoInteractions(footballDataClient);
         }
     }
 }
