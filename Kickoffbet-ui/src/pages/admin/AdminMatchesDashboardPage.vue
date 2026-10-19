@@ -194,7 +194,7 @@ function resetFilters() {
       <div v-if="showStuckMatches" class="mt-4">
         <LoadingState v-if="stuckMatchesQuery.isLoading.value" message="Se cauta meciurile blocate..." />
 
-        <div v-else-if="stuckMatches.length" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div v-else-if="stuckMatches.length" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <AdminMatchCard v-for="match in stuckMatches" :key="match.id" :match="match" />
         </div>
 
@@ -212,7 +212,7 @@ function resetFilters() {
         Selectezi liga si echipa direct din liste.
       </p>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-3">
+      <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
@@ -238,7 +238,7 @@ function resetFilters() {
         </label>
       </div>
 
-      <div class="mt-3 grid items-end gap-3 md:grid-cols-3">
+      <div class="mt-3 grid grid-cols-1 items-end gap-3 md:grid-cols-3">
         <FormInput v-model="startTimeFrom" label="Data inceput" type="datetime-local" />
         <FormInput v-model="startTimeTo" label="Data sfarsit" type="datetime-local" />
         <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
@@ -248,7 +248,7 @@ function resetFilters() {
         <DatePresetButtons @select="(s, e) => { startTimeFrom = s; startTimeTo = e }" />
       </div>
 
-      <div class="mt-6 grid gap-6 xl:grid-cols-2">
+      <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <AdminEntityPicker
           v-model="selectedLeagueCode"
           title="Selecteaza liga"
@@ -305,7 +305,7 @@ function resetFilters() {
 
         <Transition v-else name="page-fade" mode="out-in" appear>
           <div :key="matchesQuery.data.value?.number ?? 0">
-            <div v-if="currentMatches.length" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div v-if="currentMatches.length" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               <AdminMatchCard v-for="match in currentMatches" :key="match.id" :match="match" />
             </div>
             <EmptyState

@@ -150,7 +150,7 @@ async function switchTeam(active: boolean) {
       </template>
     </PageHeader>
 
-    <section id="team-overview" class="grid gap-4 md:grid-cols-4">
+    <section id="team-overview" class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-subtle">Stare</p>
         <div class="mt-3">
@@ -174,7 +174,7 @@ async function switchTeam(active: boolean) {
       </Panel>
     </section>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
       <Panel id="team-edit" no-hover>
         <h2 class="text-lg font-semibold text-fg">Editare echipa</h2>
         <p class="mt-1 text-sm text-muted">Editeaza detaliile echipei.</p>
@@ -218,8 +218,8 @@ async function switchTeam(active: boolean) {
             :to="{ name: 'admin-league-detail', params: { code: league.code } }"
             class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition-colors hover:border-blue-600"
           >
-            <div>
-              <p class="text-sm font-semibold text-fg">{{ league.name }}</p>
+            <div class="min-w-0">
+              <p class="wrap-anywhere text-sm font-semibold text-fg">{{ league.name }}</p>
               <p class="text-xs uppercase tracking-[0.2em] text-subtle">{{ league.code }}</p>
             </div>
             <StatusBadge :status="league.active ? 'ACTIVE' : 'DEACTIVATED'" />

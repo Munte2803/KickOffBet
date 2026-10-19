@@ -25,12 +25,12 @@ withDefaults(defineProps<{
     :class="compact ? 'p-2 sm:p-2.5' : 'p-3 sm:p-4'"
   >
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <div class="flex items-center gap-2">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-2">
           <StatusBadge :status="transaction.transactionType" />
           <StatusBadge :status="transaction.status" />
         </div>
-        <p class="text-xs text-muted" :class="compact ? 'mt-1' : 'mt-2'">
+        <p class="wrap-anywhere text-xs text-muted" :class="compact ? 'mt-1' : 'mt-2'">
           <template v-if="showEmail">{{ transaction.userEmail }} - </template>
           {{ formatDateShort(transaction.createdAt) }}
         </p>

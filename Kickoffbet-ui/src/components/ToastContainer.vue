@@ -6,7 +6,7 @@ const toast = useToastStore()
 
 <template>
   <Teleport to="body">
-    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+    <div class="fixed inset-x-4 bottom-4 z-50 ml-auto flex max-w-sm flex-col gap-2 sm:left-auto sm:w-full">
       <TransitionGroup name="toast">
         <div
           v-for="t in toast.toasts"

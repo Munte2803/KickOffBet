@@ -42,7 +42,7 @@ const getTeamTag = (name: string, tla?: string | null) => {
         <span class="truncate">{{ match.leagueName }}</span>
       </button>
 
-      <div class="flex items-center gap-2">
+      <div class="flex shrink-0 items-center gap-2">
         <StatusBadge :status="match.status" />
         <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold" :class="match.active ? 'border-green-500/30 bg-green-500/10 text-green-500' : 'border-line bg-surface text-muted'">
           {{ translateActiveLabel(match.active) }}

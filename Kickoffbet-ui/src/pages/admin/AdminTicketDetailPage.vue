@@ -63,7 +63,7 @@ const ticketQuery = useQuery({
           class="rounded-xl border border-line bg-surface p-3"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <RouterLink
                 :to="{ name: 'admin-match-detail', params: { id: selection.matchId } }"
                 class="text-sm font-semibold text-fg transition hover:text-amber-500"

@@ -135,7 +135,7 @@ watch(leagueId, (nextLeagueId) => {
       <form class="space-y-6" @submit.prevent="onSubmit">
           <DateTimeInput v-model="startTime" label="Ora de start" required :error="errors.startTime" />
 
-        <div class="grid gap-6 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <div class="space-y-2">
             <AdminEntityPicker
               v-model="leagueId"

@@ -132,7 +132,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
     <Panel id="ticket-trend" no-hover>
       <h2 class="text-lg font-semibold text-fg">Evolutie in timp</h2>
 
-      <div class="mt-4 grid items-end gap-3 md:grid-cols-4">
+      <div class="mt-4 grid grid-cols-1 items-end gap-3 md:grid-cols-4">
         <FormInput v-model="chartStart" label="Data inceput" type="datetime-local" />
         <FormInput v-model="chartEnd" label="Data sfarsit" type="datetime-local" />
         <label class="text-sm text-muted">
@@ -191,7 +191,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
       </div>
 
       <div class="mt-4 max-w-xs">
-        <div class="grid gap-3">
+        <div class="grid grid-cols-1 gap-3">
           <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">

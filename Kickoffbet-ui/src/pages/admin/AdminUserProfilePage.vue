@@ -153,14 +153,14 @@ onBeforeUnmount(() => {
 
     <Panel id="user-overview" no-hover>
       <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-black text-fg">{{ userQuery.data.value.firstName }} {{ userQuery.data.value.lastName }}</h2>
-          <p class="mt-1 text-sm text-muted">{{ userQuery.data.value.email }}</p>
+        <div class="min-w-0">
+          <h2 class="break-words text-2xl font-black text-fg">{{ userQuery.data.value.firstName }} {{ userQuery.data.value.lastName }}</h2>
+          <p class="mt-1 break-all text-sm text-muted">{{ userQuery.data.value.email }}</p>
         </div>
         <StatusBadge :status="userQuery.data.value.status" />
       </div>
 
-      <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-xl border border-line bg-surface p-4">
           <p class="text-xs uppercase tracking-[0.2em] text-subtle">Balanta</p>
           <p class="mt-2 text-lg font-semibold text-fg">{{ formatMoney(userQuery.data.value.balance) }}</p>
@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
       </div>
     </Panel>
 
-    <div class="grid gap-6 xl:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <Panel id="user-transactions" no-hover>
         <h2 class="text-lg font-semibold text-fg">Tranzactii recente</h2>
 

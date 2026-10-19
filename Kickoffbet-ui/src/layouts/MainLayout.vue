@@ -273,7 +273,7 @@ function closeMobileSlip() {
       <span class="rounded-full bg-white/15 px-2 py-0.5 text-xs">{{ ticketStore.selectionCount }}</span>
     </button>
 
-    <AppShellFrame :main-class="showSlip ? 'grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_var(--app-slip-width)]' : 'block'">
+    <AppShellFrame :main-class="showSlip ? 'grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_var(--app-slip-width)]' : 'block'">
       <RouterView :key="route.fullPath" />
 
       <template v-if="showSlip" #aside>

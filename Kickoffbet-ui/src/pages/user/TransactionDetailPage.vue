@@ -29,7 +29,7 @@ const transactionQuery = useQuery({
       :back-route="{ name: 'wallet' }"
     />
 
-    <section class="grid gap-4 md:grid-cols-4">
+    <section class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-subtle">Tip</p>
         <div class="mt-3">

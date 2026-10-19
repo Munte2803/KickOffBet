@@ -71,10 +71,10 @@ function closeMobileMenu() {
         <span class="min-w-0 truncate text-[15px] font-bold tracking-tight text-fg sm:text-xl">
           KickOffBet
         </span>
-        <div class="flex items-center justify-end gap-2 sm:gap-3">
+        <div class="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
           <ThemeToggle />
-          <div class="text-right">
-            <p class="text-sm font-semibold text-fg">{{ authStore.fullName }}</p>
+          <div class="min-w-0 text-right">
+            <p class="max-w-[9rem] truncate text-sm font-semibold text-fg sm:max-w-[16rem]">{{ authStore.fullName }}</p>
             <p class="text-[10px] uppercase tracking-[0.2em] text-subtle">Administrator</p>
           </div>
         </div>
@@ -112,7 +112,7 @@ function closeMobileMenu() {
       >
         <div class="border-b border-line pb-3">
           <p class="text-xs uppercase tracking-[0.2em] text-subtle">Administrator</p>
-          <p class="mt-2 text-lg font-bold text-fg">{{ authStore.fullName }}</p>
+          <p class="mt-2 break-words text-lg font-bold text-fg">{{ authStore.fullName }}</p>
         </div>
 
         <nav class="mt-3 flex-1 space-y-1 overflow-y-auto">

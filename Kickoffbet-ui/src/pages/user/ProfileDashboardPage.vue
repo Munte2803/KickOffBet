@@ -137,16 +137,16 @@ onBeforeUnmount(() => {
   <div v-else-if="profile" class="space-y-6">
     <PageHeader title="Profil" subtitle="Date personale, verificare si acces rapid" />
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
       <Panel no-hover>
         <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4 sm:pb-5">
-          <div class="flex items-center gap-3 sm:gap-4">
-            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-xl font-black text-fg sm:h-16 sm:w-16 sm:text-2xl">
+          <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xl font-black text-fg sm:h-16 sm:w-16 sm:text-2xl">
               {{ profile.firstName[0] }}{{ profile.lastName[0] }}
             </div>
-            <div>
-              <h2 class="text-xl font-black text-fg sm:text-2xl">{{ profile.firstName }} {{ profile.lastName }}</h2>
-              <p class="mt-1 text-[13px] text-muted sm:text-sm">{{ profile.email }}</p>
+            <div class="min-w-0">
+              <h2 class="wrap-anywhere text-xl font-black text-fg sm:text-2xl">{{ profile.firstName }} {{ profile.lastName }}</h2>
+              <p class="mt-1 wrap-anywhere text-[13px] text-muted sm:text-sm">{{ profile.email }}</p>
               <div class="mt-3 flex flex-wrap items-center gap-2">
                 <StatusBadge :status="profile.status" />
                 <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">
@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
           </AppLinkButton>
         </div>
 
-        <div class="mt-5 grid gap-4 md:grid-cols-2">
+        <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div class="rounded-xl border border-line bg-surface p-3 sm:p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-subtle">Balanta</p>
             <p class="mt-2 text-2xl font-black text-fg sm:text-3xl">{{ formatMoney(profile.balance) }}</p>

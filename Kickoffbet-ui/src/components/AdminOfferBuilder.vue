@@ -167,7 +167,7 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
        </p>
     </div>
 
-    <div class="grid gap-4 xl:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
       <div
         v-for="marketType in standardMarketTypes"
         :key="marketType"
@@ -180,7 +180,7 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
             :key="`${template.marketType}-${template.option}`"
             class="block rounded-xl border border-line bg-surface p-3"
           >
-            <div class="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)_120px] md:items-center">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-[auto_minmax(0,1fr)_120px] md:items-center">
               <div class="flex min-w-0 items-center gap-3">
                 <input
                   :checked="hasOffer(template)"
@@ -225,7 +225,7 @@ function addOverUnderOffer(line: number, option: 'OVER' | 'UNDER', odds: number)
             <p class="text-xs text-muted">{{ formatBetLabel(offer.option, offer.marketType, offer.line) }}</p>
           </div>
 
-          <div class="grid gap-2 sm:grid-cols-[140px_120px_120px]">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-[140px_120px_120px]">
             <div class="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-muted">
               {{ offer.marketType === 'OVER_UNDER' ? `Linie ${offer.line ?? '-'}` : 'Fara linie' }}
             </div>

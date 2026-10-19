@@ -122,7 +122,7 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
   <div class="space-y-6">
     <PageHeader title="Portofel" subtitle="Depuneri, retrageri si istoric tranzactii" />
 
-    <div class="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)] items-start">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)] items-start">
       <Panel>
         <div class="flex gap-2">
           <button

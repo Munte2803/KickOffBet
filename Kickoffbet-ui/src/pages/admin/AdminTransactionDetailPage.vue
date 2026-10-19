@@ -60,7 +60,7 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
       :back-route="{ name: 'admin-transactions' }"
     />
 
-    <section id="transaction-overview" class="grid gap-4 md:grid-cols-4">
+    <section id="transaction-overview" class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Panel no-hover>
         <p class="text-xs uppercase tracking-[0.24em] text-subtle">Tip</p>
         <div class="mt-3">
@@ -85,14 +85,14 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
         <RouterLink
           v-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TICKET'"
           :to="{ name: 'admin-ticket-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
+          class="mt-2 inline-flex wrap-anywhere text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>
         <RouterLink
           v-else-if="transactionQuery.data.value.referenceId && transactionQuery.data.value.referenceType === 'TRANSACTION'"
           :to="{ name: 'admin-transaction-detail', params: { id: transactionQuery.data.value.referenceId } }"
-          class="mt-2 inline-flex text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
+          class="mt-2 inline-flex wrap-anywhere text-sm font-semibold text-blue-500 transition-colors hover:text-blue-500"
         >
           {{ transactionQuery.data.value.referenceId }}
         </RouterLink>
