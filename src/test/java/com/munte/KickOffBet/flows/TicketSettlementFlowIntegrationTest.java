@@ -317,9 +317,11 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Cannot change status to same type"));
 
+        // Once live, the match's odds are switched off (asynchronously) and the bet is refused either way
+        data.awaitAsyncIdle();
         mvc.perform(auth(withJson(post("/api/tickets"), Map.of("stake", 10, "selections", List.of(home))), token))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("Match " + matchId + " has already started"));
+                .andExpect(jsonPath("$.error").value("Offer " + home.get("marketOfferId") + " is no longer active"));
 
         setStatus(matchId, Map.of("status", "FINISHED"))
                 .andExpect(status().isBadRequest())

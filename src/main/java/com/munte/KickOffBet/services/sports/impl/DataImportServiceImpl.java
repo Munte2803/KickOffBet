@@ -13,6 +13,7 @@ import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
 
 import com.munte.KickOffBet.services.sports.DataImportService;
+import com.munte.KickOffBet.services.sports.MatchService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -281,8 +282,12 @@ public class DataImportServiceImpl implements DataImportService {
                         match.setHomeTeam((dto.homeTeam() != null) ? teamsMap.getOrDefault(dto.homeTeam().id(), tbd) : tbd);
                         match.setAwayTeam((dto.awayTeam() != null) ? teamsMap.getOrDefault(dto.awayTeam().id(), tbd) : tbd);
 
-                        if (isNew && newStatus != MatchStatus.FINISHED) {
-                            eventBatches.computeIfAbsent(match.getStatus(), k-> new ArrayList<>()).add(match);
+                        // A match imported already finished is history: it has no tickets to settle and the
+                        // odds of upcoming matches are recalculated once at the end of the full sync instead
+                        if (isNew) {
+                            if (newStatus != MatchStatus.FINISHED) {
+                                eventBatches.computeIfAbsent(newStatus, k -> new ArrayList<>()).add(match);
+                            }
                         } else if (oldStatus != newStatus) {
                             eventBatches.computeIfAbsent(newStatus, k -> new ArrayList<>()).add(match);
                         }
@@ -356,6 +361,9 @@ public class DataImportServiceImpl implements DataImportService {
                 return;
             }
         }
+        // Upcoming matches may have been priced before older seasons were imported (e.g. on the first
+        // population of the database): price them once more now that the whole history is in place
+        applicationContext.getBean(MatchService.class).recalculateScheduledAutomaticOdds();
         log.info("### FULL SYNC COMPLETED ###");
         lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
     }

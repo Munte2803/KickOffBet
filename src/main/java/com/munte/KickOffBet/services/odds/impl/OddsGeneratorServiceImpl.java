@@ -143,8 +143,9 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
 
     @Override
     @Transactional
-    public void deactivateOffersForMatches(Set<Long> externalIds) {
-        List<Match> matches = matchRepository.findAllByExternalIdIn(externalIds);
+    public void deactivateOffersForMatches(Set<UUID> matchIds) {
+        // By id, not external id, so matches created by an admin are covered too
+        List<Match> matches = matchRepository.findAllById(matchIds);
         matches.forEach(match ->
                 match.getAvailableOffers().forEach(offer -> offer.setActive(false))
         );

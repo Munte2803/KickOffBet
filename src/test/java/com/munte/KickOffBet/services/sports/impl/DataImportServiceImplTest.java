@@ -218,6 +218,15 @@ class DataImportServiceImplTest {
         }
 
         @Test
+        void matchImportedAlreadyFinishedPublishesNoEvent() {
+            apiReturnsForPremierLeague(matchDto(9, "FINISHED", "PL", 57L, 61L, 3, 0));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            verify(eventPublisher, never()).publishEvent(any(Object.class));
+        }
+
+        @Test
         void postponedAndSuspendedMatchesPublishDelayedEvent() {
             Match postponed = existingMatch(7, MatchStatus.SCHEDULED);
             Match suspended = existingMatch(8, MatchStatus.LIVE);

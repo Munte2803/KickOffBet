@@ -90,9 +90,9 @@ public class OddsCalculationListener {
     }
 
     private void deactivateOffers(List<Match> matches) {
-        Set<Long> externalIds = matches.stream()
-                .map(Match::getExternalId)
+        Set<UUID> matchIds = matches.stream()
+                .map(Match::getId)
                 .collect(Collectors.toSet());
-        oddsGeneratorService.deactivateOffersForMatches(externalIds);
+        oddsGeneratorService.deactivateOffersForMatches(matchIds);
     }
 }

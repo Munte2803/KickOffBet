@@ -3,6 +3,7 @@ package com.munte.KickOffBet.services.odds;
 
 
 import java.util.Set;
+import java.util.UUID;
 
 public interface OddsGeneratorService {
 
@@ -11,5 +12,5 @@ public interface OddsGeneratorService {
 
     void processMatchesInternal(Set<Long> matchIds);
 
-    void deactivateOffersForMatches(Set<Long> externalIds);
+    void deactivateOffersForMatches(Set<UUID> matchIds);
 }

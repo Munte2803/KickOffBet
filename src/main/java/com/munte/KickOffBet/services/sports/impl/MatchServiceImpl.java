@@ -173,7 +173,13 @@ public class MatchServiceImpl implements MatchService {
         matchForEvent.add(match);
 
         switch (request.getStatus()) {
-            case SCHEDULED -> eventPublisher.publishEvent(new MatchesScheduledEvent(matchForEvent));
+            case SCHEDULED -> {
+                // The odds engine only re-prices API matches; an admin-created match gets its own odds back
+                if (match.getExternalId() == null) {
+                    match.getAvailableOffers().forEach(offer -> offer.setActive(true));
+                }
+                eventPublisher.publishEvent(new MatchesScheduledEvent(matchForEvent));
+            }
             case LIVE -> {
                 if (match.getStartTime().isAfter(LocalDateTime.now(ZoneOffset.UTC))) {
                     match.setStartTime(LocalDateTime.now(ZoneOffset.UTC));

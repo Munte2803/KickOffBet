@@ -27,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -141,6 +142,48 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
         // last 3 seasons are requested
         verify(footballDataClient).fetchMatchesByLeagueAndSeason("PL", 2024);
         verify(footballDataClient).fetchMatchesByLeagueAndSeason("PL", 2023);
+    }
+
+    @Test
+    void firstFullSyncPricesUpcomingMatchesWithTheWholeImportedHistory() throws Exception {
+        // The current season (imported first) only has the upcoming match; the history comes with the older
+        // season afterwards: Arsenal beat Chelsea heavily, so Arsenal must end up favourite even away from home
+        when(footballDataClient.fetchCompetitions()).thenReturn(List.of(PL));
+        when(footballDataClient.fetchTeamsByLeague("PL")).thenReturn(List.of(ARSENAL, CHELSEA));
+        when(footballDataClient.fetchMatchesByLeagueAndSeason(eq("PL"), anyInt())).thenReturn(Optional.empty());
+        when(footballDataClient.fetchMatchesByLeagueAndSeason("PL", 2025)).thenReturn(Optional.of(new FdMatchList(List.of(
+                apiMatch(3001L, inDays(3), "TIMED", null, null, CHELSEA, ARSENAL)))));
+        // Like in production (where API calls are seconds apart), the history arrives only after the
+        // upcoming match has already been priced without it
+        when(footballDataClient.fetchMatchesByLeagueAndSeason("PL", 2024)).thenAnswer(inv -> {
+            // plain JDBC: this runs inside the sync transaction, whose persistence context would cache the match
+            TestDataFactory.await(Duration.ofSeconds(15), "upcoming match priced before the history arrives", () ->
+                    jdbc.queryForObject("SELECT COUNT(*) FROM market_offers o JOIN matches m ON o.match_id = m.id "
+                            + "WHERE m.external_id = 3001", Integer.class) == 14);
+            return Optional.of(new FdMatchList(List.of(
+                apiMatch(3002L, inDays(-60), "FINISHED", 0, 4, CHELSEA, ARSENAL),
+                apiMatch(3003L, inDays(-50), "FINISHED", 5, 0, ARSENAL, CHELSEA),
+                apiMatch(3004L, inDays(-40), "FINISHED", 0, 3, CHELSEA, ARSENAL),
+                apiMatch(3005L, inDays(-30), "FINISHED", 4, 1, ARSENAL, CHELSEA))));
+        });
+
+        mvc.perform(auth(post("/api/admin/sync/full"), admin)).andExpect(status().isAccepted());
+
+        TestDataFactory.await(Duration.ofSeconds(20), "upcoming match priced from the imported history", () -> {
+            Match m = matchByExternalId(3001L);
+            if (m == null || m.getAvailableOffers().size() != 14) return false;
+            BigDecimal home = odds(m, BetOption.HOME), away = odds(m, BetOption.AWAY);
+            return away.compareTo(home) < 0;
+        });
+        data.awaitAsyncIdle();
+        Match upcoming = matchByExternalId(3001L);
+        assertThat(odds(upcoming, BetOption.AWAY)).isLessThan(odds(upcoming, BetOption.HOME));
+    }
+
+    private static BigDecimal odds(Match match, BetOption option) {
+        return match.getAvailableOffers().stream()
+                .filter(o -> o.getMarketType() == MarketType.H2H && o.getOption() == option)
+                .findFirst().orElseThrow().getOdds();
     }
 
     @Test

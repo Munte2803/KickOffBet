@@ -8,6 +8,7 @@ import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.support.IntegrationTestBase;
+import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -315,6 +316,28 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.error").value("Cannot change start time for a match that has already started or finished"));
         mvc.perform(auth(patch("/api/admin/matches/{id}/time", match.getId()), admin))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void postponingAnAdminCreatedMatchDeactivatesItsOffersUntilRescheduled() throws Exception {
+        Match match = data.scheduledMatch(league, home, away);
+        assertThat(match.getExternalId()).isNull();
+
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "POSTPONED")), admin))
+                .andExpect(status().isOk());
+
+        TestDataFactory.await(java.time.Duration.ofSeconds(10), "offers of the postponed match to be deactivated",
+                () -> !data.offerOf(match, BetOption.HOME).isActive());
+        data.awaitAsyncIdle();
+        assertThat(data.inTx(() -> data.reloadMatch(match.getId()).getAvailableOffers().stream()
+                .noneMatch(o -> o.isActive()))).isTrue();
+
+        // rescheduled: the admin's odds are offered again
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "SCHEDULED")), admin))
+                .andExpect(status().isOk());
+        data.awaitAsyncIdle();
+        assertThat(data.inTx(() -> data.reloadMatch(match.getId()).getAvailableOffers().stream()
+                .allMatch(o -> o.isActive()))).isTrue();
     }
 
     @Test

@@ -557,9 +557,9 @@ class OddsGeneratorServiceImplTest {
         manual.setManualUpdate(true);
         match.addOffer(auto);
         match.addOffer(manual);
-        when(matchRepository.findAllByExternalIdIn(Set.of(match.getExternalId()))).thenReturn(List.of(match));
+        when(matchRepository.findAllById(Set.of(match.getId()))).thenReturn(List.of(match));
 
-        service.deactivateOffersForMatches(Set.of(match.getExternalId()));
+        service.deactivateOffersForMatches(Set.of(match.getId()));
 
         assertThat(auto.isActive()).isFalse();
         assertThat(manual.isActive()).isFalse();
