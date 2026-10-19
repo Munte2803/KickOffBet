@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -78,6 +79,8 @@ public class TeamServiceImpl implements TeamService {
         if (leagues.size() != request.getLeagueIds().size()) {
             throw new ResourceNotFoundException("Some Leagues not found for the provided IDs");
         }
+        // leagueIds is the full desired membership (as in updateLeague): drop leagues no longer listed
+        new HashSet<>(team.getLeagues()).forEach(team::removeLeague);
         leagues.forEach(team::addLeague);
 
         return teamRepository.save(team);

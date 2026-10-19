@@ -5,11 +5,15 @@ import com.munte.KickOffBet.exceptions.*;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -126,8 +130,33 @@ public class GlobalExceptionHandler {
                 .body(new ErrorDto("VALIDATION_ERROR", message));
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorDto> handleNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ErrorDto("BAD_REQUEST", "Malformed request body"));
+    }
+
+    @ExceptionHandler(TypeMismatchException.class)
+    public ResponseEntity<ErrorDto> handleTypeMismatch(TypeMismatchException ex) {
+        log.warn("Request parameter type mismatch: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ErrorDto("BAD_REQUEST", "Invalid value for '" + ex.getPropertyName() + "'"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorDto> handleGeneral(Exception ex) {
+        // Spring MVC client errors (missing parameter, unsupported method/media type, unknown path...)
+        // carry their own 4xx status; don't turn them into 500s.
+        if (ex instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
+            HttpStatusCode status = errorResponse.getStatusCode();
+            log.warn("Client error {}: {}", status.value(), ex.getMessage());
+            String detail = errorResponse.getBody().getDetail();
+            return ResponseEntity.status(status)
+                    .headers(errorResponse.getHeaders())
+                    .body(new ErrorDto(HttpStatus.valueOf(status.value()).name(),
+                            detail != null ? detail : "Invalid request"));
+        }
         log.error("Unexpected error: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorDto("INTERNAL_ERROR", "An internal server error occurred."));

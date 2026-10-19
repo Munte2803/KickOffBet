@@ -103,8 +103,12 @@ public class TicketServiceImpl implements TicketService {
 
             boolean hasPending = false;
             boolean hasLost = false;
+            // Odds of the legs that still count; cancelled (void) legs are left out
+            BigDecimal settledOdd = BigDecimal.ONE;
 
-            for (TicketSelection selection : ticket.getSelections()) {
+            // distinct: when loaded through TicketSelectionRepository#findByMatchIdsWithTickets the fetch-joined
+            // selections bag repeats a leg once per leg the ticket has on the settled match(es)
+            for (TicketSelection selection : new LinkedHashSet<>(ticket.getSelections())) {
                 if (selection.getStatus() == TicketSelectionStatus.PENDING) {
                     hasPending = true;
                     break;
@@ -113,19 +117,22 @@ public class TicketServiceImpl implements TicketService {
                     hasLost = true;
                     break;
                 }
-                if (selection.getStatus() == TicketSelectionStatus.CANCELLED) {
-                    ticket.setTotalOdd(ticket.getTotalOdd()
-                            .divide(selection.getOddsAtPlacement(), 4, RoundingMode.HALF_UP));
-                    ticket.setPotentialPayout(calculateCappedPayout(ticket.getStake(), ticket.getTotalOdd()));
+                if (selection.getStatus() != TicketSelectionStatus.CANCELLED) {
+                    settledOdd = settledOdd.multiply(selection.getOddsAtPlacement());
                 }
             }
 
+            // Recomputed only once every leg is decided, so a void leg is never divided out twice
+            // (it is seen again on each later settlement of the same ticket).
             if (hasPending) continue;
 
             if (hasLost) {
                 ticket.setStatus(TicketStatus.LOST);
                 continue;
             }
+
+            ticket.setTotalOdd(settledOdd.setScale(4, RoundingMode.HALF_UP));
+            ticket.setPotentialPayout(calculateCappedPayout(ticket.getStake(), ticket.getTotalOdd()));
 
             if (ticket.getTotalOdd().compareTo(BigDecimal.ONE) == 0) {
                 walletService.refund(ticket.getUser().getId(), ticket.getStake(), ticket.getId());
@@ -178,7 +185,9 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     public void cancelTicket(UUID id) {
 
-        Ticket ticket = ticketRepository.findByIdWithSelections(id)
+        // Only the owner may cancel: someone else's ticket is reported as not found
+        User user = authService.getCurrentUser();
+        Ticket ticket = ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket Not Found with id: " + id));
 
         if (ticket.getStatus() != TicketStatus.PENDING) {
