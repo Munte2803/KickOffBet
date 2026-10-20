@@ -199,6 +199,17 @@ describe('ticket store persistence', () => {
     expect(useTicketStore().selections.map((s) => s.offerId)).toEqual(['o1'])
   })
 
+  it('reads kick-off times as UTC, like the backend sends them (no Z suffix)', async () => {
+    // 2h from now in UTC, written the way the API does: "yyyy-MM-ddTHH:mm:ss" without a zone
+    const inTwoHoursUtc = new Date(Date.now() + 2 * 3_600_000).toISOString().slice(0, 19)
+    const store = useTicketStore()
+    store.toggleSelection(makeMatch({ id: 'm1', startTime: inTwoHoursUtc }), makeOffer({ id: 'o1' }))
+    await nextTick()
+
+    setActivePinia(createPinia())
+    expect(useTicketStore().selections.map((s) => s.offerId)).toEqual(['o1'])
+  })
+
   it('starts empty when the stored slip is unreadable', () => {
     localStorage.setItem('kickoffbet.betslip', '{not json')
     const store = useTicketStore()

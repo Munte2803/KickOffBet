@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import type { MatchList, MarketOffer } from '@/types/match.types'
 import type { MarketType, BetOption } from '@/types/enums'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
+import { parseUtcDate } from '@/utils/date.utils'
 
 type MatchSelectionContext = Pick<
   MatchList,
@@ -39,7 +40,7 @@ function loadSlip(): StoredSlip {
     const parsed = JSON.parse(raw) as Partial<StoredSlip>
     const now = Date.now()
     const selections = Array.isArray(parsed.selections)
-      ? parsed.selections.filter((selection) => new Date(selection.matchStartTime).getTime() > now)
+      ? parsed.selections.filter((selection) => parseUtcDate(selection.matchStartTime).getTime() > now)
       : []
     const stake = typeof parsed.stake === 'number' && Number.isFinite(parsed.stake) ? parsed.stake : DEFAULT_STAKE
     return { selections, stake }
