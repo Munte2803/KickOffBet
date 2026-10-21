@@ -308,6 +308,18 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void singleOfferOddsCannotBeChangedOnceTheMatchIsNoLongerScheduled() throws Exception {
+        Match live = data.match(league, home, away, nowUtc().minusMinutes(10), MatchStatus.LIVE);
+        MarketOffer offer = data.offerOf(live, BetOption.HOME);
+
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/offers", live.getId()),
+                        Map.of("id", offer.getId(), "odds", 9.0)), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Odds can only be changed for scheduled matches"));
+        assertThat(data.offerOf(live, BetOption.HOME).getOdds()).isEqualByComparingTo(offer.getOdds());
+    }
+
+    @Test
     void deactivatingMatchDeactivatesAllOffersAndHidesIt() throws Exception {
         Match match = data.scheduledMatch(league, home, away);
         String user = userToken("punter@kickoffbet.test");

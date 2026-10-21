@@ -2,6 +2,8 @@ package com.munte.KickOffBet.services.odds.impl;
 
 import com.munte.KickOffBet.domain.dto.api.request.UpdateMarketOfferRequest;
 import com.munte.KickOffBet.domain.entity.MarketOffer;
+import com.munte.KickOffBet.domain.enums.MatchStatus;
+import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.MarketOfferRepository;
 import com.munte.KickOffBet.services.odds.MarketOfferService;
@@ -21,6 +23,9 @@ public class MarketOfferServiceImpl implements MarketOfferService {
     @Transactional
     public MarketOffer updateSingleOffer(UUID matchId, UpdateMarketOfferRequest request) {
         MarketOffer marketOffer = getOfferForMatch(matchId, request.getId());
+        if (marketOffer.getMatch().getStatus() != MatchStatus.SCHEDULED) {
+            throw new BusinessException("Odds can only be changed for scheduled matches");
+        }
         marketOffer.setOdds(request.getOdds());
         marketOffer.setManualUpdate(true);
         return marketOfferRepository.save(marketOffer);

@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,7 +91,14 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     public void processMatches(final Set<Long> matchIds) {
         lock.lock();
         try {
-            applicationContext.getBean(OddsGeneratorServiceImpl.class).processMatchesInternal(matchIds);
+            final OddsGeneratorServiceImpl self = applicationContext.getBean(OddsGeneratorServiceImpl.class);
+            try {
+                self.processMatchesInternal(matchIds);
+            } catch (ObjectOptimisticLockingFailureException e) {
+                // A sync or admin edit changed one of the matches meanwhile: price again from fresh data
+                log.info("Odds batch hit a concurrent match update, retrying once: {}", e.getMessage());
+                self.processMatchesInternal(matchIds);
+            }
         } finally {
             lock.unlock();
         }

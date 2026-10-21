@@ -7,6 +7,7 @@ import com.munte.KickOffBet.services.tickets.TicketSettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,7 @@ public class TicketSettlementReconciler {
     private final TicketRepository ticketRepository;
     private final TicketSettlementService ticketSettlementService;
 
+    @SchedulerLock(name = "ticket-reconciliation", lockAtMostFor = "PT10M")
     @Scheduled(fixedDelayString = "${settlement.reconcile-interval-ms:300000}",
             initialDelayString = "${settlement.reconcile-interval-ms:300000}")
     public void reconcile() {

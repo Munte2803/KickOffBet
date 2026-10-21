@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorDto("CONCURRENT_MODIFICATION",
-                        "Account was modified concurrently, please try again"));
+                        "The data was modified concurrently, please try again"));
     }
 
     // Spring's translation of a version conflict detected at flush/commit (the JPA exception above is
@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorDto("CONCURRENT_MODIFICATION",
-                        "Account was modified concurrently, please try again"));
+                        "The data was modified concurrently, please try again"));
     }
 
     @ExceptionHandler(StorageException.class)
