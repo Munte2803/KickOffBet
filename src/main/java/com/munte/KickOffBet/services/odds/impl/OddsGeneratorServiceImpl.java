@@ -46,6 +46,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     @Value("${betting.lines.over-under:1.5,2.5,3.5}")
     private double[] overUnderLines;
 
+    // League defaults: the prior each statistic is shrunk toward (see shrink)
     @Value("${betting.default.season-home-avg-scored:1.25}")
     private double defaultSeasonHomeAvgScored;
     @Value("${betting.default.season-home-avg-conceded:1.10}")
@@ -76,6 +77,12 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private double defaultLast5Over25Rate;
     @Value("${betting.default.last5-btts-rate:0.45}")
     private double defaultLast5BttsRate;
+
+    // Prior weight k of the shrinkage, in matches: estimate = (n*observed + k*default) / (n + k)
+    @Value("${betting.shrinkage.prior-matches.season:5}")
+    private double seasonPriorMatches;
+    @Value("${betting.shrinkage.prior-matches.last5:2}")
+    private double last5PriorMatches;
 
     private static final ReentrantLock lock = new ReentrantLock();
 
@@ -124,18 +131,18 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
             final TeamMatchMetrics rawHomeMetrics = metricsMap.get(match.getHomeTeam().getId());
             final TeamMatchMetrics rawAwayMetrics = metricsMap.get(match.getAwayTeam().getId());
 
-            final TeamMatchMetrics homeMetrics = rawHomeMetrics != null ? rawHomeMetrics : new TeamMatchMetrics();
-            final TeamMatchMetrics awayMetrics = rawAwayMetrics != null ? rawAwayMetrics : new TeamMatchMetrics();
-
-            final int homeDefaults = applyFieldDefaults(homeMetrics);
-            final int awayDefaults = applyFieldDefaults(awayMetrics);
-
-            if (homeDefaults > 0 || awayDefaults > 0) {
-                log.info("Applied field-level defaults for match {} vs {} (home: {} fields, away: {} fields)",
-                        match.getHomeTeam().getName(), match.getAwayTeam().getName(), homeDefaults, awayDefaults);
+            // No history at all for a team: no price is better than a fully made-up one
+            if (hasNoData(rawHomeMetrics) || hasNoData(rawAwayMetrics)) {
+                final List<String> withoutData = new ArrayList<>();
+                if (hasNoData(rawHomeMetrics)) withoutData.add(match.getHomeTeam().getName());
+                if (hasNoData(rawAwayMetrics)) withoutData.add(match.getAwayTeam().getName());
+                final int deactivated = deactivateAutomaticOffers(match);
+                log.info("No odds for {} vs {}: no finished matches for {}. Deactivated {} automatic offers.",
+                        match.getHomeTeam().getName(), match.getAwayTeam().getName(), withoutData, deactivated);
+                continue;
             }
 
-            generateAndApplyOdds(match, homeMetrics, awayMetrics);
+            generateAndApplyOdds(match, shrink(rawHomeMetrics), shrink(rawAwayMetrics));
         }
 
         matchRepository.saveAll(toCalculate);
@@ -232,27 +239,68 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         return team != null && team.getExternalId() != null && team.getExternalId() > 0;
     }
 
-    private int applyFieldDefaults(final TeamMatchMetrics m) {
+    private static boolean hasNoData(final TeamMatchMetrics m) {
+        return m == null || m.hasNoData();
+    }
+
+    /** Switches off the engine's offers; offers an admin edited are left as the admin set them. */
+    private static int deactivateAutomaticOffers(final Match match) {
         int count = 0;
-        if (isZero(m.getSeasonHomeAvgScored()))   { m.setSeasonHomeAvgScored(defaultSeasonHomeAvgScored);     count++; }
-        if (isZero(m.getSeasonHomeAvgConceded()))  { m.setSeasonHomeAvgConceded(defaultSeasonHomeAvgConceded); count++; }
-        if (isZero(m.getSeasonAwayAvgScored()))    { m.setSeasonAwayAvgScored(defaultSeasonAwayAvgScored);     count++; }
-        if (isZero(m.getSeasonAwayAvgConceded()))  { m.setSeasonAwayAvgConceded(defaultSeasonAwayAvgConceded); count++; }
-        if (isZero(m.getSeasonWinRate()))           { m.setSeasonWinRate(defaultSeasonWinRate);                 count++; }
-        if (isZero(m.getSeasonDrawRate()))           { m.setSeasonDrawRate(defaultSeasonDrawRate);               count++; }
-        if (isZero(m.getSeasonOver15Rate()))         { m.setSeasonOver15Rate(defaultSeasonOver15Rate);           count++; }
-        if (isZero(m.getSeasonOver25Rate()))         { m.setSeasonOver25Rate(defaultSeasonOver25Rate);           count++; }
-        if (isZero(m.getSeasonBttsRate()))           { m.setSeasonBttsRate(defaultSeasonBttsRate);               count++; }
-        if (isZero(m.getLast5AvgScored()))           { m.setLast5AvgScored(defaultLast5AvgScored);               count++; }
-        if (isZero(m.getLast5AvgConceded()))         { m.setLast5AvgConceded(defaultLast5AvgConceded);           count++; }
-        if (isZero(m.getLast5DrawRate()))             { m.setLast5DrawRate(defaultLast5DrawRate);                 count++; }
-        if (isZero(m.getLast5Over15Rate()))           { m.setLast5Over15Rate(defaultLast5Over15Rate);             count++; }
-        if (isZero(m.getLast5Over25Rate()))           { m.setLast5Over25Rate(defaultLast5Over25Rate);             count++; }
-        if (isZero(m.getLast5BttsRate()))             { m.setLast5BttsRate(defaultLast5BttsRate);                 count++; }
+        for (final MarketOffer offer : match.getAvailableOffers()) {
+            if (!offer.isManualUpdate() && offer.isActive()) {
+                offer.setActive(false);
+                offer.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC));
+                count++;
+            }
+        }
         return count;
     }
 
-    private boolean isZero(final Double value) {
-        return value == null || Math.abs(value) < 1e-9;
+    /**
+     * Copy of the view row where every statistic is shrunk toward its league default according to the
+     * number of matches behind it, so thin samples (and a genuine 0 in them) only pull proportionally.
+     * The view entity itself is immutable and left untouched.
+     */
+    TeamMatchMetrics shrink(final TeamMatchMetrics raw) {
+        final int homeN = count(raw.getSeasonHomeMatches());
+        final int awayN = count(raw.getSeasonAwayMatches());
+        final int seasonN = count(raw.getSeasonMatches());
+        final int last5N = count(raw.getLast5Matches());
+
+        final TeamMatchMetrics m = new TeamMatchMetrics();
+        m.setTeamId(raw.getTeamId());
+        m.setSeasonHomeMatches(homeN);
+        m.setSeasonAwayMatches(awayN);
+        m.setSeasonMatches(seasonN);
+        m.setLast5Matches(last5N);
+
+        m.setSeasonHomeAvgScored(shrink(raw.getSeasonHomeAvgScored(), homeN, defaultSeasonHomeAvgScored, seasonPriorMatches));
+        m.setSeasonHomeAvgConceded(shrink(raw.getSeasonHomeAvgConceded(), homeN, defaultSeasonHomeAvgConceded, seasonPriorMatches));
+        m.setSeasonAwayAvgScored(shrink(raw.getSeasonAwayAvgScored(), awayN, defaultSeasonAwayAvgScored, seasonPriorMatches));
+        m.setSeasonAwayAvgConceded(shrink(raw.getSeasonAwayAvgConceded(), awayN, defaultSeasonAwayAvgConceded, seasonPriorMatches));
+        m.setSeasonWinRate(shrink(raw.getSeasonWinRate(), seasonN, defaultSeasonWinRate, seasonPriorMatches));
+        m.setSeasonDrawRate(shrink(raw.getSeasonDrawRate(), seasonN, defaultSeasonDrawRate, seasonPriorMatches));
+        m.setSeasonOver05Rate(raw.getSeasonOver05Rate()); // not priced, no default
+        m.setSeasonOver15Rate(shrink(raw.getSeasonOver15Rate(), seasonN, defaultSeasonOver15Rate, seasonPriorMatches));
+        m.setSeasonOver25Rate(shrink(raw.getSeasonOver25Rate(), seasonN, defaultSeasonOver25Rate, seasonPriorMatches));
+        m.setSeasonBttsRate(shrink(raw.getSeasonBttsRate(), seasonN, defaultSeasonBttsRate, seasonPriorMatches));
+
+        m.setLast5AvgScored(shrink(raw.getLast5AvgScored(), last5N, defaultLast5AvgScored, last5PriorMatches));
+        m.setLast5AvgConceded(shrink(raw.getLast5AvgConceded(), last5N, defaultLast5AvgConceded, last5PriorMatches));
+        m.setLast5DrawRate(shrink(raw.getLast5DrawRate(), last5N, defaultLast5DrawRate, last5PriorMatches));
+        m.setLast5Over15Rate(shrink(raw.getLast5Over15Rate(), last5N, defaultLast5Over15Rate, last5PriorMatches));
+        m.setLast5Over25Rate(shrink(raw.getLast5Over25Rate(), last5N, defaultLast5Over25Rate, last5PriorMatches));
+        m.setLast5BttsRate(shrink(raw.getLast5BttsRate(), last5N, defaultLast5BttsRate, last5PriorMatches));
+        return m;
+    }
+
+    /** (n * observed + k * default) / (n + k); the default alone when there is no sample. */
+    private static double shrink(final Double observed, final int n, final double defaultValue, final double priorMatches) {
+        if (observed == null || n <= 0) return defaultValue;
+        return (n * observed + priorMatches * defaultValue) / (n + priorMatches);
+    }
+
+    private static int count(final Integer n) {
+        return n == null ? 0 : Math.max(n, 0);
     }
 }

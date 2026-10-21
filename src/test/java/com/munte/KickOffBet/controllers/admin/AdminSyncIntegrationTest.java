@@ -90,15 +90,14 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
         data.awaitAsyncIdle();
     }
 
-    /** League + teams as a previous full sync would have left them. */
+    /** League + teams (with a played match, so they can be priced) as a previous full sync would have left them. */
     private void seedSyncedCatalogue() {
         League league = data.league("PL", "Premier League");
         league.setExternalId(2021L);
         leagueRepository.save(league);
         Team arsenal = data.team("Arsenal FC", 57L, league);
         Team chelsea = data.team("Chelsea FC", 61L, league);
-        assertThat(arsenal.getId()).isNotNull();
-        assertThat(chelsea.getId()).isNotNull();
+        data.finishedMatch(league, arsenal, chelsea, TestDataFactory.nowUtc().minusDays(30), 1, 1);
     }
 
     @Test
@@ -146,13 +145,14 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
 
     @Test
     void firstFullSyncPricesUpcomingMatchesWithTheWholeImportedHistory() throws Exception {
-        // The current season (imported first) only has the upcoming match; the history comes with the older
-        // season afterwards: Arsenal beat Chelsea heavily, so Arsenal must end up favourite even away from home
+        // The current season (imported first) only has the upcoming match and a draw; the history comes with
+        // the older season afterwards: Arsenal beat Chelsea heavily, so Arsenal must end up favourite even away from home
         when(footballDataClient.fetchCompetitions()).thenReturn(List.of(PL));
         when(footballDataClient.fetchTeamsByLeague("PL")).thenReturn(List.of(ARSENAL, CHELSEA));
         when(footballDataClient.fetchMatchesByLeagueAndSeason(eq("PL"), anyInt())).thenReturn(Optional.empty());
         when(footballDataClient.fetchMatchesByLeagueAndSeason("PL", 2025)).thenReturn(Optional.of(new FdMatchList(List.of(
-                apiMatch(3001L, inDays(3), "TIMED", null, null, CHELSEA, ARSENAL)))));
+                apiMatch(3001L, inDays(3), "TIMED", null, null, CHELSEA, ARSENAL),
+                apiMatch(3000L, inDays(-10), "FINISHED", 1, 1, CHELSEA, ARSENAL)))));
         // Like in production (where API calls are seconds apart), the history arrives only after the
         // upcoming match has already been priced without it
         when(footballDataClient.fetchMatchesByLeagueAndSeason("PL", 2024)).thenAnswer(inv -> {
@@ -299,6 +299,29 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
         awaitOffers(5001L, 14);
 
         assertThat(data.reloadMatch(manual.getId()).getAvailableOffers()).hasSize(8);
+    }
+
+    @Test
+    void matchOfATeamWithoutFinishedMatchesGetsNoOdds() throws Exception {
+        seedSyncedCatalogue();
+        League league = leagueRepository.findByCode("PL").orElseThrow();
+        Team arsenal = teamRepository.findAllByExternalIdIn(java.util.Set.of(57L)).get(0);
+        Team newcomer = data.team("Newcomer FC", 99L, league);
+        Match match = new Match();
+        match.setLeague(league);
+        match.setHomeTeam(newcomer);
+        match.setAwayTeam(arsenal);
+        match.setStartTime(TestDataFactory.nowUtc().plusDays(3));
+        match.setStatus(MatchStatus.SCHEDULED);
+        match.setExternalId(6001L);
+        match.setActive(true);
+        match.setManualUpdate(false);
+        matchRepository.save(match);
+
+        mvc.perform(auth(post("/api/admin/sync/recalculate-automatic-odds"), admin)).andExpect(status().isAccepted());
+        data.awaitAsyncIdle();
+
+        assertThat(matchByExternalId(6001L).getAvailableOffers()).isEmpty();
     }
 
     @Test
