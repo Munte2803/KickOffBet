@@ -178,6 +178,7 @@ describe('response interceptor: 401 -> refresh -> retry', () => {
 
   it('logs out and redirects to login (keeping the current path) when the refresh fails', async () => {
     sessionWithRevokedAccess()
+    localStorage.setItem('kickoffbet.betslip', JSON.stringify({ selections: [], stake: 10 }))
     handler = (config) => (isRefresh(config) ? { status: 401, data: { error: 'Invalid refresh token' } } : { status: 401 })
 
     await expect(api.get('/api/users/me')).rejects.toThrow('Sesiunea a expirat. Autentifica-te din nou.')
@@ -185,6 +186,7 @@ describe('response interceptor: 401 -> refresh -> retry', () => {
     expect(getStoredAccessToken()).toBeNull()
     expect(getStoredRefreshToken()).toBeNull()
     expect(getStoredAuthUser()).toBeNull()
+    expect(localStorage.getItem('kickoffbet.betslip')).toBeNull()
     expect(location.href).toBe(`/login?redirect=${encodeURIComponent('/tickets?status=PENDING')}`)
   })
 

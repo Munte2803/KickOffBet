@@ -7,6 +7,7 @@ import {
 } from '@/utils/auth-session.utils'
 import { isJwtExpired } from '@/utils/jwt.utils'
 import { ApiError } from '@/api/api-error'
+import { clearUserScopedState } from '@/utils/user-state.utils'
 import { readErrorBody, translateTicketPlacementError } from '@/api/error-messages'
 
 const errorCodeMessages: Record<string, string> = {
@@ -67,6 +68,8 @@ function isAuthRequest(url: string) {
 }
 
 function redirectToLogin() {
+  // The session is gone: don't leave the account's cached data or bet slip for whoever signs in next
+  clearUserScopedState()
   if (typeof window === 'undefined') return
   if (window.location.pathname === '/login') return
 
