@@ -1,5 +1,6 @@
 package com.munte.KickOffBet.services.transactions.impl;
 
+import com.munte.KickOffBet.domain.constants.TransactionConstants;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.enums.TransactionStatus;
 import com.munte.KickOffBet.domain.enums.TransactionType;
@@ -69,8 +70,13 @@ public class AmlServiceImpl implements AmlService {
         LocalDateTime monthAgo = now.minusDays(30);
         LocalDateTime velocityWindow = now.minusMinutes(velocityWindowMinutes);
 
+        // Net wagering: stakes handed back (ticket cancelled by the user or fully voided) were never at risk,
+        // so they don't count, otherwise stake-and-cancel would satisfy the requirement for free
         BigDecimal totalStakes = transactionRepository
-                .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.BET, monthAgo, now, TransactionStatus.COMPLETED);
+                .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.BET, monthAgo, now, TransactionStatus.COMPLETED)
+                .subtract(transactionRepository.sumByUserIdAndTypeAndReferenceTypeAndPeriod(user.getId(),
+                        TransactionType.REFUND, TransactionConstants.REFERENCE_TYPE_TICKET,
+                        monthAgo, now, TransactionStatus.COMPLETED));
 
         BigDecimal totalDeposited = transactionRepository
                 .sumByUserIdAndTypeAndPeriod(user.getId(), TransactionType.DEPOSIT,

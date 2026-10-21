@@ -203,6 +203,19 @@ class TicketServiceImplTest {
         }
 
         @Test
+        @DisplayName("a recalculated payout is rounded to cents before it is credited")
+        void voidRecalculationRoundsToCents() {
+            Ticket t = ticketWith("10.01", "1.85", "2.10");
+            grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.CANCELLED);
+
+            service.settleTickets(Set.of(t));
+
+            // 10.01 x 1.85 = 18.5185
+            assertThat(t.getPotentialPayout()).isEqualTo(new BigDecimal("18.52"));
+            verify(walletService).payout(user.getId(), new BigDecimal("18.52"), t.getId());
+        }
+
+        @Test
         @DisplayName("every selection voided -> CANCELLED and the stake is refunded")
         void allVoidRefunds() {
             Ticket t = ticketWith("10.00", "1.85", "2.10");

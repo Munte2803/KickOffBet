@@ -281,6 +281,16 @@ class TicketIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void rejectsTotalOddsAboveWhatThePayoutCapCanPay() throws Exception {
+        List<Map<String, Object>> legs = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            Match m = i < 2 ? List.of(match, otherMatch).get(i) : data.scheduledMatch(league, home, away);
+            legs.add(selection(data.offerOf(m, BetOption.AWAY))); // 3.50^10 ~ 275 855
+        }
+        placeRejected(legs).andExpect(jsonPath("$.error").value("Total odds cannot exceed 100000"));
+    }
+
+    @Test
     void rejectsStakeAboveBalanceWithoutPersistingTicket() throws Exception {
         User poor = data.userWithBalance("poor@kickoffbet.test", "5");
         place(login(poor), 10, List.of(selection(data.offerOf(match, BetOption.HOME))))

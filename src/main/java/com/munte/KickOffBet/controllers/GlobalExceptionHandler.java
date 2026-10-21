@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OptimisticLockException.class)
     public ResponseEntity<ErrorDto> handleOptimisticLock(OptimisticLockException ex) {
+        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorDto("CONCURRENT_MODIFICATION",
+                        "Account was modified concurrently, please try again"));
+    }
+
+    // Spring's translation of a version conflict detected at flush/commit (the JPA exception above is
+    // only seen when it escapes unwrapped)
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorDto> handleObjectOptimisticLock(ObjectOptimisticLockingFailureException ex) {
         log.warn("Optimistic lock conflict: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorDto("CONCURRENT_MODIFICATION",

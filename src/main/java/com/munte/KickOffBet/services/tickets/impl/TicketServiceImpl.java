@@ -23,9 +23,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -155,6 +157,18 @@ public class TicketServiceImpl implements TicketService {
 
     }
 
+    /**
+     * Settles one ticket in its own transaction: the ticket row is locked and its legs and user are read fresh,
+     * so concurrent settlements of the same ticket (parallel match listeners, the reconciler) pay at most once.
+     */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void settleTicket(UUID ticketId) {
+        ticketRepository.findByIdForUpdate(ticketId)
+                .filter(ticket -> ticket.getStatus() == TicketStatus.PENDING)
+                .ifPresent(ticket -> settleTickets(Set.of(ticket)));
+    }
+
     @Override
     @Transactional
     public void settlePendingTicketsOfUser(UUID userId) {
@@ -202,8 +216,10 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     public void cancelTicket(UUID id) {
 
-        // Only the owner may cancel: someone else's ticket is reported as not found
+        // Only the owner may cancel: someone else's ticket is reported as not found.
+        // Locked first so a settlement of the same ticket can't refund it a second time.
         User user = authService.getCurrentUser();
+        ticketRepository.findByIdForUpdate(id);
         Ticket ticket = ticketRepository.findByIdAndUserIdWithSelections(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket Not Found with id: " + id));
 
@@ -224,8 +240,9 @@ public class TicketServiceImpl implements TicketService {
 
     }
 
+    // Money has 2 decimals: an unrounded stake x odds product would credit fractions of a cent
     private BigDecimal calculateCappedPayout(BigDecimal stake, BigDecimal totalOdd) {
-        return stake.multiply(totalOdd).min(MAX_WIN);
+        return stake.multiply(totalOdd).setScale(2, RoundingMode.HALF_UP).min(MAX_WIN);
     }
 
     @Override

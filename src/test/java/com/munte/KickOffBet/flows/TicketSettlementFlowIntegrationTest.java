@@ -9,11 +9,13 @@ import com.munte.KickOffBet.domain.enums.TransactionType;
 import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.repository.TransactionRepository;
 import com.munte.KickOffBet.repository.UserRepository;
+import com.munte.KickOffBet.scheduler.TicketSettlementReconciler;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
@@ -46,6 +48,8 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
     @Autowired TicketRepository ticketRepository;
     @Autowired TransactionRepository transactionRepository;
     @Autowired UserRepository userRepository;
+    @Autowired TicketSettlementReconciler reconciler;
+    @Autowired JdbcTemplate jdbc;
 
     private String admin;
     private String leagueId;
@@ -351,5 +355,46 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         assertThat(balance("early@kickoffbet.test")).isEqualByComparingTo("100");
         assertThat(new ArrayList<>(transactionsOf(ticket))).extracting(Transaction::getTransactionType)
                 .containsExactlyInAnyOrder(TransactionType.BET, TransactionType.REFUND);
+    }
+
+    @Test
+    void reconcilerSettlesBetsTheMatchEventsMissed() throws Exception {
+        String scoredLate = createMatch();
+        String cancelled = createMatch();
+        String graded = createMatch();
+        String token = fundedUser("reconciled@kickoffbet.test", 100);
+        String suspendedToken = fundedUser("reconciled-suspended@kickoffbet.test", 100);
+        String single = bet(token, 10, List.of(pick(token, scoredLate, "HOME")));
+        String accumulator = bet(token, 10, List.of(pick(token, scoredLate, "HOME"), pick(token, cancelled, "AWAY")));
+        String legsWonTicketPending = bet(token, 10, List.of(pick(token, graded, "HOME")));
+        String suspendedTicket = bet(suspendedToken, 10, List.of(pick(suspendedToken, scoredLate, "HOME")));
+        UUID suspendedId = userRepository.findByEmail("reconciled-suspended@kickoffbet.test").orElseThrow().getId();
+        mvc.perform(auth(patch("/api/admin/users/{id}/suspend", suspendedId), admin)).andExpect(status().isNoContent());
+
+        // State the listeners never saw: no event is published by these writes
+        jdbc.update("UPDATE matches SET status = 'FINISHED' WHERE id = ?", UUID.fromString(scoredLate));
+        reconciler.reconcile();
+        assertThat(ticketRepository.findById(UUID.fromString(single)).orElseThrow().getStatus())
+                .as("finished without a score yet").isEqualTo(TicketStatus.PENDING);
+
+        jdbc.update("UPDATE matches SET ft_home = 2, ft_away = 0 WHERE id = ?", UUID.fromString(scoredLate));
+        jdbc.update("UPDATE matches SET status = 'CANCELLED' WHERE id = ?", UUID.fromString(cancelled));
+        // an accumulator whose last leg was graded by a listener that lost the race on the ticket
+        jdbc.update("UPDATE matches SET status = 'FINISHED', ft_home = 1, ft_away = 0 WHERE id = ?", UUID.fromString(graded));
+        jdbc.update("UPDATE ticket_selections SET status = 'WON' WHERE ticket_id = ?", UUID.fromString(legsWonTicketPending));
+
+        reconciler.reconcile();
+        reconciler.reconcile();
+
+        for (String t : List.of(single, accumulator, legsWonTicketPending)) {
+            mvc.perform(auth(get("/api/tickets/{id}", t), token))
+                    .andExpect(jsonPath("$.status").value("WON"))
+                    .andExpect(jsonPath("$.potentialPayout").value(21.0));
+        }
+        // 100 - 3 x 10 staked + 3 x 21 paid out, once
+        assertThat(balance("reconciled@kickoffbet.test")).isEqualByComparingTo("133");
+        assertThat(ticketRepository.findById(UUID.fromString(suspendedTicket)).orElseThrow().getStatus())
+                .isEqualTo(TicketStatus.PENDING);
+        assertThat(balance("reconciled-suspended@kickoffbet.test")).isEqualByComparingTo("90");
     }
 }

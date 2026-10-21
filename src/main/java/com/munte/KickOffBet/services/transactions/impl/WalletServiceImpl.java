@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
@@ -178,6 +180,8 @@ public class WalletServiceImpl implements WalletService {
 
         User user = this.getActiveUserById(transaction.getUser().getId());
 
+        this.claimPending(transaction, TransactionStatus.COMPLETED);
+
         if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
             user.setBalance(user.getBalance().add(transaction.getAmount()));
         }
@@ -209,6 +213,8 @@ public class WalletServiceImpl implements WalletService {
             throw new BusinessException("Transaction is not pending");
         }
 
+        this.claimPending(transaction, TransactionStatus.REJECTED);
+
         transaction.setStatus(TransactionStatus.REJECTED);
 
         if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
@@ -225,6 +231,18 @@ public class WalletServiceImpl implements WalletService {
         }
 
         return transactionRepository.save(transaction);
+    }
+
+    /**
+     * The status check above reads a snapshot; the conditional update makes sure only one of two concurrent
+     * approve/reject calls on the same PENDING transaction goes through (it blocks on the row and then sees 0 rows).
+     */
+    private void claimPending(Transaction transaction, TransactionStatus to) {
+        int updated = transactionRepository.updateStatusIfCurrent(
+                transaction.getId(), TransactionStatus.PENDING, to, LocalDateTime.now(ZoneOffset.UTC));
+        if (updated != 1) {
+            throw new BusinessException("Transaction is not pending");
+        }
     }
 
     private User getActiveCurrentUser() {
