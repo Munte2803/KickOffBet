@@ -368,6 +368,8 @@ public class AuthServiceImpl implements AuthService {
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
       
             user.setLastActivity(LocalDateTime.now(ZoneOffset.UTC));
+            // Logging out ends the sessions on every device: all issued tokens carry the old version
+            user.setTokenVersion(user.getTokenVersion() + 1);
             userRepository.save(user);
             
             SecurityContextHolder.clearContext();

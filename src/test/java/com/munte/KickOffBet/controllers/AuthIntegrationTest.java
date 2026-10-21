@@ -410,6 +410,25 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void logoutEndsTheSessionsOnEveryDevice() throws Exception {
+        User user = data.user("two-devices@kickoffbet.test");
+        String phone = login(user);
+        ResultActions laptop = mvc.perform(withJson(post("/api/auth/login"),
+                        Map.of("email", user.getEmail(), "password", TestDataFactory.DEFAULT_PASSWORD)))
+                .andExpect(status().isOk());
+        String laptopAccess = read(laptop, "$.token");
+        String laptopRefresh = read(laptop, "$.refreshToken");
+
+        mvc.perform(auth(post("/api/auth/logout"), phone)).andExpect(status().isNoContent());
+
+        mvc.perform(auth(get("/api/users/me"), laptopAccess)).andExpect(status().isForbidden());
+        mvc.perform(withJson(post("/api/auth/refresh-token"), Map.of("refreshToken", laptopRefresh)))
+                .andExpect(status().isBadRequest());
+        // signing in again works as usual
+        mvc.perform(auth(get("/api/users/me"), login(user))).andExpect(status().isOk());
+    }
+
+    @Test
     void forgotPasswordValidatesEmail() throws Exception {
         mvc.perform(withJson(post("/api/auth/forgot-password"), Map.of("email", "nope")))
                 .andExpect(status().isBadRequest())
