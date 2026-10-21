@@ -53,6 +53,16 @@ final class OddsTestFixtures {
     static final double DEF_LAST5_OVER25_RATE = 0.48;
     static final double DEF_LAST5_BTTS_RATE = 0.45;
 
+    // betting.shrinkage.prior-matches.*
+    static final double PRIOR_MATCHES_SEASON = 5;
+    static final double PRIOR_MATCHES_LAST5 = 2;
+
+    // sample sizes of a team with a full season of history
+    static final int FULL_SEASON_HOME_MATCHES = 19;
+    static final int FULL_SEASON_AWAY_MATCHES = 19;
+    static final int FULL_SEASON_MATCHES = 38;
+    static final int FULL_LAST5_MATCHES = 5;
+
     private OddsTestFixtures() {
     }
 
@@ -100,12 +110,15 @@ final class OddsTestFixtures {
         ReflectionTestUtils.setField(s, "defaultLast5Over15Rate", DEF_LAST5_OVER15_RATE);
         ReflectionTestUtils.setField(s, "defaultLast5Over25Rate", DEF_LAST5_OVER25_RATE);
         ReflectionTestUtils.setField(s, "defaultLast5BttsRate", DEF_LAST5_BTTS_RATE);
+        ReflectionTestUtils.setField(s, "seasonPriorMatches", PRIOR_MATCHES_SEASON);
+        ReflectionTestUtils.setField(s, "last5PriorMatches", PRIOR_MATCHES_LAST5);
     }
 
-    /** A team whose every metric has the given goal average and rate. */
+    /** A team with a full season of history whose every metric has the given goal average and rate. */
     static TeamMatchMetrics metrics(UUID teamId, double avgScored, double avgConceded, double rate) {
         TeamMatchMetrics m = new TeamMatchMetrics();
         m.setTeamId(teamId);
+        withFullSampleSizes(m);
         m.setSeasonHomeAvgScored(avgScored);
         m.setSeasonAwayAvgScored(avgScored);
         m.setLast5AvgScored(avgScored);
@@ -125,10 +138,11 @@ final class OddsTestFixtures {
         return m;
     }
 
-    /** A metrics row populated exactly with the configured betting.default.* values. */
+    /** A metrics row with a full season of history populated exactly with the betting.default.* values. */
     static TeamMatchMetrics defaultMetrics(UUID teamId) {
         TeamMatchMetrics m = new TeamMatchMetrics();
         m.setTeamId(teamId);
+        withFullSampleSizes(m);
         m.setSeasonHomeAvgScored(DEF_SEASON_HOME_AVG_SCORED);
         m.setSeasonHomeAvgConceded(DEF_SEASON_HOME_AVG_CONCEDED);
         m.setSeasonAwayAvgScored(DEF_SEASON_AWAY_AVG_SCORED);
@@ -145,6 +159,24 @@ final class OddsTestFixtures {
         m.setLast5Over25Rate(DEF_LAST5_OVER25_RATE);
         m.setLast5BttsRate(DEF_LAST5_BTTS_RATE);
         return m;
+    }
+
+    /** The view row of a team without any finished match: counts 0, statistics null. */
+    static TeamMatchMetrics noDataMetrics(UUID teamId) {
+        TeamMatchMetrics m = new TeamMatchMetrics();
+        m.setTeamId(teamId);
+        m.setSeasonHomeMatches(0);
+        m.setSeasonAwayMatches(0);
+        m.setSeasonMatches(0);
+        m.setLast5Matches(0);
+        return m;
+    }
+
+    private static void withFullSampleSizes(TeamMatchMetrics m) {
+        m.setSeasonHomeMatches(FULL_SEASON_HOME_MATCHES);
+        m.setSeasonAwayMatches(FULL_SEASON_AWAY_MATCHES);
+        m.setSeasonMatches(FULL_SEASON_MATCHES);
+        m.setLast5Matches(FULL_LAST5_MATCHES);
     }
 
     static double sum(double[][] m) {

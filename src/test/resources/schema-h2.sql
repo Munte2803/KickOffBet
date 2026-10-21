@@ -14,6 +14,9 @@ WITH finished_matches AS (
     FROM finished_matches fm
 ), season_stats AS (
     SELECT tmr.team_id,
+           CAST(SUM(CASE WHEN tmr.side = 'HOME' THEN 1 ELSE 0 END) AS INTEGER) AS season_home_matches,
+           CAST(SUM(CASE WHEN tmr.side = 'AWAY' THEN 1 ELSE 0 END) AS INTEGER) AS season_away_matches,
+           CAST(COUNT(*) AS INTEGER) AS season_matches,
            CAST(AVG(CASE WHEN tmr.side = 'HOME' THEN CAST(tmr.goals_for AS DOUBLE PRECISION) END) AS DOUBLE PRECISION) AS season_home_avg_scored,
            CAST(AVG(CASE WHEN tmr.side = 'HOME' THEN CAST(tmr.goals_against AS DOUBLE PRECISION) END) AS DOUBLE PRECISION) AS season_home_avg_conceded,
            CAST(AVG(CASE WHEN tmr.side = 'AWAY' THEN CAST(tmr.goals_for AS DOUBLE PRECISION) END) AS DOUBLE PRECISION) AS season_away_avg_scored,
@@ -30,8 +33,10 @@ WITH finished_matches AS (
 ), last5_ranked AS (
     SELECT tmr.*, ROW_NUMBER() OVER (PARTITION BY tmr.team_id ORDER BY tmr.start_time DESC, tmr.team_id) AS rn
     FROM team_match_rows tmr
+    WHERE tmr.start_time >= DATEADD('MONTH', -18, CURRENT_TIMESTAMP)
 ), last5_stats AS (
     SELECT l5.team_id,
+           CAST(COUNT(*) AS INTEGER) AS last_5_matches,
            CAST(AVG(CAST(l5.goals_for AS DOUBLE PRECISION)) AS DOUBLE PRECISION) AS last_5_avg_scored,
            CAST(AVG(CAST(l5.goals_against AS DOUBLE PRECISION)) AS DOUBLE PRECISION) AS last_5_avg_conceded,
            CAST(AVG(CASE WHEN l5.goals_for = l5.goals_against THEN 1.0 ELSE 0.0 END) AS DOUBLE PRECISION) AS last_5_draw_rate,
@@ -43,22 +48,27 @@ WITH finished_matches AS (
     GROUP BY l5.team_id
 )
 SELECT t.id AS team_id,
-       COALESCE(ss.season_home_avg_scored, 0) AS season_home_avg_scored,
-       COALESCE(ss.season_home_avg_conceded, 0) AS season_home_avg_conceded,
-       COALESCE(ss.season_away_avg_scored, 0) AS season_away_avg_scored,
-       COALESCE(ss.season_away_avg_conceded, 0) AS season_away_avg_conceded,
-       COALESCE(ss.season_win_rate, 0) AS season_win_rate,
-       COALESCE(ss.season_draw_rate, 0) AS season_draw_rate,
-       COALESCE(ss.season_over05_rate, 0) AS season_over05_rate,
-       COALESCE(ss.season_over15_rate, 0) AS season_over15_rate,
-       COALESCE(ss.season_over25_rate, 0) AS season_over25_rate,
-       COALESCE(ss.season_btts_rate, 0) AS season_btts_rate,
-       COALESCE(l5.last_5_avg_scored, 0) AS last_5_avg_scored,
-       COALESCE(l5.last_5_avg_conceded, 0) AS last_5_avg_conceded,
-       COALESCE(l5.last_5_draw_rate, 0) AS last_5_draw_rate,
-       COALESCE(l5.last_5_over15_rate, 0) AS last_5_over15_rate,
-       COALESCE(l5.last_5_over25_rate, 0) AS last_5_over25_rate,
-       COALESCE(l5.last_5_btts_rate, 0) AS last_5_btts_rate
+       ss.season_home_avg_scored,
+       ss.season_home_avg_conceded,
+       ss.season_away_avg_scored,
+       ss.season_away_avg_conceded,
+       ss.season_win_rate,
+       ss.season_draw_rate,
+       ss.season_over05_rate,
+       ss.season_over15_rate,
+       ss.season_over25_rate,
+       ss.season_btts_rate,
+       l5.last_5_avg_scored,
+       l5.last_5_avg_conceded,
+       l5.last_5_draw_rate,
+       l5.last_5_over15_rate,
+       l5.last_5_over25_rate,
+       l5.last_5_btts_rate,
+       -- sample sizes appended last, so CREATE OR REPLACE VIEW can replace the previous definition
+       COALESCE(ss.season_home_matches, 0) AS season_home_matches,
+       COALESCE(ss.season_away_matches, 0) AS season_away_matches,
+       COALESCE(ss.season_matches, 0) AS season_matches,
+       COALESCE(l5.last_5_matches, 0) AS last_5_matches
 FROM teams t
 LEFT JOIN season_stats ss ON ss.team_id = t.id
 LEFT JOIN last5_stats l5 ON l5.team_id = t.id;

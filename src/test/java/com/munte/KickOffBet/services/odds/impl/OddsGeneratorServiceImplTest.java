@@ -272,80 +272,93 @@ class OddsGeneratorServiceImplTest {
         }
     }
 
-    // ---------------------------------------------------------------- defaults
+    // ---------------------------------------------------------------- missing and thin data
 
     @Nested
-    @DisplayName("default metrics fallback")
-    class Defaults {
+    @DisplayName("missing and thin data")
+    class ThinData {
 
         @Test
-        @DisplayName("teams without a metrics row are priced exactly as teams with the configured default metrics")
-        void missingMetricsUseDefaults() {
-            Team h1 = team("New A"), a1 = team("New B");
-            Team h2 = team("Default A"), a2 = team("Default B");
-            Match noData = scheduledMatch(h1, a1);
-            Match explicitDefaults = scheduledMatch(h2, a2);
-            givenMatches(List.of(noData, explicitDefaults),
-                    defaultMetrics(h2.getId()), defaultMetrics(a2.getId()));
+        @DisplayName("a team without any finished match gets no odds; existing automatic offers are switched off, manual ones kept")
+        void noDataMeansNoActiveAutomaticOdds() {
+            Team known = team("Known"), newcomer = team("Newcomer"), unknown = team("No view row");
+            Match priced = scheduledMatch(known, newcomer);
+            Match noRow = scheduledMatch(unknown, known);
+            MarketOffer automatic = new MarketOffer();
+            automatic.setMarketType(MarketType.H2H);
+            automatic.setOption(BetOption.HOME);
+            automatic.setOdds(new BigDecimal("2.10"));
+            automatic.setActive(true);
+            priced.addOffer(automatic);
+            MarketOffer manual = new MarketOffer();
+            manual.setMarketType(MarketType.H2H);
+            manual.setOption(BetOption.AWAY);
+            manual.setOdds(new BigDecimal("3.40"));
+            manual.setActive(true);
+            manual.setManualUpdate(true);
+            priced.addOffer(manual);
+            givenMatches(List.of(priced, noRow), metrics(known.getId(), 1.4, 1.2, 0.3), noDataMetrics(newcomer.getId()));
 
-            process(noData, explicitDefaults);
+            process(priced, noRow);
 
-            assertThat(noData.getAvailableOffers()).hasSize(14);
-            for (MarketOffer o : noData.getAvailableOffers()) {
-                MarketOffer twin = offer(explicitDefaults, o.getMarketType(), o.getOption(),
-                        o.getLine() == null ? null : o.getLine().toPlainString());
-                assertThat(o.getOdds()).as("%s %s %s", o.getMarketType(), o.getOption(), o.getLine())
-                        .isEqualByComparingTo(twin.getOdds());
-            }
+            assertThat(priced.getAvailableOffers()).containsExactlyInAnyOrder(automatic, manual);
+            assertThat(automatic.isActive()).isFalse();
+            assertThat(automatic.getOdds()).isEqualByComparingTo("2.10");
+            assertThat(manual.isActive()).isTrue();
+            assertThat(manual.getOdds()).isEqualByComparingTo("3.40");
+            assertThat(noRow.getAvailableOffers()).isEmpty();
         }
 
         @Test
-        @DisplayName("zero-valued fields of an existing row are replaced field-by-field with defaults")
-        void zeroFieldsAreDefaulted() {
-            Team h1 = team("Zeros A"), a1 = team("Zeros B");
-            Team h2 = team("Default A"), a2 = team("Default B");
-            Match zeros = scheduledMatch(h1, a1);
-            Match explicitDefaults = scheduledMatch(h2, a2);
+        @DisplayName("each statistic is shrunk toward the default by the matches behind it: (n*observed + k*default)/(n + k)")
+        void thinSampleShrunkTowardDefault() {
+            // 3 matches: 2 at home, 1 away; no draw, every game over 2.5
+            TeamMatchMetrics raw = metrics(UUID.randomUUID(), 2.0, 1.0, 1.0);
+            raw.setSeasonHomeMatches(2);
+            raw.setSeasonAwayMatches(1);
+            raw.setSeasonMatches(3);
+            raw.setLast5Matches(3);
+            raw.setSeasonDrawRate(0.0);
+            raw.setLast5DrawRate(0.0);
 
-            TeamMatchMetrics zeroHome = defaultMetrics(h1.getId());
-            zeroHome.setSeasonHomeAvgScored(0.0);
-            zeroHome.setLast5DrawRate(0.0);
-            TeamMatchMetrics zeroAway = defaultMetrics(a1.getId());
-            zeroAway.setSeasonAwayAvgConceded(null);
-            zeroAway.setLast5BttsRate(0.0);
+            TeamMatchMetrics m = service.shrink(raw);
 
-            givenMatches(List.of(zeros, explicitDefaults),
-                    zeroHome, zeroAway, defaultMetrics(h2.getId()), defaultMetrics(a2.getId()));
+            assertThat(m.getSeasonHomeAvgScored()).isCloseTo((2 * 2.0 + 5 * DEF_SEASON_HOME_AVG_SCORED) / 7, within(1e-9));
+            assertThat(m.getSeasonAwayAvgConceded()).isCloseTo((1 * 1.0 + 5 * DEF_SEASON_AWAY_AVG_CONCEDED) / 6, within(1e-9));
+            assertThat(m.getSeasonOver25Rate()).isCloseTo((3 * 1.0 + 5 * DEF_SEASON_OVER25_RATE) / 8, within(1e-9));
+            assertThat(m.getSeasonDrawRate()).isCloseTo(5 * DEF_SEASON_DRAW_RATE / 8, within(1e-9));
+            assertThat(m.getLast5AvgScored()).isCloseTo((3 * 2.0 + 2 * DEF_LAST5_AVG_SCORED) / 5, within(1e-9));
+            assertThat(m.getLast5DrawRate()).isCloseTo(2 * DEF_LAST5_DRAW_RATE / 5, within(1e-9));
+            assertThat(raw.getSeasonHomeAvgScored()).as("view row untouched").isEqualTo(2.0);
 
-            process(zeros, explicitDefaults);
-
-            assertThat(zeroHome.getSeasonHomeAvgScored()).isEqualTo(DEF_SEASON_HOME_AVG_SCORED);
-            assertThat(zeroHome.getLast5DrawRate()).isEqualTo(DEF_LAST5_DRAW_RATE);
-            assertThat(zeroAway.getSeasonAwayAvgConceded()).isEqualTo(DEF_SEASON_AWAY_AVG_CONCEDED);
-            assertThat(zeroAway.getLast5BttsRate()).isEqualTo(DEF_LAST5_BTTS_RATE);
-            for (MarketOffer o : zeros.getAvailableOffers()) {
-                MarketOffer twin = offer(explicitDefaults, o.getMarketType(), o.getOption(),
-                        o.getLine() == null ? null : o.getLine().toPlainString());
-                assertThat(o.getOdds()).isEqualByComparingTo(twin.getOdds());
-            }
+            // a statistic without any match behind it (no away game yet) is the default itself
+            raw.setSeasonAwayMatches(0);
+            raw.setSeasonAwayAvgScored(null);
+            assertThat(service.shrink(raw).getSeasonAwayAvgScored()).isEqualTo(DEF_SEASON_AWAY_AVG_SCORED);
         }
 
         @Test
-        @DisplayName("teams without data get a sensible over 1.5 price, clearly shorter than over 2.5")
-        void over15PricedFromDefaultsWhenNoData() {
-            Match noData = scheduledMatch(team("New A"), team("New B"));
-            givenMatches(List.of(noData));
+        @DisplayName("a genuine 0 is respected: never drawing in the last 5 prices the draw longer than drawing once")
+        void genuineZeroIsMonotonic() {
+            Team h1 = team("Never draws"), a1 = team("Opponent 1");
+            Team h2 = team("Drew once"), a2 = team("Opponent 2");
+            Match zeroDraws = scheduledMatch(h1, a1);
+            Match oneDraw = scheduledMatch(h2, a2);
+            TeamMatchMetrics never = metrics(h1.getId(), 1.4, 1.2, 0.3);
+            never.setLast5DrawRate(0.0);
+            TeamMatchMetrics once = metrics(h2.getId(), 1.4, 1.2, 0.3);
+            once.setLast5DrawRate(0.2);
+            givenMatches(List.of(zeroDraws, oneDraw),
+                    never, metrics(a1.getId(), 1.2, 1.3, 0.3), once, metrics(a2.getId(), 1.2, 1.3, 0.3));
 
-            process(noData);
+            process(zeroDraws, oneDraw);
 
-            double over15 = odds(noData, MarketType.OVER_UNDER, BetOption.OVER, "1.5");
-            double over25 = odds(noData, MarketType.OVER_UNDER, BetOption.OVER, "2.5");
-            assertThat(over15).isBetween(1.25, 1.55);
-            assertThat(over25 - over15).isGreaterThan(0.5);
+            assertThat(odds(zeroDraws, MarketType.H2H, BetOption.DRAW, null))
+                    .isGreaterThan(odds(oneDraw, MarketType.H2H, BetOption.DRAW, null));
         }
 
         @Test
-        @DisplayName("real (non-zero) metrics are never overwritten by defaults")
+        @DisplayName("the view row itself is never modified")
         void realMetricsKept() {
             Team home = team("Home"), away = team("Away");
             Match match = scheduledMatch(home, away);

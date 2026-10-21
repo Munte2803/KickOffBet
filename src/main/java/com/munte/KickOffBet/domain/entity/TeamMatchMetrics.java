@@ -20,6 +20,8 @@ public class TeamMatchMetrics {
     @Column(name = "team_id")
     private UUID teamId;
 
+    // Statistics are null when there is no match behind them; the counts below are the sample
+    // sizes (0 when there is no data), used to shrink thin samples toward the league default.
     private Double seasonHomeAvgScored;
     private Double seasonHomeAvgConceded;
     private Double seasonAwayAvgScored;
@@ -48,4 +50,26 @@ public class TeamMatchMetrics {
 
     @Column(name = "last_5_btts_rate")
     private Double last5BttsRate;
+
+    /** Finished home matches in the season window, behind the season home averages. */
+    private Integer seasonHomeMatches;
+
+    /** Finished away matches in the season window, behind the season away averages. */
+    private Integer seasonAwayMatches;
+
+    /** Finished matches in the season window, behind the season rates. */
+    private Integer seasonMatches;
+
+    /** Matches behind the last-5 statistics (0-5). */
+    @Column(name = "last_5_matches")
+    private Integer last5Matches;
+
+    /** True when the team has no finished match in either window, i.e. nothing to price it from. */
+    public boolean hasNoData() {
+        return count(seasonMatches) == 0 && count(last5Matches) == 0;
+    }
+
+    private static int count(Integer n) {
+        return n == null ? 0 : n;
+    }
 }
