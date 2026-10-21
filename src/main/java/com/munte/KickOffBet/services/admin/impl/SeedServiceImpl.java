@@ -1,10 +1,12 @@
 package com.munte.KickOffBet.services.admin.impl;
 
 import com.munte.KickOffBet.domain.dto.api.response.SeedResultDto;
+import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.services.admin.SeedService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,12 +43,23 @@ public class SeedServiceImpl implements SeedService {
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${seed.user-password:Seed1234!}")
+    private final Environment environment;
+
+    // No default on purpose: a password in the code would be public. Set SEED_USER_PASSWORD to use the seed.
+    @Value("${seed.user-password:}")
     private String seedUserPassword;
 
     @Override
     @Transactional
     public SeedResultDto runSeed() {
+        // 510 accounts sharing one known password must never exist on the live site
+        if (environment.matchesProfiles("prod")) {
+            throw new BusinessException("Seeding is disabled in production");
+        }
+        if (seedUserPassword == null || seedUserPassword.isBlank()) {
+            throw new BusinessException("Seeding requires seed.user-password (SEED_USER_PASSWORD) to be set");
+        }
+
         long start = System.currentTimeMillis();
         log.info("[SEED] Starting seed run");
 
@@ -182,8 +195,8 @@ public class SeedServiceImpl implements SeedService {
         String sql = """
                 INSERT INTO users (id, first_name, last_name, email, password, balance, birth_date,
                                    role, status, email_verified, id_card_verified, version,
-                                   created_at, updated_at, failed_login_attempts)
-                VALUES (?, ?, ?, ?, ?, 0, ?, 'USER', ?, ?, ?, 0, ?, ?, 0)
+                                   created_at, updated_at, failed_login_attempts, token_version)
+                VALUES (?, ?, ?, ?, ?, 0, ?, 'USER', ?, ?, ?, 0, ?, ?, 0, 0)
                 """;
         jdbc.batchUpdate(sql, users, 100, (ps, u) -> {
             ps.setObject(1, u.id);

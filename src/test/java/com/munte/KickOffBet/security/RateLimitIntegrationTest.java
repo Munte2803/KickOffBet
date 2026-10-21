@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
 
+import java.net.URI;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,6 +53,16 @@ class RateLimitIntegrationTest extends IntegrationTestBase {
         mvc.perform(withJson(post("/api/auth/login"), body).header("X-Forwarded-For", "203.0.113.7"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(errorCode("RATE_LIMITED"));
+    }
+
+    @Test
+    void percentEncodedAuthPathCannotSkipItsBucket() throws Exception {
+        // "/api/auth/regi%73ter" is routed to /register, so it must also be counted as /register
+        URI encoded = URI.create("/api/auth/regi%73ter");
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(post(encoded)).andExpect(status().isUnsupportedMediaType());
+        }
+        mvc.perform(post(encoded)).andExpect(status().isTooManyRequests());
     }
 
     @Test

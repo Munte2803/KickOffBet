@@ -1,12 +1,12 @@
 import api from '@/api/axios'
-import type { AuthResponse, RegisterRequest } from '@/types/auth.types'
+import type { RegisterRequest } from '@/types/auth.types'
 import type { UserProfile } from '@/types/profile.types'
 import type { UserList } from '../types/admin-user.types'
 import type { UserStatus } from '@/types/enums'
 import type { PageRequest, PageResponse } from '@/types/api.types'
 import { toRemoteFile, type RemoteFile } from '@/utils/file.utils'
 
-export const createAdmin = (data: RegisterRequest): Promise<AuthResponse> =>
+export const createAdmin = (data: RegisterRequest): Promise<UserProfile> =>
   api.post('/api/admin/users/create-admin', data).then(res => res.data)
 
 export const getUsers = (pageable?: PageRequest): Promise<PageResponse<UserList>> =>

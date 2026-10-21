@@ -90,6 +90,10 @@ public class User implements UserDetails {
     @Column(name = "last_activity")
     private LocalDateTime lastActivity;
 
+    // Copied into every JWT; bumped when the password changes so all earlier tokens stop working
+    @Column(name = "token_version", nullable = false, columnDefinition = "integer default 0")
+    private int tokenVersion = 0;
+
     @Override
     @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -102,6 +106,7 @@ public class User implements UserDetails {
         return email;
     }
 
+    // Only consulted on password login (DaoAuthenticationProvider); JwtService ignores lockedUntil
     @Override
     public boolean isAccountNonLocked() {
         if (status == UserStatus.SUSPENDED

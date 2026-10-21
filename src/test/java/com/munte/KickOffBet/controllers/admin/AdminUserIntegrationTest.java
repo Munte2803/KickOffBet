@@ -75,7 +75,9 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("ADMIN"))
                 .andExpect(jsonPath("$.email").value("boss@kickoffbet.test"))
-                .andExpect(jsonPath("$.token").isNotEmpty());
+                // the new admin's credentials are never handed to the admin who created the account
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
 
         User created = userRepository.findByEmail("boss@kickoffbet.test").orElseThrow();
         assertThat(created.getStatus()).isEqualTo(UserStatus.ACTIVE);
@@ -127,6 +129,9 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
         mvc.perform(auth(get("/api/admin/users/search"), admin)).andExpect(status().isBadRequest());
 
         mvc.perform(auth(get("/api/admin/users").param("sort", "password"), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Sorting by 'password' is not allowed"));
+        mvc.perform(auth(get("/api/admin/users/pending-verification").param("sort", "password"), admin))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Sorting by 'password' is not allowed"));
         mvc.perform(auth(get("/api/admin/users/status/{status}", "NOPE"), admin))

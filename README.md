@@ -94,6 +94,14 @@ sh ./mvnw test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/kickoffb
 
 The production overlay (`docker-compose.prod.yml`) adds Caddy as the single public entry point: it obtains and renews the Let's Encrypt certificate automatically and reverse-proxies the API, the SPA and the public asset bucket on one domain. The live instance runs on an Oracle Cloud VM.
 
+Deploy notes:
+
+- **Schema changes** run with `DDL_AUTO=validate` in prod, so new columns are added by hand before the new backend starts, e.g. `ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version integer NOT NULL DEFAULT 0;` (or boot once with `DDL_AUTO=update`).
+- **JWTs** carry a type (`access`/`refresh`) and the user's token version; tokens issued by older builds are rejected, so everyone signs in again once after such an upgrade. A password reset ends every session of that account.
+- **Analytics (umami)** runs with its own Postgres role (`UMAMI_DB_USER`/`UMAMI_DB_PASSWORD`, created once with `docs/umami-db.sql`, see `.env.example`), and its dashboard on `ANALYTICS_DOMAIN` only answers the IPs listed in `ANALYTICS_ALLOWED_IPS`.
+- **Security headers** (HSTS, CSP, frame blocking) are set in the `Caddyfile`. The CSP allows the inline theme script of `Kickoffbet-ui/index.html` by its hash: recompute it (command in the `Caddyfile`) whenever that script changes.
+- The seed endpoint (`POST /api/admin/sync/seed`) is refused under the `prod` profile and needs `SEED_USER_PASSWORD` elsewhere.
+
 ---
 
 *Built as my bachelor's thesis at the Romanian-American University, School of Computer Science for Business Management (2026).*

@@ -14,7 +14,7 @@ public interface AuthService {
 
     AuthDto register(RegisterRequest request, MultipartFile idCard);
 
-    AuthDto registerAdmin(RegisterRequest request);
+    User registerAdmin(RegisterRequest request);
 
     AuthDto login(LoginRequest request);
 

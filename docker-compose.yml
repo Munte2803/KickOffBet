@@ -1,11 +1,13 @@
 name: kickoffbet
 
+# Database, Adminer and MinIO are published on 127.0.0.1 only: reachable from this machine
+# (IDE, psql, the MinIO console) but never from the network. Use an SSH tunnel from elsewhere.
 services:
   db:
     image: postgres:17
     container_name: db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     environment:
       POSTGRES_DB: postgres
@@ -25,7 +27,7 @@ services:
     container_name: adminer
     restart: unless-stopped
     ports:
-      - "8888:8080"
+      - "127.0.0.1:8888:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -35,8 +37,8 @@ services:
     container_name: minio
     restart: unless-stopped
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}

@@ -48,9 +48,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(StorageException.class)
     public ResponseEntity<ErrorDto> handleStorage(StorageException ex) {
+        // The detail names buckets and object keys: log it, never send it to the client
         log.error("Storage error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new ErrorDto("STORAGE_ERROR", ex.getMessage()));
+                .body(new ErrorDto("STORAGE_ERROR", "File storage is temporarily unavailable"));
     }
 
     @ExceptionHandler(BadCredentialsException.class)

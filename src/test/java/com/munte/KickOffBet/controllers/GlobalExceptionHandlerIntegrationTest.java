@@ -42,13 +42,13 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTestBase {
 
     @Test
     void storageFailureIsServiceUnavailable() throws Exception {
-        when(storageService.uploadFile(any(), anyString())).thenThrow(new StorageException("MinIO down"));
+        when(storageService.uploadFile(any(), anyString())).thenThrow(new StorageException("Failed to upload file to bucket: id-cards"));
         var body = Map.of("firstName", "Ion", "lastName", "Pop", "email", "s@kickoffbet.test",
                 "password", "Secret123", "birthDate", "1990-01-01");
         mvc.perform(multipart("/api/auth/register").file(jsonPart("data", body)).file(filePart("idCard", "a.png")))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(errorCode("STORAGE_ERROR"))
-                .andExpect(jsonPath("$.error").value("MinIO down"));
+                .andExpect(jsonPath("$.error").value("File storage is temporarily unavailable"));
     }
 
     @Test

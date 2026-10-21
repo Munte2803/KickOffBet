@@ -1,7 +1,6 @@
 package com.munte.KickOffBet.controllers.admin;
 
 import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
-import com.munte.KickOffBet.domain.dto.api.response.AuthDto;
 import com.munte.KickOffBet.domain.dto.api.response.TimeSeriesPointDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserDto;
 import com.munte.KickOffBet.domain.dto.api.response.UserListDto;
@@ -45,9 +44,9 @@ public class AdminUserController {
     private final UserMapper userMapper;
 
     @PostMapping("/create-admin")
-    public ResponseEntity<AuthDto> createAdmin(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<UserDto> createAdmin(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(authService.registerAdmin(request));
+                .body(userMapper.toDto(authService.registerAdmin(request)));
     }
 
     @GetMapping
@@ -70,6 +69,7 @@ public class AdminUserController {
     @GetMapping("/pending-verification")
     public ResponseEntity<Page<UserListDto>> getPendingVerification(
             @PageableDefault Pageable pageable) {
+        PageableValidator.validate(pageable, ALLOWED_SORT_FIELDS);
         return ResponseEntity.ok(
                 userService.getPendingVerification(pageable).map(userMapper::toListDto));
     }
