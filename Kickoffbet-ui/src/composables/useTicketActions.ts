@@ -8,6 +8,7 @@ import { ApiError } from '@/api/api-error'
 import { getProfile } from '@/api/profile.api'
 import type { MatchList, MatchDetail, MarketOffer } from '@/types/match.types'
 import { MAX_STAKE, MAX_WIN, MIN_STAKE } from '@/constants/betting.constants'
+import { invalidateAccountQueries, invalidateMatchOfferQueries } from '@/query/query-client'
 
 export function useTicketActions() {
   const authStore = useAuthStore()
@@ -37,6 +38,11 @@ export function useTicketActions() {
       return null
     }
 
+    if (ticketStore.hasUnavailableSelections) {
+      toastStore.showError('Elimina selectiile care nu mai sunt disponibile.')
+      return null
+    }
+
     if (!Number.isFinite(ticketStore.stake) || ticketStore.stake < MIN_STAKE || ticketStore.stake > MAX_STAKE) {
       toastStore.showError(`Miza trebuie sa fie intre ${MIN_STAKE} si ${MAX_STAKE} RON.`)
       return null
@@ -56,6 +62,7 @@ export function useTicketActions() {
 
       const capped = ticketStore.stake * ticketStore.totalOdds > MAX_WIN
       ticketStore.clearSelections()
+      void invalidateAccountQueries()
       try {
         const profile = await getProfile()
         authStore.hydrateProfile(profile)
@@ -70,6 +77,10 @@ export function useTicketActions() {
       // Only a lack of money is fixed in the wallet; for any other error the user stays on the slip
       if (error instanceof ApiError && error.code === 'INSUFFICIENT_FUNDS') {
         await router.push({ name: 'wallet', query: { ref: route.fullPath } })
+      }
+      // Rejected selections (changed odds, closed offers): reload the matches so the slip shows the current state
+      if (error instanceof ApiError && error.code === 'TICKET_PLACEMENT_ERROR') {
+        void invalidateMatchOfferQueries()
       }
       return null
     } finally {

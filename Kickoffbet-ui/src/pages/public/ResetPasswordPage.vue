@@ -30,13 +30,7 @@ const { defineField, handleSubmit, errors, isSubmitting } = useForm({
 const [newPassword] = defineField('newPassword')
 const [confirmPassword] = defineField('confirmPassword')
 
-const onSubmit = handleSubmit(async (values) => {
-  if (!token.value) {
-    statusType.value = 'error'
-    statusMessage.value = 'Linkul de resetare este invalid sau incomplet. Cere un email nou de resetare.'
-    return
-  }
-
+const submitReset = handleSubmit(async (values) => {
   try {
     await resetPassword({
       token: values.token,
@@ -51,6 +45,17 @@ const onSubmit = handleSubmit(async (values) => {
     statusMessage.value = error instanceof Error ? error.message : 'Nu am putut schimba parola.'
   }
 })
+
+// Checked before validation: the schema's required-token rule would otherwise fail first, silently
+// (the token has no visible field), and the user would never learn that the link itself is broken.
+function onSubmit() {
+  if (!token.value) {
+    statusType.value = 'error'
+    statusMessage.value = 'Linkul de resetare este invalid sau incomplet. Cere un email nou de resetare.'
+    return
+  }
+  return submitReset()
+}
 </script>
 
 <template>

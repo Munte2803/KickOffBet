@@ -243,6 +243,23 @@ describe('error mapping', () => {
     expect((error as ApiError).code).toBe('INSUFFICIENT_FUNDS')
     expect((error as ApiError).message).toBe('Fonduri insuficiente. Alimenteaza portofelul pentru a plasa biletul.')
   })
+
+  it('shows the specific ticket placement reason instead of a generic text', async () => {
+    handler = () => ({ status: 409, data: { errorCode: 'TICKET_PLACEMENT_ERROR', error: 'Odds changed: 1.80 → 1.95' } })
+    const error = await api.post('/api/tickets').catch((e: unknown) => e)
+    expect((error as ApiError).code).toBe('TICKET_PLACEMENT_ERROR')
+    expect((error as ApiError).message).toBe('Cota s-a modificat: 1.80 → 1.95. Verifica biletul si plaseaza-l din nou.')
+  })
+
+  it('reads the error code from a JSON body delivered as a Blob (file downloads)', async () => {
+    handler = () => ({
+      status: 404,
+      data: new Blob([JSON.stringify({ errorCode: 'RESOURCE_NOT_FOUND', error: 'No id card' })], { type: 'application/json' }),
+    })
+    const error = await api.get('/api/users/me/id-card', { responseType: 'blob' }).catch((e: unknown) => e)
+    expect((error as ApiError).code).toBe('RESOURCE_NOT_FOUND')
+    expect((error as ApiError).message).toBe('Resursa solicitata nu a fost gasita.')
+  })
 })
 
 describe('session helpers', () => {

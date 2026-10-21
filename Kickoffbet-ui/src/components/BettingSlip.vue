@@ -23,7 +23,11 @@ const isStakeValid = computed(
   () => Number.isFinite(ticketStore.stake) && ticketStore.stake >= MIN_STAKE && ticketStore.stake <= MAX_STAKE,
 )
 const isPlaceDisabled = computed(
-  () => !ticketStore.selectionCount || placingTicket.value || (hasTriedInvalidStake.value && !isStakeValid.value),
+  () =>
+    !ticketStore.selectionCount ||
+    placingTicket.value ||
+    ticketStore.hasUnavailableSelections ||
+    (hasTriedInvalidStake.value && !isStakeValid.value),
 )
 
 function updateStake(event: Event) {
@@ -97,8 +101,16 @@ async function submitTicket() {
             <p class="min-w-0 pr-1 text-[12px] font-semibold text-fg max-[390px]:text-[11px] max-[360px]:text-[10px] sm:text-sm sm:truncate">
               {{ selection.homeTeamName }} vs {{ selection.awayTeamName }}
             </p>
+            <p v-if="selection.unavailable" class="mt-0.5 text-[11px] font-semibold text-red-400 sm:text-xs">
+              Selectie indisponibila
+            </p>
+            <p v-else-if="selection.previousOdds != null" class="mt-0.5 text-[11px] font-semibold text-amber-500 sm:text-xs">
+              Cota modificata: {{ selection.previousOdds.toFixed(2) }} → {{ selection.odds.toFixed(2) }}
+            </p>
 
-            <h3 class="absolute right-2 top-2 text-[15px] font-bold leading-none text-blue-500 max-[390px]:right-1.5 max-[390px]:top-1.5 max-[390px]:text-[14px] max-[360px]:right-1.25 max-[360px]:top-1.25 max-[360px]:text-[13px] sm:right-3 sm:top-3 sm:text-lg">
+            <h3
+              :class="{ 'line-through opacity-50': selection.unavailable }"
+              class="absolute right-2 top-2 text-[15px] font-bold leading-none text-blue-500 max-[390px]:right-1.5 max-[390px]:top-1.5 max-[390px]:text-[14px] max-[360px]:right-1.25 max-[360px]:top-1.25 max-[360px]:text-[13px] sm:right-3 sm:top-3 sm:text-lg">
               {{ selection.odds.toFixed(2) }}
             </h3>
 
@@ -162,6 +174,9 @@ async function submitTicket() {
           </div>
           <p v-if="isWinCapped" class="text-[11px] text-amber-500 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-xs">
             Castigul potential este plafonat la {{ formatMoney(MAX_WIN) }}.
+          </p>
+          <p v-if="ticketStore.hasUnavailableSelections" class="text-[11px] text-red-400 max-[390px]:text-[10px] max-[360px]:text-[9px] sm:text-xs">
+            Elimina selectiile indisponibile pentru a plasa biletul.
           </p>
         </div>
 

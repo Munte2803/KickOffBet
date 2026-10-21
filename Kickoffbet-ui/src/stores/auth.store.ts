@@ -4,6 +4,8 @@ import type { UserRole } from '@/types/enums'
 import api from '@/api/axios'
 import type { UserProfile } from '@/types/profile.types'
 import { getProfile } from '@/api/profile.api'
+import { useTicketStore } from '@/stores/ticket.store'
+import { clearUserScopedState } from '@/utils/user-state.utils'
 import {
   bindAuthSessionListener,
   clearStoredAuthSession,
@@ -45,10 +47,21 @@ export const useAuthStore = defineStore('auth', () => {
   )
   const balance = computed(() => user.value?.balance ?? 0)
 
+  function resetAccountState() {
+    clearUserScopedState()
+    useTicketStore().clearSelections()
+  }
+
   function syncFromStorage() {
+    const previousEmail = user.value?.email ?? null
     token.value = getStoredAccessToken()
     refreshToken.value = getStoredRefreshToken()
     user.value = getStoredAuthUser<AuthUser>()
+
+    // Another tab signed out or switched account: cached queries belong to the previous user
+    if (previousEmail && previousEmail !== (user.value?.email ?? null)) {
+      resetAccountState()
+    }
   }
 
   function setAuth(newToken: string, newRefreshToken: string, newUser: AuthUser) {
@@ -117,8 +130,10 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuth()
   }
 
+  /** Signs out locally: drops the session plus every piece of state cached for this account. */
   function clearAuth() {
     clearStoredAuthSession()
+    resetAccountState()
     syncFromStorage()
   }
 

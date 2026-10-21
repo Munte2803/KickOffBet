@@ -190,7 +190,9 @@ watch([selectedYear, selectedMonth], () => {
 })
 
 watch(assembledValue, (value) => {
-  if (value !== (props.modelValue ?? '')) {
+  const current = props.modelValue ?? ''
+  // The pickers have minute precision: a value carrying seconds (an end-of-day 23:59:59) is the same choice
+  if (value !== current && !(value && current.startsWith(`${value}:`))) {
     emit('update:modelValue', value)
   }
 })

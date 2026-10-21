@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { approveTransaction, getTransactionById, rejectTransaction } from '@/api/transactions.admin.api'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
@@ -17,6 +18,17 @@ const route = useRoute()
 const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const transactionId = route.params.id as string
+const queryClient = useQueryClient()
+const pendingAction = ref<'approve' | 'reject' | null>(null)
+
+/** Lists that show this transaction: the admin workbench tabs, the user's admin history and their wallet. */
+const TRANSACTION_LIST_KEYS = [
+  'admin-transaction-pending',
+  'admin-transaction-search',
+  'admin-transaction-user-history',
+  'admin-user-transactions',
+  'admin-user-detail',
+]
 
 const transactionQuery = useQuery({
   queryKey: ['admin-transaction-route-detail', transactionId],
@@ -24,6 +36,7 @@ const transactionQuery = useQuery({
 })
 
 async function runAction(action: (id: string) => Promise<unknown>, message: string) {
+  if (pendingAction.value) return
   const isReject = action === rejectTransaction
   const confirmed = await confirm({
     title: isReject ? 'Respingere tranzactie' : 'Aprobare tranzactie',
@@ -40,12 +53,21 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
     return
   }
 
+  // The dialog is async: a second click may have started an action meanwhile
+  if (pendingAction.value) return
+  pendingAction.value = isReject ? 'reject' : 'approve'
+
   try {
     await action(transactionId)
-    await transactionQuery.refetch()
     toastStore.showSuccess(message)
+    for (const key of TRANSACTION_LIST_KEYS) {
+      void queryClient.invalidateQueries({ queryKey: [key] })
+    }
+    await transactionQuery.refetch()
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Actiunea a esuat.')
+  } finally {
+    pendingAction.value = null
   }
 }
 </script>
@@ -107,6 +129,8 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
       <div class="mt-4 flex flex-wrap gap-3">
         <AppButton
           v-if="transactionQuery.data.value.status === 'PENDING'"
+          :loading="pendingAction === 'approve'"
+          :disabled="pendingAction !== null"
           @click="runAction(approveTransaction, 'Tranzactia a fost aprobata.')"
         >
           Aproba
@@ -114,6 +138,8 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
         <AppButton
           v-if="transactionQuery.data.value.status === 'PENDING'"
           variant="danger"
+          :loading="pendingAction === 'reject'"
+          :disabled="pendingAction !== null"
           @click="runAction(rejectTransaction, 'Tranzactia a fost respinsa.')"
         >
           Respinge

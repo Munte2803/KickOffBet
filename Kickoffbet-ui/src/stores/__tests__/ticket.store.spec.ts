@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useTicketStore } from '@/stores/ticket.store'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
 import { makeMatch, makeOffer } from '@/test/factories'
+import type { MarketOffer, MatchDetail, MatchList } from '@/types/match.types'
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -215,5 +216,63 @@ describe('ticket store persistence', () => {
     const store = useTicketStore()
     expect(store.selections).toEqual([])
     expect(store.stake).toBe(10)
+  })
+})
+
+describe('ticket store: refreshing the slip from loaded match data', () => {
+  const kickOff = new Date(Date.now() + 86_400_000).toISOString().slice(0, 19)
+  const openMatch = (overrides: Partial<MatchList> = {}) => makeMatch({ id: 'm1', startTime: kickOff, ...overrides })
+
+  function slipWith(offer: MarketOffer) {
+    const store = useTicketStore()
+    store.toggleSelection(openMatch(), offer)
+    return store
+  }
+
+  it('updates changed odds and remembers the ones the user picked', () => {
+    const store = slipWith(makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.8 }))
+
+    const changed = store.refreshFromMatches([openMatch({ odd1: makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.95 }) })])
+
+    expect(changed).toBe(1)
+    expect(store.selections[0]).toMatchObject({ odds: 1.95, previousOdds: 1.8, unavailable: false })
+    expect(store.totalOdds).toBe(1.95)
+    expect(store.hasChangedOdds).toBe(true)
+
+    // Back to the original value: nothing left to point out
+    store.refreshFromMatches([openMatch({ odd1: makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.8 }) })])
+    expect(store.selections[0]).toMatchObject({ odds: 1.8, previousOdds: null })
+  })
+
+  it('flags inactive offers and closed matches as unavailable', () => {
+    const store = slipWith(makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.8 }))
+
+    store.refreshFromMatches([openMatch({ odd1: makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.8, active: false }) })])
+    expect(store.selections[0].unavailable).toBe(true)
+    expect(store.hasUnavailableSelections).toBe(true)
+
+    store.refreshFromMatches([openMatch({ odd1: makeOffer({ id: 'm1-1', matchId: 'm1', odds: 1.8 }) })])
+    expect(store.selections[0].unavailable).toBe(false)
+
+    store.refreshFromMatches([openMatch({ status: 'LIVE' })])
+    expect(store.selections[0].unavailable).toBe(true)
+  })
+
+  it('leaves offers a list item does not carry, but flags them when the full match detail lacks them', () => {
+    const goals = makeOffer({ id: 'goals', matchId: 'm1', marketType: 'OVER_UNDER', option: 'OVER', line: 2.5, odds: 1.7 })
+    const store = slipWith(goals)
+
+    expect(store.refreshFromMatches([openMatch()])).toBe(0)
+    expect(store.selections[0].unavailable).toBeFalsy()
+
+    const { odd1, oddX, odd2, ...rest } = openMatch()
+    const detail: MatchDetail = {
+      ...rest,
+      createdAt: kickOff,
+      updatedAt: kickOff,
+      availableOffers: [odd1, oddX, odd2].filter((offer): offer is MarketOffer => !!offer),
+    }
+    expect(store.refreshFromMatches([detail])).toBe(1)
+    expect(store.selections[0].unavailable).toBe(true)
   })
 })

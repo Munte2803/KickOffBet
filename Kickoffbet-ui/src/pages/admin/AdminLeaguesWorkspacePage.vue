@@ -22,6 +22,7 @@ import LogoFrame from '@/components/LogoFrame.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import FileInputField from '@/components/FileInputField.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import type { ExportColumn } from '@/utils/export.utils'
 import type { LeagueList } from '@/types/league.types'
 
@@ -90,9 +91,8 @@ const exportColumns: ExportColumn<LeagueList>[] = [
   { header: 'Activa', accessor: (r) => (r.active ? 'Da' : 'Nu') },
 ]
 
-async function fetchAllLeaguesForExport(): Promise<LeagueList[]> {
-  const data = await getLeaguePage({ page: 0, size: 10000, sort: sortBy.value })
-  return data.content
+function fetchAllLeaguesForExport(onProgress?: ExportProgress): Promise<LeagueList[]> {
+  return fetchAllPages(getLeaguePage, { sort: sortBy.value, onProgress })
 }
 
 const submitCreate = createForm.handleSubmit(async (values) => {

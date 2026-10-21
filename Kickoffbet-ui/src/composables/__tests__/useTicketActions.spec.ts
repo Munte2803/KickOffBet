@@ -22,6 +22,7 @@ import { ApiError } from '@/api/api-error'
 import { useAuthStore } from '@/stores/auth.store'
 import { useTicketStore } from '@/stores/ticket.store'
 import { useToastStore } from '@/stores/toast.store'
+import { queryClient } from '@/query/query-client'
 
 function login(balance = 100) {
   useAuthStore().setAuth('access', 'refresh', { email: 'a@b.ro', firstName: 'Ana', lastName: 'Pop', role: 'USER', balance })
@@ -120,6 +121,31 @@ describe('useTicketActions.placeCurrentTicket', () => {
     expect(lastToast()).toMatchObject({ type: 'success', message: 'Bilet plasat cu succes.' })
     expect(mocks.push).toHaveBeenCalledWith({ name: 'ticket-detail', params: { id: 't-77' } })
     expect(placingTicket.value).toBe(false)
+  })
+
+  it('marks the cached tickets, wallet history and profile as stale after placing', async () => {
+    login()
+    addSelections()
+    mocks.placeTicket.mockResolvedValue(makeTicket())
+    mocks.getProfile.mockResolvedValue(makeProfile())
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await useTicketActions().placeCurrentTicket()
+
+    const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey)
+    expect(keys).toEqual(expect.arrayContaining([['tickets'], ['wallet-transactions'], ['profile']]))
+    invalidate.mockRestore()
+  })
+
+  it('refuses to place a slip that still holds unavailable selections', async () => {
+    login()
+    addSelections()
+    useTicketStore().selections[0].unavailable = true
+
+    await expect(useTicketActions().placeCurrentTicket()).resolves.toBeNull()
+
+    expect(mocks.placeTicket).not.toHaveBeenCalled()
+    expect(lastToast()).toMatchObject({ type: 'error', message: 'Elimina selectiile care nu mai sunt disponibile.' })
   })
 
   it('warns when the potential win was capped', async () => {

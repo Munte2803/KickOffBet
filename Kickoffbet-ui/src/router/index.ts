@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useConfirmStore } from '@/stores/confirm.store'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -234,6 +235,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  // A confirm dialog belongs to the page that opened it: leaving the page answers it with "no"
+  const confirmDialog = useConfirmStore()
+  if (confirmDialog.open) {
+    confirmDialog.cancel()
+  }
+
   const auth = useAuthStore()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {

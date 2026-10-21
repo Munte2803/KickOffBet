@@ -13,6 +13,7 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import AdminUserSearchPicker from '@/components/AdminUserSearchPicker.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -112,9 +113,9 @@ const exportColumns: ExportColumn<Ticket>[] = [
   { header: 'Creat la', accessor: (r) => r.createdAt },
 ]
 
-async function fetchAllTicketsForExport(): Promise<Ticket[]> {
-  const data = await getTicketsByStatus(status.value, { page: 0, size: 10000, sort: sortBy.value })
-  return data.content
+function fetchAllTicketsForExport(onProgress?: ExportProgress): Promise<Ticket[]> {
+  const selectedStatus = status.value
+  return fetchAllPages((pageable) => getTicketsByStatus(selectedStatus, pageable), { sort: sortBy.value, onProgress })
 }
 
 const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)

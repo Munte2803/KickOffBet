@@ -7,11 +7,11 @@ import {
 } from '@/utils/auth-session.utils'
 import { isJwtExpired } from '@/utils/jwt.utils'
 import { ApiError } from '@/api/api-error'
+import { readErrorBody, translateTicketPlacementError } from '@/api/error-messages'
 
 const errorCodeMessages: Record<string, string> = {
   INSUFFICIENT_FUNDS: 'Fonduri insuficiente. Alimenteaza portofelul pentru a plasa biletul.',
   CONCURRENT_MODIFICATION: 'Operatiunea a esuat din cauza unei modificari concurente. Incearca din nou.',
-  TICKET_PLACEMENT_ERROR: 'Nu am putut plasa biletul. Verifica selectiile si incearca din nou.',
   ACCOUNT_LOCKED: 'Contul tau este blocat. Contacteaza suportul.',
   INVALID_CREDENTIALS: 'Email sau parola incorecta.',
   RESOURCE_NOT_FOUND: 'Resursa solicitata nu a fost gasita.',
@@ -20,8 +20,10 @@ const errorCodeMessages: Record<string, string> = {
   INTERNAL_ERROR: 'Eroare interna. Incearca mai tarziu.',
 }
 
-function translateErrorCode(errorCode: string | undefined): string | undefined {
+function translateErrorCode(errorCode: string | undefined, serverMessage?: string): string | undefined {
   if (!errorCode) return undefined
+  // The placement validator explains exactly what is wrong (changed odds, closed offer...): show that
+  if (errorCode === 'TICKET_PLACEMENT_ERROR') return translateTicketPlacementError(serverMessage)
   return errorCodeMessages[errorCode]
 }
 
@@ -192,9 +194,10 @@ api.interceptors.response.use(
       }
     }
 
-    const errorCode = error.response?.data?.errorCode as string | undefined
-    const serverMessage = error.response?.data?.error as string | undefined
-    const message = translateErrorCode(errorCode) ?? serverMessage ?? 'Eroare de conexiune'
+    const errorBody = await readErrorBody(error.response?.data)
+    const errorCode = errorBody?.errorCode
+    const serverMessage = errorBody?.error
+    const message = translateErrorCode(errorCode, serverMessage) ?? serverMessage ?? 'Eroare de conexiune'
     return Promise.reject(new ApiError(message, errorCode))
   }
 )

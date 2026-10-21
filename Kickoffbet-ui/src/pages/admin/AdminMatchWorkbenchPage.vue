@@ -10,7 +10,7 @@ import {
   updateMatch,
   updateMatchStatus,
 } from '@/api/matches.admin.api'
-import type { EditableMarketOffer } from '@/types/match.types'
+import type { EditableMarketOffer, MatchDetail } from '@/types/match.types'
 import type { MatchStatus } from '@/types/enums'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
@@ -47,25 +47,46 @@ const matchQuery = useQuery({
 
 const match = computed(() => matchQuery.data.value)
 
+function resetTimeForm(value: MatchDetail) {
+  startTime.value = formatForInput(value.startTime)
+}
+
+function resetStatusForm(value: MatchDetail) {
+  status.value = value.status
+  ftHome.value = value.ftHome
+  ftAway.value = value.ftAway
+}
+
+function resetOffersForm(value: MatchDetail) {
+  offers.value = value.availableOffers.map((offer) => ({
+    id: offer.id,
+    marketType: offer.marketType,
+    option: offer.option,
+    line: offer.line,
+    odds: offer.odds,
+    active: offer.active,
+  }))
+}
+
+// The form is filled from the first load only: background refetches (window focus, saving another
+// section) must not overwrite values the admin is still editing. Each save resets just its own section.
+const formInitialized = ref(false)
 watch(
   () => match.value,
   (value) => {
-    if (!value) return
-    startTime.value = formatForInput(value.startTime)
-    status.value = value.status
-    ftHome.value = value.ftHome
-    ftAway.value = value.ftAway
-    offers.value = value.availableOffers.map((offer) => ({
-      id: offer.id,
-      marketType: offer.marketType,
-      option: offer.option,
-      line: offer.line,
-      odds: offer.odds,
-      active: offer.active,
-    }))
+    if (!value || formInitialized.value) return
+    resetTimeForm(value)
+    resetStatusForm(value)
+    resetOffersForm(value)
+    formInitialized.value = true
   },
   { immediate: true },
 )
+
+async function refetchMatch() {
+  const result = await matchQuery.refetch()
+  return result.data
+}
 
 async function saveTime() {
   const confirmed = await confirm({
@@ -82,7 +103,8 @@ async function saveTime() {
 
   try {
     await rescheduleMatch(matchId, startTime.value)
-    await matchQuery.refetch()
+    const fresh = await refetchMatch()
+    if (fresh) resetTimeForm(fresh)
     toastStore.showSuccess('Ora meciului a fost actualizata.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza ora meciului.')
@@ -113,7 +135,8 @@ async function saveStatus() {
       ftHome: ftHome.value,
       ftAway: ftAway.value,
     })
-    await matchQuery.refetch()
+    const fresh = await refetchMatch()
+    if (fresh) resetStatusForm(fresh)
     toastStore.showSuccess('Statusul meciului a fost actualizat.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza statusul meciului.')
@@ -147,7 +170,8 @@ async function saveOdds() {
           odds: offer.odds,
         })),
     })
-    await matchQuery.refetch()
+    const fresh = await refetchMatch()
+    if (fresh) resetOffersForm(fresh)
     toastStore.showSuccess('Cotele au fost actualizate.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut salva cotele.')
@@ -200,6 +224,9 @@ async function switchOfferActive(offerId: string, active: boolean) {
 
   try {
     await toggleOfferStatus(matchId, offerId, active)
+    // Only the toggled offer's flag changes in the form; odds still being edited are kept
+    const editedOffer = offers.value.find((offer) => offer.id === offerId)
+    if (editedOffer) editedOffer.active = active
     await matchQuery.refetch()
     toastStore.showSuccess('Starea ofertei a fost schimbata.')
   } catch (error) {

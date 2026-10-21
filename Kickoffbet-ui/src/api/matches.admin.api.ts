@@ -27,8 +27,9 @@ export const searchMatches = (
       ...filters,
       startTimeFrom: inputToUtcApiDate(filters.startTimeFrom) ?? filters.startTimeFrom,
       startTimeTo: inputToUtcApiDate(filters.startTimeTo) ?? filters.startTimeTo,
-      sort: pageable?.sort ?? `startTime,${filters.status === 'SCHEDULED' ? 'asc' : 'desc'}`,
       ...pageable,
+      // after the spread: an explicit `sort: undefined` must not wipe out the default
+      sort: pageable?.sort || `startTime,${filters.status === 'SCHEDULED' ? 'asc' : 'desc'}`,
     },
   }).then(res => res.data)
 

@@ -26,6 +26,7 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import AdminUserSearchPicker from '@/components/AdminUserSearchPicker.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import type { ExportColumn } from '@/utils/export.utils'
 import type { Transaction } from '@/types/transaction.types'
@@ -265,9 +266,9 @@ const exportColumns: ExportColumn<Transaction>[] = [
   { header: 'Creat la', accessor: (r) => r.createdAt },
 ]
 
-async function fetchAllTransactionsForExport(): Promise<Transaction[]> {
-  const data = await searchTransactions(appliedSearchFilters.value, { page: 0, size: 10000, sort: sortBy.value })
-  return data.content
+function fetchAllTransactionsForExport(onProgress?: ExportProgress): Promise<Transaction[]> {
+  const filters = appliedSearchFilters.value
+  return fetchAllPages((pageable) => searchTransactions(filters, pageable), { sort: sortBy.value, onProgress })
 }
 
 const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)

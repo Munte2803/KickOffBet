@@ -10,6 +10,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
+import AppErrorState from '@/components/AppErrorState.vue'
 import FilePreviewModal from '@/components/FilePreviewModal.vue'
 import FileInputField from '@/components/FileInputField.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
@@ -133,6 +134,14 @@ onBeforeUnmount(() => {
 
 <template>
   <LoadingState v-if="profileQuery.isLoading.value" message="Se incarca profilul..." />
+
+  <AppErrorState
+    v-else-if="profileQuery.isError.value && !profile"
+    message="Nu am putut incarca profilul."
+    :error="profileQuery.error.value"
+    :retrying="profileQuery.isFetching.value"
+    @retry="profileQuery.refetch()"
+  />
 
   <div v-else-if="profile" class="space-y-6">
     <PageHeader title="Profil" subtitle="Date personale, verificare si acces rapid" />

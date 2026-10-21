@@ -10,6 +10,7 @@ import MatchDayGrid from '@/components/MatchDayGrid.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
+import AppErrorState from '@/components/AppErrorState.vue'
 import AppPagination from '@/components/AppPagination.vue'
 
 const pagination = usePagination(PAGE_SIZES.LARGE)
@@ -35,6 +36,14 @@ const groupedByDay = computed(() => {
     <PageHeader title="Meciuri disponibile" />
 
     <LoadingState v-if="matchesQuery.isLoading.value" message="Se incarca meciurile..." />
+
+    <AppErrorState
+      v-else-if="matchesQuery.isError.value && !matchesQuery.data.value"
+      message="Nu am putut incarca meciurile."
+      :error="matchesQuery.error.value"
+      :retrying="matchesQuery.isFetching.value"
+      @retry="matchesQuery.refetch()"
+    />
 
     <template v-else>
       <Transition name="page-fade" mode="out-in" appear>

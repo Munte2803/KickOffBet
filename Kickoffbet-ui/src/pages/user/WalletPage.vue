@@ -20,6 +20,9 @@ import AppPagination from '@/components/AppPagination.vue'
 import TransactionRow from '@/components/TransactionRow.vue'
 import TabNav from '@/components/TabNav.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
+import LoadingState from '@/components/AppLoadingState.vue'
+import AppErrorState from '@/components/AppErrorState.vue'
+import { invalidateAccountQueries } from '@/query/query-client'
 import { formatMoney } from '@/utils/money.utils'
 
 const authStore = useAuthStore()
@@ -60,9 +63,19 @@ const withdrawForm = useForm({
 const [depositAmount] = depositForm.defineField('amount')
 const [withdrawAmount] = withdrawForm.defineField('amount')
 
-async function refreshProfileBalance() {
-  const profile = await getProfile()
-  authStore.hydrateProfile(profile)
+/**
+ * Runs after a deposit/withdrawal succeeded: a failure here only means the shown balance may lag,
+ * so it is never reported as a failed money operation.
+ */
+async function refreshAfterWalletChange() {
+  // Every filter tab of the history (and the profile) is cached separately
+  void invalidateAccountQueries()
+  try {
+    const profile = await getProfile()
+    authStore.hydrateProfile(profile)
+  } catch {
+    // the layout refreshes the profile again on the next navigation
+  }
 }
 
 const submitDeposit = depositForm.handleSubmit(async (values) => {
@@ -80,12 +93,13 @@ const submitDeposit = depositForm.handleSubmit(async (values) => {
 
   try {
     await deposit({ amount: values.amount })
-    await refreshProfileBalance()
-    await transactionsQuery.refetch()
-    toastStore.showSuccess('Depunerea a fost procesata.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut procesa depunerea.')
+    return
   }
+
+  toastStore.showSuccess('Depunerea a fost procesata.')
+  await refreshAfterWalletChange()
 })
 
 const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
@@ -109,12 +123,13 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
 
   try {
     await withdraw({ amount: values.amount })
-    await refreshProfileBalance()
-    await transactionsQuery.refetch()
-    toastStore.showSuccess('Retragerea a fost inregistrata.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut procesa retragerea.')
+    return
   }
+
+  toastStore.showSuccess('Retragerea a fost inregistrata.')
+  await refreshAfterWalletChange()
 })
 </script>
 
@@ -191,7 +206,18 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
           />
         </div>
 
-        <Transition name="page-fade" mode="out-in" appear>
+        <LoadingState v-if="transactionsQuery.isLoading.value" class="mt-4" message="Se incarca tranzactiile..." />
+
+        <AppErrorState
+          v-else-if="transactionsQuery.isError.value"
+          class="mt-4"
+          message="Nu am putut incarca tranzactiile."
+          :error="transactionsQuery.error.value"
+          :retrying="transactionsQuery.isFetching.value"
+          @retry="transactionsQuery.refetch()"
+        />
+
+        <Transition v-else name="page-fade" mode="out-in" appear>
           <div
             v-if="transactionsQuery.data.value?.content?.length"
             :key="transactionsQuery.data.value?.number ?? 0"
@@ -208,14 +234,14 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
         </Transition>
 
         <EmptyState
-          v-if="!transactionsQuery.data.value?.content?.length && !transactionsQuery.isLoading.value"
+          v-if="!transactionsQuery.data.value?.content?.length && !transactionsQuery.isLoading.value && !transactionsQuery.isError.value"
           class="mt-4"
           message="Nu ai inca tranzactii pentru filtrul selectat."
           description="Efectueaza o depunere, o retragere ori un pariu nou."
         />
 
         <AppPagination
-          v-if="(transactionsQuery.data.value?.totalElements ?? 0) > 0"
+          v-if="!transactionsQuery.isError.value && (transactionsQuery.data.value?.totalElements ?? 0) > 0"
           :page="transactionsQuery.data.value?.number ?? 0"
           :total-pages="transactionsQuery.data.value?.totalPages ?? 0"
           :total-elements="transactionsQuery.data.value?.totalElements"

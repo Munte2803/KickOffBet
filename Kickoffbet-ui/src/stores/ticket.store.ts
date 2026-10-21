@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { MatchList, MarketOffer } from '@/types/match.types'
+import type { MatchDetail, MatchList, MarketOffer } from '@/types/match.types'
 import type { MarketType, BetOption } from '@/types/enums'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
 import { parseUtcDate } from '@/utils/date.utils'
@@ -22,6 +22,10 @@ export interface TicketSelection {
   option: BetOption
   line: number | null
   odds: number
+  /** Odds the user picked before a refresh of the match data changed them (cleared when they match again). */
+  previousOdds?: number | null
+  /** The offer or its match can no longer be bet on; the selection must be removed before placing. */
+  unavailable?: boolean
 }
 
 const STORAGE_KEY = 'kickoffbet.betslip'
@@ -46,6 +50,15 @@ function loadSlip(): StoredSlip {
     return { selections, stake }
   } catch {
     return { selections: [], stake: DEFAULT_STAKE }
+  }
+}
+
+/** Removes the persisted slip, so the next account using this browser does not inherit it. */
+export function clearStoredSlip() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // storage unavailable: nothing was persisted
   }
 }
 
@@ -142,6 +155,52 @@ export const useTicketStore = defineStore('ticket', () => {
     return selections.value.some((s) => s.offerId === offerId)
   }
 
+  const hasUnavailableSelections = computed(() => selections.value.some((s) => s.unavailable))
+  const hasChangedOdds = computed(() => selections.value.some((s) => s.previousOdds != null))
+
+  /**
+   * Brings the slip in line with freshly loaded match data: updates odds that changed (remembering the
+   * old value so the slip can show it) and flags selections whose offer or match is no longer available.
+   * A list item only carries the 1X2 offers, so offers it does not contain are left untouched; a match
+   * detail carries every offer, so a slip offer missing from it is flagged. Returns how many selections changed.
+   */
+  function refreshFromMatches(matches: Array<MatchList | MatchDetail>): number {
+    let changed = 0
+
+    for (const match of matches) {
+      const slipSelections = selections.value.filter((selection) => selection.matchId === match.id)
+      if (!slipSelections.length) continue
+
+      const isDetail = 'availableOffers' in match
+      const offers = isDetail ? match.availableOffers : [match.odd1, match.oddX, match.odd2]
+      const offersById = new Map(
+        offers.filter((offer): offer is MarketOffer => !!offer).map((offer) => [offer.id, offer]),
+      )
+      const matchOpen =
+        match.active && match.status === 'SCHEDULED' && parseUtcDate(match.startTime).getTime() > Date.now()
+
+      for (const selection of slipSelections) {
+        const offer = offersById.get(selection.offerId)
+        if (!offer && !isDetail && matchOpen) continue
+
+        const unavailable = !matchOpen || !offer || !offer.active
+        let selectionChanged = unavailable !== !!selection.unavailable
+        selection.unavailable = unavailable
+
+        if (offer && offer.odds !== selection.odds) {
+          const originalOdds = selection.previousOdds ?? selection.odds
+          selection.previousOdds = offer.odds === originalOdds ? null : originalOdds
+          selection.odds = offer.odds
+          selectionChanged = true
+        }
+
+        if (selectionChanged) changed++
+      }
+    }
+
+    return changed
+  }
+
   return {
     selections,
     stake,
@@ -153,6 +212,9 @@ export const useTicketStore = defineStore('ticket', () => {
     removeSelection,
     clearSelections,
     isSelected,
+    hasUnavailableSelections,
+    hasChangedOdds,
+    refreshFromMatches,
   }
 })
 

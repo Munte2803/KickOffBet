@@ -11,6 +11,9 @@ import PageHeader from '@/components/PageHeader.vue'
 import Panel from '@/components/Panel.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import LoadingState from '@/components/AppLoadingState.vue'
+import AppErrorState from '@/components/AppErrorState.vue'
+import { invalidateAccountQueries } from '@/query/query-client'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatBetLabel } from '@/utils/odds.utils'
@@ -49,14 +52,15 @@ async function handleCancel() {
 
   try {
     await cancelTicket(ticketId)
-    await ticketQuery.refetch()
+    toastStore.showSuccess('Biletul a fost anulat.')
+    // The refund changes the ticket lists, the wallet history and the balance
+    void invalidateAccountQueries()
     try {
       const profile = await getProfile()
       authStore.hydrateProfile(profile)
     } catch {
-
+      // the balance is refreshed again by the profile query / layout
     }
-    toastStore.showSuccess('Biletul a fost anulat.')
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut anula biletul.')
   }
@@ -67,7 +71,17 @@ async function handleCancel() {
   <div class="space-y-6">
     <PageHeader title="Detaliu bilet" :back-route="{ name: 'tickets' }" />
 
-    <Panel v-if="ticketQuery.data.value">
+    <LoadingState v-if="ticketQuery.isLoading.value" message="Se incarca biletul..." />
+
+    <AppErrorState
+      v-else-if="ticketQuery.isError.value && !ticketQuery.data.value"
+      message="Nu am putut incarca biletul."
+      :error="ticketQuery.error.value"
+      :retrying="ticketQuery.isFetching.value"
+      @retry="ticketQuery.refetch()"
+    />
+
+    <Panel v-else-if="ticketQuery.data.value">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div class="flex flex-wrap items-center gap-2">

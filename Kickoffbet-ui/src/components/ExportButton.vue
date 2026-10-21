@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="T">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { ExportColumn } from '@/utils/export.utils'
 import { exportToCsv, exportToPdf } from '@/utils/export.utils'
+import type { ExportProgress } from '@/api/utils/fetchAllPages'
+import { useToastStore } from '@/stores/toast.store'
 
 const props = defineProps<{
-  fetchAll: () => Promise<T[]>
+  fetchAll: (onProgress?: ExportProgress) => Promise<T[]>
   columns: ExportColumn<T>[]
   filename: string
   title: string
@@ -14,22 +16,36 @@ const props = defineProps<{
 const open = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const progress = ref<{ loaded: number; total: number } | null>(null)
+const toastStore = useToastStore()
+
+const loadingLabel = computed(() =>
+  progress.value && progress.value.total > 0
+    ? `Se exporta… ${progress.value.loaded}/${progress.value.total}`
+    : 'Se exporta…',
+)
 
 async function doExport(format: 'csv' | 'pdf') {
+  if (loading.value) return
   open.value = false
   loading.value = true
   error.value = null
+  progress.value = null
   try {
-    const rows = await props.fetchAll()
+    const rows = await props.fetchAll((loaded, total) => {
+      progress.value = { loaded, total }
+    })
     if (format === 'csv') {
       exportToCsv(rows, props.columns, props.filename)
     } else {
       exportToPdf(rows, props.columns, props.filename, props.title)
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Export failed'
+    error.value = e instanceof Error ? e.message : 'Exportul a esuat.'
+    toastStore.showError(error.value)
   } finally {
     loading.value = false
+    progress.value = null
   }
 }
 
@@ -87,7 +103,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocClick))
           d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
         />
       </svg>
-      <span>{{ loading ? 'Se exporta…' : 'Export' }}</span>
+      <span>{{ loading ? loadingLabel : 'Export' }}</span>
     </button>
 
     <Transition

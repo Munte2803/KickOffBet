@@ -22,6 +22,7 @@ import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import ExportButton from '@/components/ExportButton.vue'
+import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import type { ExportColumn } from '@/utils/export.utils'
 import type { MatchList } from '@/types/match.types'
 
@@ -144,9 +145,9 @@ const exportColumns: ExportColumn<MatchList>[] = [
   { header: 'Ora start', accessor: (r) => r.startTime },
 ]
 
-async function fetchAllMatchesForExport(): Promise<MatchList[]> {
-  const data = await searchMatches(appliedFilters.value, { page: 0, size: 10000, sort: sortBy.value || undefined })
-  return data.content
+function fetchAllMatchesForExport(onProgress?: ExportProgress): Promise<MatchList[]> {
+  const filters = appliedFilters.value
+  return fetchAllPages((pageable) => searchMatches(filters, pageable), { sort: sortBy.value || undefined, onProgress })
 }
 
 function resetFilters() {

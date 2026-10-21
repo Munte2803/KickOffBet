@@ -24,6 +24,7 @@ import { formatDateShort } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import { translateEnumLabel } from '@/utils/labels.utils'
 import ExportButton from '@/components/ExportButton.vue'
+import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import type { ExportColumn } from '@/utils/export.utils'
@@ -162,15 +163,16 @@ const exportColumns: ExportColumn<UserList>[] = [
   { header: 'Creat la', accessor: (r) => r.createdAt },
 ]
 
-async function fetchAllUsersForExport(): Promise<UserList[]> {
-  const sortParam = { page: 0, size: 10000, sort: sortBy.value }
-  if (status.value === 'PENDING_VERIFICATION') {
-    return (await getPendingVerification(sortParam)).content
-  }
-  if (status.value !== 'ALL') {
-    return (await getUsersByStatus(status.value, sortParam)).content
-  }
-  return (await getUsers(sortParam)).content
+function fetchAllUsersForExport(onProgress?: ExportProgress): Promise<UserList[]> {
+  const selectedStatus = status.value
+  return fetchAllPages<UserList>(
+    (pageable) => {
+      if (selectedStatus === 'PENDING_VERIFICATION') return getPendingVerification(pageable)
+      if (selectedStatus !== 'ALL') return getUsersByStatus(selectedStatus, pageable)
+      return getUsers(pageable)
+    },
+    { sort: sortBy.value, onProgress },
+  )
 }
 
 const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)

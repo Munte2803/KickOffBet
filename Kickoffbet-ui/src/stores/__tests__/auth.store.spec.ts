@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { makeProfile } from '@/test/factories'
 
 const mocks = vi.hoisted(() => ({
@@ -219,6 +220,27 @@ describe('auth store', () => {
       expect(store.isAuthenticated).toBe(false)
       expect(sessionStorage.getItem('accessToken')).toBeNull()
       expect(warn).toHaveBeenCalled()
+    })
+
+    it('forgets the cached account data and the bet slip, so the next user starts clean', async () => {
+      const { store } = await loadStore()
+      const { queryClient } = await import('@/query/query-client')
+      const { useTicketStore } = await import('@/stores/ticket.store')
+      const { makeMatch, makeOffer } = await import('@/test/factories')
+      store.setAuth('access', 'refresh', user)
+      queryClient.setQueryData(['profile'], { email: user.email })
+      const slip = useTicketStore()
+      slip.toggleSelection(makeMatch({ startTime: '2099-01-01T18:00:00' }), makeOffer({ id: 'o1' }))
+      await nextTick()
+      expect(localStorage.getItem('kickoffbet.betslip')).toContain('o1')
+      mocks.post.mockResolvedValue({ status: 204 })
+
+      await store.logout()
+      await nextTick()
+
+      expect(queryClient.getQueryData(['profile'])).toBeUndefined()
+      expect(slip.selections).toEqual([])
+      expect(localStorage.getItem('kickoffbet.betslip') ?? '').not.toContain('o1')
     })
   })
 

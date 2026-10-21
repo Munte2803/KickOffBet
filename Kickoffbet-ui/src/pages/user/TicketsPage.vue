@@ -11,6 +11,8 @@ import TabNav from '@/components/TabNav.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import AppPagination from '@/components/AppPagination.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
+import LoadingState from '@/components/AppLoadingState.vue'
+import AppErrorState from '@/components/AppErrorState.vue'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import type { TicketStatus } from '@/types/enums'
@@ -44,7 +46,18 @@ watch([status, () => pagination.page.value], () => {
         @change="status = $event as TicketStatus; pagination.reset()"
       />
 
-      <EmptyState v-if="!(ticketsQuery.data.value?.content?.length ?? 0)" class="mt-4" message="Nu exista bilete in aceasta categorie." />
+      <LoadingState v-if="ticketsQuery.isLoading.value" class="mt-4" message="Se incarca biletele..." />
+
+      <AppErrorState
+        v-else-if="ticketsQuery.isError.value"
+        class="mt-4"
+        message="Nu am putut incarca biletele."
+        :error="ticketsQuery.error.value"
+        :retrying="ticketsQuery.isFetching.value"
+        @retry="ticketsQuery.refetch()"
+      />
+
+      <EmptyState v-else-if="!(ticketsQuery.data.value?.content?.length ?? 0)" class="mt-4" message="Nu exista bilete in aceasta categorie." />
 
       <Transition v-else name="page-fade" mode="out-in" appear>
         <div :key="ticketsQuery.data.value?.number ?? 0" class="mt-4 space-y-3">
@@ -70,7 +83,7 @@ watch([status, () => pagination.page.value], () => {
       </Transition>
 
       <AppPagination
-        v-if="(ticketsQuery.data.value?.totalElements ?? 0) > 0"
+        v-if="!ticketsQuery.isError.value && (ticketsQuery.data.value?.totalElements ?? 0) > 0"
         :page="ticketsQuery.data.value?.number ?? 0"
         :total-pages="ticketsQuery.data.value?.totalPages ?? 0"
         :total-elements="ticketsQuery.data.value?.totalElements"

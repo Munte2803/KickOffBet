@@ -185,11 +185,14 @@ describe('ResetPasswordPage', () => {
     expect(api.resetPassword).not.toHaveBeenCalled()
   })
 
-  it('does not call the API without a token in the link', async () => {
-    const { fill, submit } = await mountReset('/reset-password')
+  it('explains that the link is invalid and does not call the API without a token', async () => {
+    const { wrapper, fill, submit } = await mountReset('/reset-password')
     await fill('Parola123')
     await submit()
     expect(api.resetPassword).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').text()).toBe(
+      'Linkul de resetare este invalid sau incomplet. Cere un email nou de resetare.',
+    )
   })
 
   it('shows the API error', async () => {
