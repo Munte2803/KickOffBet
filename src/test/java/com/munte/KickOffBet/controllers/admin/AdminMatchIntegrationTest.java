@@ -7,6 +7,7 @@ import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.repository.MatchRepository;
+import com.munte.KickOffBet.repository.TeamRepository;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminMatchIntegrationTest extends IntegrationTestBase {
 
     @Autowired MatchRepository matchRepository;
+    @Autowired TeamRepository teamRepository;
 
     private String admin;
     private League league;
@@ -133,6 +135,12 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
         create(matchBody(List.of(offer("H2H", "HOME", null, "1.80"), offer("H2H", "HOME", null, "1.90"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Duplicate market offer configuration is not allowed"));
+        create(matchBody(List.of(offer("H2H", "OVER", null, "1.80"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Option OVER does not belong to market H2H"));
+        create(matchBody(List.of(offer("BTTS", "YES", "2.5", "1.80"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Only Over/Under offers have a line"));
         create(matchBody(List.of(offer("H2H", "HOME", null, "1.00"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("availableOffers[0].odds: Minimum odds are 1.01"));
@@ -150,6 +158,11 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
         create(unknownTeam)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Team not found"));
+        away.setActive(false);
+        teamRepository.save(away);
+        create(matchBody(List.of()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Team Chelsea is inactive"));
 
         assertThat(matchRepository.count()).isZero();
     }
@@ -202,12 +215,16 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
         Match stuck = data.match(league, home, away, nowUtc().minusHours(4), MatchStatus.LIVE);
         data.match(league, away, home, nowUtc().minusMinutes(30), MatchStatus.LIVE);
         data.match(league, home, away, nowUtc().minusHours(5), MatchStatus.SCHEDULED);
+        // the provider reported a status we don't map, after kick-off
+        Match unknown = data.match(league, away, home, nowUtc().minusMinutes(30), MatchStatus.UNKNOWN);
+        data.match(league, away, home, nowUtc().plusDays(1), MatchStatus.UNKNOWN);
 
         mvc.perform(auth(get("/api/admin/matches/stuck"), admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].id").value(stuck.getId().toString()))
-                .andExpect(jsonPath("$[0].status").value("LIVE"));
+                .andExpect(jsonPath("$[0].status").value("LIVE"))
+                .andExpect(jsonPath("$[1].id").value(unknown.getId().toString()));
     }
 
     @Test
@@ -242,6 +259,17 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.error").value("availableOffers[0].odds: Minimum odds are 1.01"));
         mvc.perform(auth(withJson(put("/api/admin/matches/{id}", UUID.randomUUID()), Map.of("availableOffers", List.of())), admin))
                 .andExpect(status().isNotFound());
+        mvc.perform(auth(withJson(put("/api/admin/matches/{id}", match.getId()), Map.of("availableOffers", List.of(
+                        Map.of("id", homeWin.getId(), "odds", 1.60),
+                        Map.of("id", homeWin.getId(), "odds", 1.70)))), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Duplicate market offer id: " + homeWin.getId()));
+
+        Match live = data.match(league, home, away, nowUtc().minusMinutes(10), MatchStatus.LIVE);
+        mvc.perform(auth(withJson(put("/api/admin/matches/{id}", live.getId()), Map.of("availableOffers", List.of(
+                        Map.of("id", data.offerOf(live, BetOption.HOME).getId(), "odds", 1.60)))), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Odds can only be changed for scheduled matches"));
     }
 
     @Test
@@ -316,12 +344,19 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.error").value("Cannot change start time for a match that has already started or finished"));
         mvc.perform(auth(patch("/api/admin/matches/{id}/time", match.getId()), admin))
                 .andExpect(status().isBadRequest());
+        mvc.perform(auth(patch("/api/admin/matches/{id}/time", match.getId()).param("startTime", iso(nowUtc().minusHours(1))), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Start time must be in the future"));
     }
 
     @Test
     void postponingAnAdminCreatedMatchDeactivatesItsOffersUntilRescheduled() throws Exception {
         Match match = data.scheduledMatch(league, home, away);
         assertThat(match.getExternalId()).isNull();
+        MarketOffer disabledByAdmin = data.offerOf(match, BetOption.DRAW);
+        mvc.perform(auth(patch("/api/admin/matches/{id}/offers/{offerId}", match.getId(), disabledByAdmin.getId())
+                        .param("active", "false"), admin))
+                .andExpect(status().isNoContent());
 
         mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "POSTPONED")), admin))
                 .andExpect(status().isOk());
@@ -332,17 +367,23 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
         assertThat(data.inTx(() -> data.reloadMatch(match.getId()).getAvailableOffers().stream()
                 .noneMatch(o -> o.isActive()))).isTrue();
 
-        // rescheduled: the admin's odds are offered again
+        // rescheduled: the admin's odds are offered again, except the one the admin switched off
         mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "SCHEDULED")), admin))
                 .andExpect(status().isOk());
         data.awaitAsyncIdle();
         assertThat(data.inTx(() -> data.reloadMatch(match.getId()).getAvailableOffers().stream()
-                .allMatch(o -> o.isActive()))).isTrue();
+                .allMatch(o -> o.isActive() == !o.getId().equals(disabledByAdmin.getId())))).isTrue();
     }
 
     @Test
     void statusTransitions() throws Exception {
         Match match = data.scheduledMatch(league, home, away);
+
+        // not played yet: it cannot have a result
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()),
+                        Map.of("status", "FINISHED", "ftHome", 1, "ftAway", 0)), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Cannot finish a match that has not kicked off yet"));
 
         mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "POSTPONED")), admin))
                 .andExpect(status().isOk())
@@ -363,6 +404,18 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.status").value("LIVE"));
         // going live early moves kick-off to now
         assertThat(data.reloadMatch(match.getId()).getStartTime()).isBetween(before.minusSeconds(1), nowUtc().plusSeconds(1));
+
+        // back to scheduled only with a kick-off in the future, which a live match does not have
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "SCHEDULED")), admin))
+                .andExpect(status().isBadRequest());
+
+        // cancelled is final: the bets were already refunded
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()), Map.of("status", "CANCELLED")), admin))
+                .andExpect(status().isOk());
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", match.getId()),
+                        Map.of("status", "FINISHED", "ftHome", 1, "ftAway", 0)), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Cannot change status for cancelled matches"));
 
         mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", UUID.randomUUID()), Map.of("status", "LIVE")), admin))
                 .andExpect(status().isNotFound());

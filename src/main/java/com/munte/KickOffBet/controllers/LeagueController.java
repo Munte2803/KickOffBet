@@ -68,6 +68,6 @@ public class LeagueController {
 
     @GetMapping("/{code}")
     public ResponseEntity<LeagueDto> getLeague(@PathVariable String code) {
-        return ResponseEntity.ok(leagueMapper.toDto(leagueService.getLeagueByCode(code)));
+        return ResponseEntity.ok(leagueMapper.toDto(leagueService.getActiveLeagueByCode(code)));
     }
 }

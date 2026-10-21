@@ -4,6 +4,7 @@ import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MarketType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -47,8 +48,15 @@ public class MarketOffer {
     @Column(nullable = false)
     private boolean active=true;
 
+    // Set when an admin edits the odds or toggles this offer: the odds engine and automatic (re)activation
+    // leave it alone from then on
     @Column(nullable = false)
     private boolean manualUpdate=false;
+
+    @Version
+    @ColumnDefault("0")
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

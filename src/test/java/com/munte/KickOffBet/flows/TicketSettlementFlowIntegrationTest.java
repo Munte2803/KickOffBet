@@ -127,6 +127,12 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         return mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", matchId), body), admin));
     }
 
+    /** A match can only get a result once it has kicked off. */
+    private ResultActions finish(String matchId, int ftHome, int ftAway) throws Exception {
+        setStatus(matchId, Map.of("status", "LIVE")).andExpect(status().isOk());
+        return setStatus(matchId, Map.of("status", "FINISHED", "ftHome", ftHome, "ftAway", ftAway));
+    }
+
     private void awaitSettled(String... ticketIds) {
         for (String id : ticketIds) {
             TestDataFactory.await(Duration.ofSeconds(15), "ticket " + id + " to be settled",
@@ -162,7 +168,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         String losing = bet(loserToken, 10, List.of(pick(loserToken, matchId, "AWAY")));
         String losingUnder = bet(underToken, 20, List.of(pick(underToken, matchId, "UNDER")));
 
-        setStatus(matchId, Map.of("status", "FINISHED", "ftHome", 2, "ftAway", 1))
+        finish(matchId, 2, 1)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FINISHED"))
                 .andExpect(jsonPath("$.ftHome").value(2))
@@ -213,7 +219,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         UUID suspendedId = userRepository.findByEmail("suspended@kickoffbet.test").orElseThrow().getId();
         mvc.perform(auth(patch("/api/admin/users/{id}/suspend", suspendedId), admin)).andExpect(status().isNoContent());
 
-        setStatus(matchId, Map.of("status", "FINISHED", "ftHome", 1, "ftAway", 0)).andExpect(status().isOk());
+        finish(matchId, 1, 0).andExpect(status().isOk());
         awaitSettled(otherTicket);
 
         // The other winner of the same batch is paid; the suspended user's ticket waits, without money moving
@@ -237,7 +243,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         String ticket = bet(token, 10, List.of(
                 pick(token, matchId, "HOME_OR_DRAW"), pick(token, matchId, "UNDER"), pick(token, matchId, "NO")));
 
-        setStatus(matchId, Map.of("status", "FINISHED", "ftHome", 0, "ftAway", 0)).andExpect(status().isOk());
+        finish(matchId, 0, 0).andExpect(status().isOk());
         awaitSettled(ticket);
 
         mvc.perform(auth(get("/api/tickets/{id}", ticket), token))
@@ -290,7 +296,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
                             .value(everyItem(is("CANCELLED"))));
         }
 
-        setStatus(played, Map.of("status", "FINISHED", "ftHome", 1, "ftAway", 0)).andExpect(status().isOk());
+        finish(played, 1, 0).andExpect(status().isOk());
         awaitSettled(tickets.toArray(String[]::new));
 
         for (String t : tickets) {
@@ -343,7 +349,7 @@ class TicketSettlementFlowIntegrationTest extends IntegrationTestBase {
         String ticket = bet(token, 10, List.of(pick(token, matchId, "HOME")));
         mvc.perform(auth(patch("/api/tickets/{id}/cancel", ticket), token)).andExpect(status().isNoContent());
 
-        setStatus(matchId, Map.of("status", "FINISHED", "ftHome", 3, "ftAway", 0)).andExpect(status().isOk());
+        finish(matchId, 3, 0).andExpect(status().isOk());
         data.awaitAsyncIdle();
 
         Ticket t = ticketRepository.findById(UUID.fromString(ticket)).orElseThrow();

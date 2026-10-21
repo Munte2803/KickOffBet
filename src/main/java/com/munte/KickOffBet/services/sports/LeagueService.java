@@ -20,6 +20,9 @@ public interface LeagueService {
 
     League getLeagueByCode(String code);
 
+    /** For the public API: a hidden (inactive) league is reported as not found. */
+    League getActiveLeagueByCode(String code);
+
     League updateLeague(UpdateLeagueRequest request, String code, MultipartFile emblem);
 
     void switchLeagueActive(String code, boolean active);

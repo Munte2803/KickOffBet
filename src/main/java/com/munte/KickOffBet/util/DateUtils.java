@@ -2,7 +2,7 @@ package com.munte.KickOffBet.util;
 
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 /**
  * Shared date helpers. Centralizes the {@link #toLocalDate(Object)} conversion
@@ -21,7 +21,7 @@ public final class DateUtils {
     public static LocalDate toLocalDate(Object value) {
         if (value instanceof LocalDate ld) return ld;
         if (value instanceof Date d) return d.toLocalDate();
-        if (value instanceof java.util.Date d) return d.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        if (value instanceof java.util.Date d) return d.toInstant().atZone(ZoneOffset.UTC).toLocalDate();
         throw new IllegalStateException("Unexpected date type: " + value.getClass());
     }
 }

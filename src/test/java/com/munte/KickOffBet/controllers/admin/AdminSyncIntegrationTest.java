@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,7 +42,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,7 +75,7 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
     private static FdMatchDto apiMatch(long id, OffsetDateTime kickOff, String status, Integer home, Integer away,
                                        FdTeamDto homeTeam, FdTeamDto awayTeam) {
         return new FdMatchDto(id, kickOff, status, null, new FdMatchDto.FdSeasonDto("2025-08-15"), PL, homeTeam, awayTeam,
-                new FdMatchDto.FdScoreDto(null, new FdMatchDto.FdTimeScoreDto(home, away)));
+                new FdMatchDto.FdScoreDto(null, "REGULAR", new FdMatchDto.FdTimeScoreDto(home, away), null));
     }
 
     private static OffsetDateTime inDays(int days) {
@@ -222,6 +226,47 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void fullSyncAdoptsALeagueAnAdminCreatedWithTheSameCode() throws Exception {
+        League adminLeague = data.league("PL", "Premier League (admin)");
+        when(footballDataClient.fetchCompetitions()).thenReturn(List.of(PL));
+        when(footballDataClient.fetchTeamsByLeague("PL")).thenReturn(List.of(ARSENAL, CHELSEA));
+        when(footballDataClient.fetchMatchesByLeagueAndSeason(eq("PL"), anyInt())).thenReturn(Optional.empty());
+
+        mvc.perform(auth(post("/api/admin/sync/full"), admin)).andExpect(status().isAccepted());
+        data.awaitAsyncIdle();
+
+        assertThat(leagueRepository.count()).isEqualTo(1);
+        League league = leagueRepository.findByCode("PL").orElseThrow();
+        assertThat(league.getId()).isEqualTo(adminLeague.getId());
+        assertThat(league.getExternalId()).isEqualTo(2021L);
+        assertThat(league.getTeams()).extracting(Team::getTla).containsExactlyInAnyOrder("ARS", "CHE");
+    }
+
+    @Test
+    void secondManualSyncWhileOneIsRunningIsRejected() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        when(footballDataClient.fetchMatchesInDateRange(any(), any())).thenAnswer(inv -> {
+            started.countDown();
+            release.await(15, TimeUnit.SECONDS);
+            return Optional.empty();
+        });
+
+        mvc.perform(auth(post("/api/admin/sync/quick-matches"), admin)).andExpect(status().isAccepted());
+        assertThat(started.await(15, TimeUnit.SECONDS)).isTrue();
+        mvc.perform(auth(post("/api/admin/sync/quick-matches"), admin))
+                .andExpect(status().isConflict())
+                .andExpect(errorCode("CONFLICT"));
+
+        release.countDown();
+        data.awaitAsyncIdle();
+        // the lock is released when the run ends
+        mvc.perform(auth(post("/api/admin/sync/quick-matches"), admin)).andExpect(status().isAccepted());
+        data.awaitAsyncIdle();
+        verify(footballDataClient, times(2)).fetchMatchesInDateRange(any(), any());
+    }
+
+    @Test
     void allMatchesSyncSettlesTicketsWhenProviderReportsFinalScore() throws Exception {
         seedSyncedCatalogue();
         when(footballDataClient.fetchMatchesByLeague("PL")).thenReturn(Optional.of(new FdMatchList(List.of(
@@ -237,6 +282,17 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
         String ticketId = read(mvc.perform(auth(withJson(post("/api/tickets"), Map.of("stake", 10,
                         "selections", List.of(Map.of("marketOfferId", homeOffer.getId(), "oddsAtPlacement", homeOffer.getOdds())))), user))
                 .andExpect(status().isCreated()), "$.id");
+
+        // Admin housekeeping on a synced match must not stop it from receiving its result
+        mvc.perform(auth(patch("/api/admin/matches/{id}/active", match.getId()).param("active", "false"), admin))
+                .andExpect(status().isNoContent());
+        mvc.perform(auth(patch("/api/admin/matches/{id}/active", match.getId()).param("active", "true"), admin))
+                .andExpect(status().isNoContent());
+        var awayOffer = match.getAvailableOffers().stream()
+                .filter(o -> o.getOption() == BetOption.AWAY).findFirst().orElseThrow();
+        mvc.perform(auth(withJson(put("/api/admin/matches/{id}", match.getId()),
+                        Map.of("availableOffers", List.of(Map.of("id", awayOffer.getId(), "odds", 5.5)))), admin))
+                .andExpect(status().isOk());
 
         when(footballDataClient.fetchMatchesByLeague("PL")).thenReturn(Optional.of(new FdMatchList(List.of(
                 apiMatch(3001L, inDays(1), "FINISHED", 2, 0, ARSENAL, CHELSEA)))));

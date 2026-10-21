@@ -20,8 +20,21 @@ public record FdMatchDto(
 
     public record FdScoreDto(
             String winner,
-            FdTimeScoreDto fullTime
+            String duration,
+            FdTimeScoreDto fullTime,
+            FdTimeScoreDto regularTime
     ) {
+        /**
+         * The score after 90 minutes, which bets settle on. For a knockout match that went to extra time or
+         * penalties ({@code duration} other than REGULAR) {@code fullTime} includes them and {@code regularTime}
+         * holds the 90-minute score; if that is missing the result is not usable yet (null).
+         */
+        public FdTimeScoreDto ninetyMinuteScore() {
+            if (duration == null || "REGULAR".equals(duration)) {
+                return fullTime;
+            }
+            return regularTime;
+        }
     }
 
     public record FdTimeScoreDto(

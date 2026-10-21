@@ -90,6 +90,11 @@ class PublicBrowsingIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isNotFound())
                 .andExpect(errorCode("RESOURCE_NOT_FOUND"))
                 .andExpect(jsonPath("$.error").value("League not found with code: XX"));
+
+        liga1.setActive(false);
+        leagueRepository.save(liga1);
+        mvc.perform(auth(get("/api/leagues/{code}", "RL1"), token))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -300,5 +305,12 @@ class PublicBrowsingIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.availableOffers[?(@.option=='OVER')].active").value(true))
                 .andExpect(jsonPath("$.availableOffers[?(@.option=='YES')].matchId").value(match.getId().toString()))
                 .andExpect(jsonPath("$.availableOffers[?(@.option=='HOME')].id").isNotEmpty());
+
+        // hidden by an admin: gone from the public API
+        Match hidden = data.scheduledMatch(premier, chelsea, arsenal);
+        hidden.setActive(false);
+        matchRepository.save(hidden);
+        mvc.perform(auth(get("/api/matches/{id}", hidden.getId()), token))
+                .andExpect(status().isNotFound());
     }
 }

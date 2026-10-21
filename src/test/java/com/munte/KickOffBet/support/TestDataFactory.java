@@ -57,6 +57,7 @@ public class TestDataFactory {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private TransactionTemplate tx;
     @Autowired @Qualifier("threadPoolTaskExecutor") private Executor asyncExecutor;
+    @Autowired @Qualifier("syncTaskExecutor") private Executor syncExecutor;
 
     public static int next() {
         return SEQ.incrementAndGet();
@@ -68,12 +69,15 @@ public class TestDataFactory {
 
     // ------------------------------------------------------------------ cleanup / async
 
-    /** Waits for in-flight async listeners, then truncates every table. */
+    /**
+     * Waits for in-flight async listeners, then truncates every table. The ShedLock table is kept: its rows are
+     * all unlocked once the executors are idle, and ShedLock remembers which rows it has already inserted.
+     */
     public void cleanDatabase() {
         awaitAsyncIdle();
         List<String> tables = jdbc.queryForList(
                 "SELECT table_name FROM information_schema.tables "
-                        + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
+                        + "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND LOWER(table_name) <> 'shedlock'",
                 String.class);
         if (tables.isEmpty()) return;
         // The suite normally runs on H2, but can be pointed at a real PostgreSQL (see README)
@@ -91,12 +95,17 @@ public class TestDataFactory {
         }
     }
 
-    /** Blocks until the shared async executor has no running or queued tasks. */
+    /**
+     * Blocks until the Football Data sync executor and the shared async executor have no running or queued
+     * tasks. The sync executor is checked first: a sync hands its events to the shared pool before it ends.
+     */
     public void awaitAsyncIdle() {
-        if (asyncExecutor instanceof ThreadPoolTaskExecutor pool) {
-            await(Duration.ofSeconds(20), "async executor to become idle", () ->
-                    pool.getActiveCount() == 0 && pool.getThreadPoolExecutor().getQueue().isEmpty());
-        }
+        await(Duration.ofSeconds(20), "async executors to become idle", () -> isIdle(syncExecutor) && isIdle(asyncExecutor));
+    }
+
+    private static boolean isIdle(Executor executor) {
+        return !(executor instanceof ThreadPoolTaskExecutor pool)
+                || (pool.getActiveCount() == 0 && pool.getThreadPoolExecutor().getQueue().isEmpty());
     }
 
     /** Small polling helper for effects produced by @Async / @TransactionalEventListener code. */
