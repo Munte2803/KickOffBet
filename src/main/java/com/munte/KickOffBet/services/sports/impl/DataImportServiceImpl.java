@@ -20,24 +20,37 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Imports leagues, teams and matches from Football Data. The long-running entry points (syncEverything,
+ * syncAllMatches, syncMatchesInRange) run synchronously: SyncJobLauncher runs them on the sync executor under
+ * a DB lock. Matches are saved in their own transactions so that a version conflict with a concurrent writer
+ * costs at most that one match, never the whole league.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DataImportServiceImpl implements DataImportService {
+
+    /** External id of the placeholder team used while a fixture's team is not known yet (e.g. cup draws). */
+    static final long TBD_TEAM_EXTERNAL_ID = -1L;
 
     private final FootballDataClient footballDataClient;
     private final LeagueRepository leagueRepository;
@@ -45,7 +58,7 @@ public class DataImportServiceImpl implements DataImportService {
     private final MatchRepository matchRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ApplicationContext applicationContext;
-    private final AtomicReference<LocalDateTime> lastSuccess = new AtomicReference<>(LocalDateTime.now(ZoneOffset.UTC));
+    private final PlatformTransactionManager transactionManager;
     private final AtomicReference<Team> cachedTbdTeam = new AtomicReference<>();
 
     @Value("${sync.api-delay-ms:6500}")
@@ -56,9 +69,6 @@ public class DataImportServiceImpl implements DataImportService {
 
     @Value("${sync.range.future-days:7}")
     private int futureDays;
-
-    @Value("${sync.cooldown-seconds:50}")
-    private long cooldownSeconds;
 
     @Value("${sync.history.seasons:3}")
     private int historySeasons;
@@ -71,24 +81,38 @@ public class DataImportServiceImpl implements DataImportService {
 
     private static final String EXTERNAL_PROVIDER = "FOOTBALL_DATA";
 
+    private <T> T inNewTransaction(Supplier<T> work) {
+        final TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template.execute(status -> work.get());
+    }
+
     private Team getTbdTeam() {
         final Team existing = cachedTbdTeam.get();
         if (existing != null) return existing;
 
-        synchronized (this) {
+        synchronized (cachedTbdTeam) {
             final Team secondCheck = cachedTbdTeam.get();
             if (secondCheck != null) return secondCheck;
 
             log.info("Initializing 'To Be Determined' team in database...");
-            final Team tbd = teamRepository.findByExternalId(-1L)
-                    .orElseGet(() -> {
-                        final Team t = new Team();
-                        t.setExternalId(-1L);
-                        t.setName("To Be Determined");
-                        t.setExternalProvider(EXTERNAL_PROVIDER);
-                        t.setActive(true);
-                        return teamRepository.save(t);
-                    });
+            // Committed in its own transaction before it is cached: created inside the caller's transaction, a
+            // rollback of that one would leave the cache pointing at a team that does not exist
+            Team tbd;
+            try {
+                tbd = inNewTransaction(() -> teamRepository.findByExternalId(TBD_TEAM_EXTERNAL_ID)
+                        .orElseGet(() -> {
+                            final Team t = new Team();
+                            t.setExternalId(TBD_TEAM_EXTERNAL_ID);
+                            t.setName("To Be Determined");
+                            t.setExternalProvider(EXTERNAL_PROVIDER);
+                            t.setActive(true);
+                            return teamRepository.save(t);
+                        }));
+            } catch (DataIntegrityViolationException e) {
+                // Another instance created it at the same moment
+                tbd = inNewTransaction(() -> teamRepository.findByExternalId(TBD_TEAM_EXTERNAL_ID).orElseThrow());
+            }
             cachedTbdTeam.set(tbd);
             return tbd;
         }
@@ -104,24 +128,45 @@ public class DataImportServiceImpl implements DataImportService {
             return;
         }
 
-        final Map<Long, League> existingLeaguesMap = leagueRepository.findAll().stream()
+        final List<League> existingLeagues = leagueRepository.findAll();
+        final Map<Long, League> leaguesByExternalId = existingLeagues.stream()
                 .filter(l -> l.getExternalId() != null)
                 .collect(Collectors.toMap(League::getExternalId, Function.identity(), (a, b) -> a));
+        final Map<String, League> leaguesByCode = existingLeagues.stream()
+                .filter(l -> l.getCode() != null)
+                .collect(Collectors.toMap(League::getCode, Function.identity(), (a, b) -> a));
 
         final List<League> leaguesToSave = leagueDtoList.stream().map(dto -> {
-            final League league = existingLeaguesMap.getOrDefault(dto.id(), new League());
+            League league = leaguesByExternalId.get(dto.id());
+            if (league == null && dto.code() != null) {
+                // A league an admin created by hand with the API's code: adopt it rather than insert a second row
+                // with the same (unique) code
+                league = leaguesByCode.get(dto.code());
+                if (league != null) {
+                    if (league.getExternalId() != null) {
+                        log.warn("League code {} already belongs to external league {}; skipping external league {}",
+                                dto.code(), league.getExternalId(), dto.id());
+                        return null;
+                    }
+                    log.info("Linking existing league {} to external league {}", dto.code(), dto.id());
+                }
+            }
+            if (league == null) {
+                league = new League();
+            }
+            league.setExternalId(dto.id());
+            league.setExternalProvider(EXTERNAL_PROVIDER);
             if (!league.isManualUpdate()) {
-                league.setExternalId(dto.id());
-                league.setExternalProvider(EXTERNAL_PROVIDER);
                 league.setName(dto.name());
                 league.setCode(dto.code());
                 league.setEmblemUrl(dto.emblem());
-                if (dto.currentSeason() != null) {
-                    league.setCurrentSeason(dto.currentSeason().startDate().substring(0, 4));
-                }
+            }
+            // Not editable by admins, and the full sync derives the seasons to import from it
+            if (dto.currentSeason() != null && dto.currentSeason().startDate() != null) {
+                league.setCurrentSeason(dto.currentSeason().startDate().substring(0, 4));
             }
             return league;
-        }).collect(Collectors.toList());
+        }).filter(Objects::nonNull).collect(Collectors.toList());
 
         leagueRepository.saveAll(leaguesToSave);
         log.info("Successfully synchronized {} leagues.", leaguesToSave.size());
@@ -171,11 +216,9 @@ public class DataImportServiceImpl implements DataImportService {
     }
 
     @Override
-    @Transactional
     public void syncMatchesByLeague(String leagueCode, Set<Long> collectedIds) {
         log.info("Syncing matches for league: {}", leagueCode);
-        final League league = leagueRepository.findByCode(leagueCode)
-                .orElseThrow(() -> new EntityNotFoundException("League " + leagueCode + " not found"));
+        requireLeague(leagueCode);
 
         final List<FdMatchDto> apiMatches = footballDataClient.fetchMatchesByLeague(leagueCode)
                 .map(FdMatchList::matches).orElse(Collections.emptyList());
@@ -185,16 +228,14 @@ public class DataImportServiceImpl implements DataImportService {
             return;
         }
 
-        processAndSaveMatches(apiMatches, Collections.singletonMap(leagueCode, league));
+        saveMatches(apiMatches, leagueCode);
         apiMatches.forEach(m -> collectedIds.add(m.id()));
     }
 
     @Override
-    @Transactional
     public void syncMatchesByLeagueAndSeason(String leagueCode, int season, Set<Long> collectedIds) {
         log.info("Syncing matches for league: {}, season: {}", leagueCode, season);
-        final League league = leagueRepository.findByCode(leagueCode)
-                .orElseThrow(() -> new EntityNotFoundException("League " + leagueCode + " not found"));
+        requireLeague(leagueCode);
 
         final List<FdMatchDto> apiMatches = footballDataClient.fetchMatchesByLeagueAndSeason(leagueCode, season)
                 .map(FdMatchList::matches).orElse(Collections.emptyList());
@@ -204,21 +245,22 @@ public class DataImportServiceImpl implements DataImportService {
             return;
         }
 
-        processAndSaveMatches(apiMatches, Collections.singletonMap(leagueCode, league));
+        saveMatches(apiMatches, leagueCode);
         apiMatches.forEach(m -> collectedIds.add(m.id()));
     }
 
-    @Override
-    @Transactional
-    @Async("threadPoolTaskExecutor")
-    public void syncMatchesInRange() {
-        if (Duration.between(lastSuccess.get(), LocalDateTime.now(ZoneOffset.UTC)).toSeconds() < cooldownSeconds) {
-            log.debug("Skipping range sync, last success was less than 50s ago.");
-            return;
+    private void requireLeague(String leagueCode) {
+        if (leagueRepository.findByCode(leagueCode).isEmpty()) {
+            throw new EntityNotFoundException("League " + leagueCode + " not found");
         }
+    }
 
-        log.info("Starting date range match sync (-3 to +7 days)...");
-        final List<FdMatchDto> apiMatches = footballDataClient.fetchMatchesInDateRange(LocalDate.now().minusDays(pastDays), LocalDate.now().plusDays(futureDays))
+    // Overlap with itself and the cooldown between runs are enforced by the DB lock in SyncJobLauncher
+    @Override
+    public void syncMatchesInRange() {
+        final LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        log.info("Starting date range match sync (-{} to +{} days)...", pastDays, futureDays);
+        final List<FdMatchDto> apiMatches = footballDataClient.fetchMatchesInDateRange(today.minusDays(pastDays), today.plusDays(futureDays))
                 .map(FdMatchList::matches).orElse(Collections.emptyList());
 
         if (apiMatches.isEmpty()) {
@@ -226,15 +268,37 @@ public class DataImportServiceImpl implements DataImportService {
             return;
         }
 
-        final Map<String, League> leaguesMap = leagueRepository.findAll().stream()
-                .collect(Collectors.toMap(League::getCode, Function.identity(), (a, b) -> a));
-
-        processAndSaveMatches(apiMatches, leaguesMap);
-        lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
+        saveMatches(apiMatches, null);
     }
 
-    private void processAndSaveMatches(List<FdMatchDto> apiMatches, Map<String, League> leaguesMap) {
+    /**
+     * Saves the batch in one transaction. If a concurrent writer (an admin edit, a scheduler, another sync)
+     * changed one of the matches meanwhile, the batch is rolled back and redone match by match from fresh
+     * data, skipping only the matches that conflict again (the next sync picks them up).
+     */
+    private void saveMatches(List<FdMatchDto> apiMatches, String leagueCode) {
+        try {
+            inNewTransaction(() -> processAndSaveMatches(apiMatches, leagueCode));
+        } catch (OptimisticLockingFailureException | DataIntegrityViolationException e) {
+            log.warn("Concurrent update while saving {} matches ({}); retrying them one by one", apiMatches.size(), e.getMessage());
+            for (FdMatchDto dto : apiMatches) {
+                try {
+                    inNewTransaction(() -> processAndSaveMatches(List.of(dto), leagueCode));
+                } catch (OptimisticLockingFailureException | DataIntegrityViolationException ex) {
+                    log.warn("Skipping match {}: modified concurrently ({}); the next sync will update it", dto.id(), ex.getMessage());
+                }
+            }
+        }
+    }
+
+    private Void processAndSaveMatches(List<FdMatchDto> apiMatches, String leagueCode) {
         log.debug("Processing {} matches from API...", apiMatches.size());
+        final Map<String, League> leaguesMap = leagueCode != null
+                ? leagueRepository.findByCode(leagueCode).map(l -> Map.of(leagueCode, l)).orElse(Map.of())
+                : leagueRepository.findAll().stream()
+                        .filter(l -> l.getCode() != null)
+                        .collect(Collectors.toMap(League::getCode, Function.identity(), (a, b) -> a));
+
         final Set<Long> apiMatchIds = apiMatches.stream().map(FdMatchDto::id).collect(Collectors.toSet());
         final Set<Long> apiTeamIds = apiMatches.stream()
                 .flatMap(m -> Stream.of(
@@ -252,6 +316,7 @@ public class DataImportServiceImpl implements DataImportService {
 
         final Team tbd = getTbdTeam();
         final Map<MatchStatus, List<Match>> eventBatches = new EnumMap<>(MatchStatus.class);
+        final LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         final List<Match> matchesToSave = apiMatches.stream()
                 .map(dto -> {
@@ -259,48 +324,21 @@ public class DataImportServiceImpl implements DataImportService {
                     if (league == null) return null;
 
                     final Match existingMatch = existingMatchesMap.get(dto.id());
-                    final boolean isNew = (existingMatch == null);
-                    final Match match = isNew ? new Match() : existingMatch;
-                    if (isNew) {
-                        match.setActive(league.isActive());
+                    final Team homeTeam = (dto.homeTeam() != null) ? teamsMap.getOrDefault(dto.homeTeam().id(), tbd) : tbd;
+                    final Team awayTeam = (dto.awayTeam() != null) ? teamsMap.getOrDefault(dto.awayTeam().id(), tbd) : tbd;
+
+                    if (existingMatch == null) {
+                        return importNewMatch(dto, league, homeTeam, awayTeam, eventBatches);
                     }
-
-                    final MatchStatus oldStatus = match.getStatus();
-                    final MatchStatus newStatus = MatchStatus.fromString(dto.status());
-
-                    if (!match.isManualUpdate()) {
-                        match.setExternalId(dto.id());
-                        match.setExternalProvider(EXTERNAL_PROVIDER);
-                        if (dto.utcDate() != null) {
-                            match.setStartTime(dto.utcDate().toLocalDateTime());
-                        }
-                        match.setStatus(newStatus);
-                        match.setLeague(league);
-                        match.setFtHome(dto.score().fullTime().home());
-                        match.setFtAway(dto.score().fullTime().away());
-                        if (dto.season() != null) {
-                            match.setSeason(dto.season().startDate().substring(0, 4));
-                        }
-
-                        match.setHomeTeam((dto.homeTeam() != null) ? teamsMap.getOrDefault(dto.homeTeam().id(), tbd) : tbd);
-                        match.setAwayTeam((dto.awayTeam() != null) ? teamsMap.getOrDefault(dto.awayTeam().id(), tbd) : tbd);
-
-                        // A match imported already finished is history: it has no tickets to settle and the
-                        // odds of upcoming matches are recalculated once at the end of the full sync instead
-                        if (isNew) {
-                            if (newStatus != MatchStatus.FINISHED) {
-                                eventBatches.computeIfAbsent(newStatus, k -> new ArrayList<>()).add(match);
-                            }
-                        } else if (oldStatus != newStatus) {
-                            eventBatches.computeIfAbsent(newStatus, k -> new ArrayList<>()).add(match);
-                        }
-                    }
-                    return match;
+                    updateExistingMatch(existingMatch, dto, league, homeTeam, awayTeam, now, eventBatches);
+                    return existingMatch;
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         matchRepository.saveAll(matchesToSave);
+        // Version conflicts surface here, before any event goes out
+        matchRepository.flush();
         log.info("Saved/Updated {} matches in database.", matchesToSave.size());
 
         if (eventBatches.isEmpty()) {
@@ -308,6 +346,151 @@ public class DataImportServiceImpl implements DataImportService {
         }
 
         publishBatchedEvents(eventBatches);
+        return null;
+    }
+
+    private Match importNewMatch(FdMatchDto dto, League league, Team homeTeam, Team awayTeam,
+                                 Map<MatchStatus, List<Match>> eventBatches) {
+        final Match match = new Match();
+        final MatchStatus status = MatchStatus.fromString(dto.status());
+        final FdMatchDto.FdTimeScoreDto score = ninetyMinuteScore(dto);
+        match.setActive(league.isActive());
+        match.setExternalId(dto.id());
+        match.setExternalProvider(EXTERNAL_PROVIDER);
+        match.setLeague(league);
+        match.setHomeTeam(homeTeam);
+        match.setAwayTeam(awayTeam);
+        match.setStartTime(apiStartTime(dto));
+        match.setStatus(status);
+        match.setFtHome(score != null ? score.home() : null);
+        match.setFtAway(score != null ? score.away() : null);
+        if (dto.season() != null && dto.season().startDate() != null) {
+            match.setSeason(dto.season().startDate().substring(0, 4));
+        }
+        // A match imported already finished is history: it has no tickets to settle and the
+        // odds of upcoming matches are recalculated once at the end of the full sync instead
+        if (status != MatchStatus.FINISHED) {
+            eventBatches.computeIfAbsent(status, k -> new ArrayList<>()).add(match);
+        }
+        return match;
+    }
+
+    private void updateExistingMatch(Match match, FdMatchDto dto, League league, Team homeTeam, Team awayTeam,
+                                     LocalDateTime now, Map<MatchStatus, List<Match>> eventBatches) {
+        // The match is owned by the sync (it has an external id). Rows from before the override flags may still
+        // carry manualUpdate=true from any admin action; it no longer means anything for a synced match.
+        match.setManualUpdate(false);
+        match.setExternalProvider(EXTERNAL_PROVIDER);
+        match.setLeague(league);
+        if (dto.season() != null && dto.season().startDate() != null) {
+            match.setSeason(dto.season().startDate().substring(0, 4));
+        }
+
+        final boolean teamsChanged = !sameTeam(match.getHomeTeam(), homeTeam) || !sameTeam(match.getAwayTeam(), awayTeam);
+        match.setHomeTeam(homeTeam);
+        match.setAwayTeam(awayTeam);
+
+        final LocalDateTime apiStart = apiStartTime(dto);
+        boolean timeChanged = false;
+        if (apiStart != null) {
+            final boolean adminTimeStillAhead = match.isTimeOverridden()
+                    && match.getStartTime() != null && match.getStartTime().isAfter(now);
+            if (!adminTimeStillAhead) {
+                match.setTimeOverridden(false);
+                if (!apiStart.equals(match.getStartTime())) {
+                    match.setStartTime(apiStart);
+                    timeChanged = true;
+                }
+            }
+        }
+
+        final MatchStatus oldStatus = match.getStatus();
+        final MatchStatus newStatus = resolveStatus(match, MatchStatus.fromString(dto.status()), apiStart, now);
+        match.setStatus(newStatus);
+
+        final boolean hadScore = match.getFtHome() != null && match.getFtAway() != null;
+        final FdMatchDto.FdTimeScoreDto score = ninetyMinuteScore(dto);
+        final Integer apiHome = score != null ? score.home() : null;
+        final Integer apiAway = score != null ? score.away() : null;
+        if (oldStatus == MatchStatus.FINISHED && hadScore) {
+            // Tickets were settled on the stored score
+            if (apiHome != null && apiAway != null
+                    && (!apiHome.equals(match.getFtHome()) || !apiAway.equals(match.getFtAway()))) {
+                log.warn("Provider reports {}-{} for settled match {} (stored {}-{}); keeping the stored score",
+                        apiHome, apiAway, match.getExternalId(), match.getFtHome(), match.getFtAway());
+            }
+        } else {
+            match.setFtHome(apiHome);
+            match.setFtAway(apiAway);
+        }
+        final boolean hasScore = match.getFtHome() != null && match.getFtAway() != null;
+
+        if (newStatus != oldStatus) {
+            if (newStatus == MatchStatus.FINISHED && !hasScore) {
+                log.info("Match {} finished but has no final score yet; it is settled once the score arrives", match.getExternalId());
+            } else {
+                eventBatches.computeIfAbsent(newStatus, k -> new ArrayList<>()).add(match);
+            }
+        } else if (newStatus == MatchStatus.FINISHED && !hadScore && hasScore) {
+            eventBatches.computeIfAbsent(MatchStatus.FINISHED, k -> new ArrayList<>()).add(match);
+        } else if (newStatus == MatchStatus.SCHEDULED && (teamsChanged || timeChanged)) {
+            // e.g. a TBD team resolved after a draw: price it now rather than at the next full sync
+            eventBatches.computeIfAbsent(MatchStatus.SCHEDULED, k -> new ArrayList<>()).add(match);
+        }
+    }
+
+    /**
+     * The status the stored match takes given the provider's status:
+     * FINISHED and CANCELLED are final; an admin-set status only moves forward; and a LIVE match only goes back
+     * to SCHEDULED when the provider moved its kick-off into the future (otherwise the provider is merely late
+     * and ManualMatchScheduler would flip it straight back to LIVE).
+     */
+    private MatchStatus resolveStatus(Match match, MatchStatus apiStatus, LocalDateTime apiStart, LocalDateTime now) {
+        final MatchStatus current = match.getStatus();
+        if (apiStatus == current) {
+            match.setStatusOverridden(false);
+            return current;
+        }
+        if (current == MatchStatus.FINISHED || current == MatchStatus.CANCELLED) {
+            log.warn("Match {} is {}; ignoring provider status {}", match.getExternalId(), current, apiStatus);
+            return current;
+        }
+        if (match.isStatusOverridden()) {
+            if (progress(apiStatus) <= progress(current)) {
+                log.debug("Match {} keeps admin status {} over provider status {}", match.getExternalId(), current, apiStatus);
+                return current;
+            }
+            match.setStatusOverridden(false);
+            return apiStatus;
+        }
+        if (current == MatchStatus.LIVE && apiStatus == MatchStatus.SCHEDULED
+                && (apiStart == null || !apiStart.isAfter(now))) {
+            log.debug("Match {} stays LIVE: provider still reports it scheduled at {}", match.getExternalId(), apiStart);
+            return current;
+        }
+        return apiStatus;
+    }
+
+    private static int progress(MatchStatus status) {
+        if (status == null) return -1;
+        return switch (status) {
+            case UNKNOWN -> -1;
+            case SCHEDULED, POSTPONED, SUSPENDED -> 0;
+            case LIVE -> 1;
+            case FINISHED, CANCELLED -> 2;
+        };
+    }
+
+    private static FdMatchDto.FdTimeScoreDto ninetyMinuteScore(FdMatchDto dto) {
+        return dto.score() != null ? dto.score().ninetyMinuteScore() : null;
+    }
+
+    private static LocalDateTime apiStartTime(FdMatchDto dto) {
+        return dto.utcDate() != null ? dto.utcDate().withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime() : null;
+    }
+
+    private static boolean sameTeam(Team a, Team b) {
+        return Objects.equals(a != null ? a.getId() : null, b != null ? b.getId() : null);
     }
 
     private void publishBatchedEvents(Map<MatchStatus, List<Match>> batches) {
@@ -326,11 +509,22 @@ public class DataImportServiceImpl implements DataImportService {
     }
 
     @Override
-    @Async("threadPoolTaskExecutor")
     public void syncEverything() {
         log.info("### FULL SYNC STARTED ###");
         final DataImportService self = applicationContext.getBean(DataImportService.class);
-        self.syncLeagues();
+        try {
+            try {
+                runWithRateLimitRetry(self::syncLeagues, "leagues");
+            } catch (RuntimeException e) {
+                // The leagues already in the database can still be synced
+                log.error("League sync failed, continuing with the known leagues", e);
+            }
+            Thread.sleep(apiDelayMs);
+        } catch (InterruptedException e) {
+            log.error("Full sync interrupted during league sync");
+            Thread.currentThread().interrupt();
+            return;
+        }
 
         final List<League> activeLeagues = leagueRepository.findAllByActiveTrueAndExternalIdIsNotNull();
         log.info("Found {} active leagues for full sync.", activeLeagues.size());
@@ -368,7 +562,6 @@ public class DataImportServiceImpl implements DataImportService {
         // population of the database): price them once more now that the whole history is in place
         applicationContext.getBean(MatchService.class).recalculateScheduledAutomaticOdds();
         log.info("### FULL SYNC COMPLETED ###");
-        lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     private void runWithRateLimitRetry(Runnable action, String description) throws InterruptedException {
@@ -392,12 +585,11 @@ public class DataImportServiceImpl implements DataImportService {
         if (currentSeason != null && currentSeason.matches("\\d{4}")) {
             return Integer.parseInt(currentSeason);
         }
-        final LocalDate today = LocalDate.now();
+        final LocalDate today = LocalDate.now(ZoneOffset.UTC);
         return today.getMonthValue() >= 7 ? today.getYear() : today.getYear() - 1;
     }
 
     @Override
-    @Async("threadPoolTaskExecutor")
     public void syncAllMatches() {
         log.info("### ALL MATCHES SYNC STARTED ###");
         final DataImportService self = applicationContext.getBean(DataImportService.class);
@@ -420,6 +612,5 @@ public class DataImportServiceImpl implements DataImportService {
             }
         }
         log.info("### ALL MATCHES SYNC COMPLETED ###");
-        lastSuccess.set(LocalDateTime.now(ZoneOffset.UTC));
     }
 }

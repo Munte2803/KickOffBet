@@ -29,7 +29,9 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -73,10 +75,14 @@ class DataImportServiceImplTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private ApplicationContext applicationContext;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     // Built by hand: ApplicationContext is itself an ApplicationEventPublisher, so @InjectMocks
     // could wire the context mock into the publisher slot.
     private DataImportServiceImpl service;
+
+    private static final OffsetDateTime KICK_OFF = OffsetDateTime.of(2026, 10, 25, 15, 0, 0, 0, ZoneOffset.UTC);
 
     private League premierLeague;
     private Team tbd;
@@ -86,12 +92,11 @@ class DataImportServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new DataImportServiceImpl(footballDataClient, leagueRepository, teamRepository,
-                matchRepository, eventPublisher, applicationContext);
+                matchRepository, eventPublisher, applicationContext, transactionManager);
         // Production delays (7.5s between calls, 61s on 429) shrunk so the tests stay fast.
         ReflectionTestUtils.setField(service, "apiDelayMs", 0L);
         ReflectionTestUtils.setField(service, "pastDays", 3);
         ReflectionTestUtils.setField(service, "futureDays", 7);
-        ReflectionTestUtils.setField(service, "cooldownSeconds", 50L);
         ReflectionTestUtils.setField(service, "historySeasons", 3);
         ReflectionTestUtils.setField(service, "rateLimitWaitMs", 1L);
         ReflectionTestUtils.setField(service, "rateLimitMaxAttempts", 3);
@@ -129,23 +134,45 @@ class DataImportServiceImplTest {
                                        Integer ftHome, Integer ftAway) {
         return new FdMatchDto(
                 id,
-                OffsetDateTime.of(2026, 10, 25, 15, 0, 0, 0, ZoneOffset.UTC),
+                KICK_OFF,
                 status,
                 null,
                 new FdMatchDto.FdSeasonDto("2026-08-15"),
                 new FdCompetitionDto(2021L, "Premier League", competitionCode, null, null),
                 homeId == null ? null : new FdTeamDto(homeId, "home", "home", "HOM", null),
                 awayId == null ? null : new FdTeamDto(awayId, "away", "away", "AWY", null),
-                new FdMatchDto.FdScoreDto(null, new FdMatchDto.FdTimeScoreDto(ftHome, ftAway))
+                new FdMatchDto.FdScoreDto(null, "REGULAR", new FdMatchDto.FdTimeScoreDto(ftHome, ftAway), null)
         );
     }
 
-    private static Match existingMatch(long externalId, MatchStatus status) {
+    /** A match as an earlier sync stored it: Arsenal v Chelsea at the kick-off matchDto uses. */
+    private Match existingMatch(long externalId, MatchStatus status) {
         Match m = new Match();
         m.setId(UUID.randomUUID());
         m.setExternalId(externalId);
         m.setStatus(status);
+        m.setHomeTeam(arsenal);
+        m.setAwayTeam(chelsea);
+        m.setStartTime(KICK_OFF.toLocalDateTime());
         return m;
+    }
+
+    private static FdMatchDto withScore(FdMatchDto d, FdMatchDto.FdScoreDto score) {
+        return new FdMatchDto(d.id(), d.utcDate(), d.status(), d.group(), d.season(), d.competition(),
+                d.homeTeam(), d.awayTeam(), score);
+    }
+
+    private static FdMatchDto withKickOff(FdMatchDto d, LocalDateTime kickOff) {
+        return new FdMatchDto(d.id(), kickOff.atOffset(ZoneOffset.UTC), d.status(), d.group(), d.season(),
+                d.competition(), d.homeTeam(), d.awayTeam(), d.score());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Match savedMatch(long externalId) {
+        ArgumentCaptor<Collection<Match>> captor = ArgumentCaptor.forClass(Collection.class);
+        verify(matchRepository, org.mockito.Mockito.atLeastOnce()).saveAll(captor.capture());
+        return captor.getAllValues().stream().flatMap(Collection::stream)
+                .filter(m -> m.getExternalId() == externalId).findFirst().orElseThrow();
     }
 
     private void apiReturnsForPremierLeague(FdMatchDto... matches) {
@@ -285,11 +312,137 @@ class DataImportServiceImplTest {
         void unknownApiStatusPublishesNothing() {
             Match existing = existingMatch(13, MatchStatus.SCHEDULED);
             when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(existing));
-            apiReturnsForPremierLeague(matchDto(13, "AWARDED", "PL", 57L, 61L, 3, 0));
+            apiReturnsForPremierLeague(matchDto(13, "SOMETHING_NEW", "PL", 57L, 61L, 3, 0));
 
             service.syncMatchesByLeague("PL", new HashSet<>());
 
             assertThat(publishedEvents()).isEmpty();
+        }
+
+        @Test
+        void extraTimeAndPenaltiesAreLiveAndAnAwardedResultIsFinal() {
+            Match extraTime = existingMatch(14, MatchStatus.SCHEDULED);
+            Match awarded = existingMatch(15, MatchStatus.LIVE);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(extraTime, awarded));
+            apiReturnsForPremierLeague(
+                    matchDto(14, "EXTRA_TIME", "PL", 57L, 61L, 1, 1),
+                    matchDto(15, "AWARDED", "PL", 57L, 61L, 3, 0),
+                    matchDto(16, null, "PL", 57L, 61L, null, null));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(extraTime.getStatus()).isEqualTo(MatchStatus.LIVE);
+            assertThat(awarded.getStatus()).isEqualTo(MatchStatus.FINISHED);
+            assertThat(savedMatch(16).getStatus()).isEqualTo(MatchStatus.UNKNOWN);
+            List<Object> events = publishedEvents();
+            assertThat(events).hasSize(2);
+            assertThat(events).filteredOn(MatchesStartedEvent.class::isInstance).singleElement()
+                    .satisfies(e -> assertThat(((MatchesStartedEvent) e).matches()).containsExactly(extraTime));
+            assertThat(events).filteredOn(MatchesFinishedEvent.class::isInstance).singleElement()
+                    .satisfies(e -> assertThat(((MatchesFinishedEvent) e).matches()).containsExactly(awarded));
+        }
+
+        @Test
+        void knockoutMatchStoresTheNinetyMinuteScoreNotExtraTimeOrPenalties() {
+            Match cupTie = existingMatch(17, MatchStatus.LIVE);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(cupTie));
+            apiReturnsForPremierLeague(withScore(matchDto(17, "FINISHED", "PL", 57L, 61L, null, null),
+                    new FdMatchDto.FdScoreDto("HOME_TEAM", "PENALTY_SHOOTOUT",
+                            new FdMatchDto.FdTimeScoreDto(5, 4), new FdMatchDto.FdTimeScoreDto(1, 1))));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(cupTie.getFtHome()).isEqualTo(1);
+            assertThat(cupTie.getFtAway()).isEqualTo(1);
+            assertThat(publishedEvents()).singleElement().isInstanceOf(MatchesFinishedEvent.class);
+        }
+
+        @Test
+        void finalStatusesStayAndALateProviderDoesNotSendALiveMatchBack() {
+            LocalDateTime kickedOff = LocalDateTime.now(ZoneOffset.UTC).minusMinutes(10).withNano(0);
+            Match finished = existingMatch(18, MatchStatus.FINISHED);
+            finished.setFtHome(2);
+            finished.setFtAway(0);
+            Match cancelled = existingMatch(19, MatchStatus.CANCELLED);
+            Match live = existingMatch(20, MatchStatus.LIVE);
+            live.setStartTime(kickedOff);
+            Match delayed = existingMatch(21, MatchStatus.LIVE);
+            delayed.setStartTime(kickedOff);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(finished, cancelled, live, delayed));
+            apiReturnsForPremierLeague(
+                    matchDto(18, "TIMED", "PL", 57L, 61L, null, null),
+                    matchDto(19, "IN_PLAY", "PL", 57L, 61L, 0, 0),
+                    withKickOff(matchDto(20, "TIMED", "PL", 57L, 61L, null, null), kickedOff),
+                    withKickOff(matchDto(21, "TIMED", "PL", 57L, 61L, null, null), kickedOff.plusDays(2)));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(finished.getStatus()).isEqualTo(MatchStatus.FINISHED);
+            assertThat(finished.getFtHome()).isEqualTo(2);
+            assertThat(cancelled.getStatus()).isEqualTo(MatchStatus.CANCELLED);
+            assertThat(live.getStatus()).isEqualTo(MatchStatus.LIVE);
+            // moved to a later date by the provider: open for betting again
+            assertThat(delayed.getStatus()).isEqualTo(MatchStatus.SCHEDULED);
+            assertThat(publishedEvents()).singleElement()
+                    .satisfies(e -> assertThat(((MatchesScheduledEvent) e).matches()).containsExactly(delayed));
+        }
+
+        @Test
+        void finishedMatchIsSettledWhenItsScoreArrivesAfterTheStatus() {
+            Match match = existingMatch(22, MatchStatus.LIVE);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(match));
+            apiReturnsForPremierLeague(matchDto(22, "FINISHED", "PL", 57L, 61L, null, null));
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(match.getStatus()).isEqualTo(MatchStatus.FINISHED);
+            assertThat(publishedEvents()).isEmpty();
+
+            apiReturnsForPremierLeague(matchDto(22, "FINISHED", "PL", 57L, 61L, 2, 2));
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(match.getFtHome()).isEqualTo(2);
+            assertThat(publishedEvents()).singleElement()
+                    .satisfies(e -> assertThat(((MatchesFinishedEvent) e).matches()).containsExactly(match));
+        }
+
+        @Test
+        void scheduledMatchWithAResolvedTeamOrNewKickOffIsRepriced() {
+            Match drawResolved = existingMatch(23, MatchStatus.SCHEDULED);
+            drawResolved.setHomeTeam(tbd);
+            Match moved = existingMatch(24, MatchStatus.SCHEDULED);
+            when(matchRepository.findAllByExternalIdIn(any())).thenReturn(List.of(drawResolved, moved));
+            apiReturnsForPremierLeague(
+                    matchDto(23, "TIMED", "PL", 57L, 61L, null, null),
+                    withKickOff(matchDto(24, "TIMED", "PL", 57L, 61L, null, null), KICK_OFF.toLocalDateTime().plusDays(1)));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(drawResolved.getHomeTeam()).isSameAs(arsenal);
+            assertThat(moved.getStartTime()).isEqualTo(KICK_OFF.toLocalDateTime().plusDays(1));
+            assertThat(publishedEvents()).singleElement()
+                    .satisfies(e -> assertThat(((MatchesScheduledEvent) e).matches()).containsExactlyInAnyOrder(drawResolved, moved));
+        }
+
+        @Test
+        void matchChangedConcurrentlyIsSkippedWithoutLosingTheRestOfTheBatch() {
+            // Every attempt reads the matches afresh, as a new transaction would
+            when(matchRepository.findAllByExternalIdIn(any())).thenAnswer(inv -> {
+                Collection<Long> ids = inv.getArgument(0);
+                return ids.stream().map(id -> existingMatch(id, MatchStatus.SCHEDULED)).toList();
+            });
+            doThrow(new ObjectOptimisticLockingFailureException(Match.class, 25L)) // the whole batch
+                    .doThrow(new ObjectOptimisticLockingFailureException(Match.class, 25L)) // match 25 on its own
+                    .doNothing()
+                    .when(matchRepository).flush();
+            apiReturnsForPremierLeague(
+                    matchDto(25, "IN_PLAY", "PL", 57L, 61L, 0, 0),
+                    matchDto(26, "IN_PLAY", "PL", 57L, 61L, 0, 0));
+
+            service.syncMatchesByLeague("PL", new HashSet<>());
+
+            assertThat(publishedEvents()).singleElement()
+                    .satisfies(e -> assertThat(((MatchesStartedEvent) e).matches())
+                            .extracting(Match::getExternalId).containsExactly(26L));
         }
     }
 

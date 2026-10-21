@@ -7,6 +7,7 @@ import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.specification.MatchSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,9 @@ public class ManualMatchScheduler {
     private final MatchRepository matchRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    // A version conflict with a concurrent sync or admin edit rolls this run back; the next one retries
     @Scheduled(fixedDelay = 120000)
+    @SchedulerLock(name = "mark-started-matches", lockAtMostFor = "PT5M")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markStartedMatches() {
         MatchSearchRequest request = new MatchSearchRequest();

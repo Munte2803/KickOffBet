@@ -75,3 +75,12 @@ LEFT JOIN last5_stats l5 ON l5.team_id = t.id;
 
 -- PostgreSQL's date(timestamp), used by the daily time-series native queries
 CREATE ALIAS IF NOT EXISTS "date" FOR 'com.munte.KickOffBet.support.H2Functions.date';
+
+-- ShedLock: one row per lock name, used by @SchedulerLock jobs and the manual sync endpoints (see SchedulingConfig)
+CREATE TABLE IF NOT EXISTS shedlock (
+    name       VARCHAR(64)  NOT NULL,
+    lock_until TIMESTAMP    NOT NULL,
+    locked_at  TIMESTAMP    NOT NULL,
+    locked_by  VARCHAR(255) NOT NULL,
+    PRIMARY KEY (name)
+);

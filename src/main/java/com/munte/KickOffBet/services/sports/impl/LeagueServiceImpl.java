@@ -91,6 +91,13 @@ public class LeagueServiceImpl implements LeagueService {
     }
 
     @Override
+    public League getActiveLeagueByCode(String code) {
+        return leagueRepository.findByCode(code)
+                .filter(League::isActive)
+                .orElseThrow(() -> new ResourceNotFoundException("League not found with code: " + code));
+    }
+
+    @Override
     @Transactional
     public League updateLeague(UpdateLeagueRequest request, String code, MultipartFile emblem) {
         League league = leagueRepository.findByCode(code)

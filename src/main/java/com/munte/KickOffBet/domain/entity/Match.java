@@ -4,6 +4,8 @@ import com.munte.KickOffBet.domain.enums.MatchStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OptimisticLock;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -63,15 +65,36 @@ public class Match {
     private Integer ftHome;
 
     private Integer ftAway;
-    
+
+    // True for matches created by an admin (no external id): the sync never touches them and the automatic odds
+    // recalculation skips them. Admin edits of synced matches use the narrower flags below instead.
     @Column(name = "manual_update", nullable = false)
     private boolean manualUpdate = false;
+
+    // The admin set the status: the sync only moves it forward (e.g. to LIVE / FINISHED), never back
+    @ColumnDefault("false")
+    @Column(name = "status_overridden", nullable = false)
+    private boolean statusOverridden = false;
+
+    // The admin set the kick-off time: the sync keeps it until that time has passed
+    @ColumnDefault("false")
+    @Column(name = "time_overridden", nullable = false)
+    private boolean timeOverridden = false;
+
+    // Optimistic locking between the sync, the schedulers and admin edits. Primitive so Spring Data still
+    // decides new vs existing by the id; the default fills the column for rows that predate it.
+    @Version
+    @ColumnDefault("0")
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    // Offers carry their own version, so re-pricing them does not conflict with updates of the match itself
     @OneToMany(mappedBy = "match", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 50)
+    @OptimisticLock(excluded = true)
     private List<MarketOffer> availableOffers = new ArrayList<>();
 
     @CreatedDate

@@ -83,6 +83,6 @@ public class MatchController {
 
     @GetMapping("/{id}")
     public ResponseEntity<MatchDto> getMatchById(@PathVariable UUID id) {
-        return ResponseEntity.ok(matchMapper.toDto(matchService.getMatchById(id)));
+        return ResponseEntity.ok(matchMapper.toDto(matchService.getActiveMatchById(id)));
     }
 }

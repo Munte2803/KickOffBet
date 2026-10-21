@@ -24,6 +24,9 @@ public interface MatchService {
 
     Match getMatchById(UUID matchId);
 
+    /** For the public API: a hidden (inactive) match is reported as not found. */
+    Match getActiveMatchById(UUID matchId);
+
     Match updateMatchOffers(UUID matchId, UpdateMatchRequest request);
 
     Match updateMatchStatus(UUID matchId, UpdateMatchStatusRequest request);

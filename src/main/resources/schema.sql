@@ -150,3 +150,11 @@ SELECT t.id AS team_id,
 FROM ((teams t
     LEFT JOIN season_stats ss ON ((ss.team_id = t.id)))
     LEFT JOIN last5_stats l5 ON ((l5.team_id = t.id)));
+-- ShedLock: one row per lock name, used by @SchedulerLock jobs and the manual sync endpoints (see SchedulingConfig)
+CREATE TABLE IF NOT EXISTS shedlock (
+    name       VARCHAR(64)  NOT NULL,
+    lock_until TIMESTAMP    NOT NULL,
+    locked_at  TIMESTAMP    NOT NULL,
+    locked_by  VARCHAR(255) NOT NULL,
+    PRIMARY KEY (name)
+);
