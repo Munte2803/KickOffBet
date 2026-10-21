@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.jspecify.annotations.NonNull;
@@ -66,6 +67,30 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
                                            @Param("start") LocalDateTime start,
                                            @Param("end") LocalDateTime end,
                                            @Param("status") TransactionStatus status);
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+            "WHERE t.transactionType = :type " +
+            "AND t.referenceType = :referenceType " +
+            "AND t.status = :status " +
+            "AND t.user.id = :userId " +
+            "AND t.createdAt BETWEEN :start AND :end")
+    BigDecimal sumByUserIdAndTypeAndReferenceTypeAndPeriod(@Param("userId") UUID userId,
+                                                           @Param("type") TransactionType type,
+                                                           @Param("referenceType") String referenceType,
+                                                           @Param("start") LocalDateTime start,
+                                                           @Param("end") LocalDateTime end,
+                                                           @Param("status") TransactionStatus status);
+
+    /**
+     * Moves a transaction out of {@code from} only if it is still in it, so two concurrent admin decisions
+     * (approve vs reject) can't both apply: the loser updates 0 rows.
+     */
+    @Modifying
+    @Query("UPDATE Transaction t SET t.status = :to, t.updatedAt = :now WHERE t.id = :id AND t.status = :from")
+    int updateStatusIfCurrent(@Param("id") UUID id,
+                              @Param("from") TransactionStatus from,
+                              @Param("to") TransactionStatus to,
+                              @Param("now") LocalDateTime now);
 
     @EntityGraph(attributePaths = "user")
     Page<Transaction> findAllByUser_Id(UUID userId, Pageable pageable);

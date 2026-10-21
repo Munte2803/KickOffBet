@@ -60,6 +60,12 @@ class AmlServiceImplTest {
         stubSum(TransactionType.BET, "0");
         stubRecent(TransactionType.DEPOSIT, 0);
         stubRecent(TransactionType.WITHDRAWAL, 0);
+        stubTicketRefunds("0");
+    }
+
+    private void stubTicketRefunds(String amount) {
+        when(transactionRepository.sumByUserIdAndTypeAndReferenceTypeAndPeriod(eq(user.getId()), eq(TransactionType.REFUND),
+                eq("TICKET"), any(), any(), eq(TransactionStatus.COMPLETED))).thenReturn(new BigDecimal(amount));
     }
 
     private void stubSum(TransactionType type, String amount) {

@@ -9,6 +9,7 @@ import com.munte.KickOffBet.repository.TicketSelectionRepository;
 import com.munte.KickOffBet.services.tickets.TicketSelectionSettlementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,7 @@ public class TicketSelectionSettlementServiceImpl implements TicketSelectionSett
     private final TicketSelectionRepository ticketSelectionRepository;
 
     @Override
+    @Transactional
     public Set<Ticket> settleSelectionsForMatches(Set<UUID> matchIds,  boolean canceled) {
 
         List<TicketSelection> selections = ticketSelectionRepository.findByMatchIdsWithTickets(matchIds, TicketSelectionStatus.PENDING);

@@ -2,9 +2,11 @@ package com.munte.KickOffBet.repository;
 
 import com.munte.KickOffBet.domain.entity.Ticket;
 import com.munte.KickOffBet.domain.enums.TicketStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -54,6 +56,29 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
           AND t.status = :status
     """)
     List<Ticket> findByUserIdAndStatusWithSelections(@Param("userId") UUID userId, @Param("status") TicketStatus status);
+
+    /**
+     * Locks the ticket row so concurrent settlements (parallel match listeners, the reconciler, a user
+     * cancellation) of the same ticket are serialized; the second one sees the status the first committed.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Ticket t WHERE t.id = :id")
+    Optional<Ticket> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * PENDING tickets the reconciler can settle: a lost leg (LOST regardless of the user), or every leg decided
+     * for an ACTIVE user (other users' tickets wait for settlePendingTicketsOfUser on reactivation).
+     */
+    @Query("""
+        SELECT t.id FROM Ticket t
+        WHERE t.status = com.munte.KickOffBet.domain.enums.TicketStatus.PENDING
+          AND (EXISTS (SELECT 1 FROM TicketSelection s WHERE s.ticket = t
+                       AND s.status = com.munte.KickOffBet.domain.enums.TicketSelectionStatus.LOST)
+               OR (t.user.status = com.munte.KickOffBet.domain.enums.UserStatus.ACTIVE
+                   AND NOT EXISTS (SELECT 1 FROM TicketSelection s WHERE s.ticket = t
+                       AND s.status = com.munte.KickOffBet.domain.enums.TicketSelectionStatus.PENDING)))
+    """)
+    List<UUID> findSettleablePendingTicketIds(Pageable pageable);
 
     @Query(value = """
             SELECT DATE(t.created_at) AS day,

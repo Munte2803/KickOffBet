@@ -10,6 +10,7 @@ import com.munte.KickOffBet.exceptions.TicketPlacementException;
 import org.springframework.stereotype.Component;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -17,6 +18,10 @@ import java.util.stream.Collectors;
 
 @Component
 public class TicketPlacementValidator {
+
+    // Payouts are capped at 200 000 and the minimum stake is 2, so odds above 100 000 can't pay more;
+    // left unchecked, 20 high-odds legs also overflow the numeric(19,4) total_odd column
+    public static final BigDecimal MAX_TOTAL_ODD = new BigDecimal("100000");
 
     public void validate(PlaceTicketRequest request, List<MarketOffer> offers, Map<UUID, MarketOffer> offersById) {
 
@@ -35,6 +40,7 @@ public class TicketPlacementValidator {
         }
 
         Map<UUID, Set<MarketType>> marketTypesByMatch = new HashMap<>();
+        BigDecimal totalOdd = BigDecimal.ONE;
 
         for (TicketSelectionRequest selectionRequest : request.getSelections()) {
             MarketOffer offer = offersById.get(selectionRequest.getMarketOfferId());
@@ -89,6 +95,14 @@ public class TicketPlacementValidator {
                         String.format("H2H and DOUBLE_CHANCE cannot be combined for match %s", matchId)
                 );
             }
+
+            totalOdd = totalOdd.multiply(offer.getOdds());
+        }
+
+        if (totalOdd.compareTo(MAX_TOTAL_ODD) > 0) {
+            throw new TicketPlacementException(
+                    String.format("Total odds cannot exceed %s", MAX_TOTAL_ODD.toPlainString())
+            );
         }
     }
 }

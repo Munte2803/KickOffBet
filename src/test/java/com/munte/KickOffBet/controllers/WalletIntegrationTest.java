@@ -8,17 +8,27 @@ import com.munte.KickOffBet.domain.enums.UserRole;
 import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.repository.TransactionRepository;
 import com.munte.KickOffBet.repository.UserRepository;
+import com.munte.KickOffBet.exceptions.BusinessException;
+import com.munte.KickOffBet.services.transactions.WalletService;
 import com.munte.KickOffBet.support.IntegrationTestBase;
+import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -37,6 +47,8 @@ class WalletIntegrationTest extends IntegrationTestBase {
 
     @Autowired TransactionRepository transactionRepository;
     @Autowired UserRepository userRepository;
+    @Autowired WalletService walletService;
+    @Autowired PlatformTransactionManager transactionManager;
 
     private ResultActions deposit(String token, Object amount) throws Exception {
         return mvc.perform(auth(withJson(post("/api/wallet/deposit"), Map.of("amount", amount)), token));
@@ -217,6 +229,57 @@ class WalletIntegrationTest extends IntegrationTestBase {
         assertThat(refunds.get(0).getStatus()).isEqualTo(TransactionStatus.COMPLETED);
         assertThat(refunds.get(0).getReferenceId().toString()).isEqualTo(txId);
         assertThat(refunds.get(0).getReferenceType()).isEqualTo("TRANSACTION");
+    }
+
+    @Test
+    void stakesRefundedByCancellingTheTicketDoNotCountAsWagering() throws Exception {
+        User user = data.userWithBalance("stakecancel@kickoffbet.test", "200");
+        data.transaction(user, TransactionType.DEPOSIT, TransactionStatus.COMPLETED, "200");
+        UUID ticketId = UUID.randomUUID();
+        for (TransactionType type : List.of(TransactionType.BET, TransactionType.REFUND)) {
+            Transaction t = new Transaction();
+            t.setUser(user);
+            t.setTransactionType(type);
+            t.setStatus(TransactionStatus.COMPLETED);
+            t.setAmount(new BigDecimal("100"));
+            t.setReferenceId(ticketId);
+            t.setReferenceType("TICKET");
+            transactionRepository.save(t);
+        }
+
+        withdraw(login(user), 50).andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void approveCannotOverrideAConcurrentReject() throws Exception {
+        User user = data.userWithBalance("race@kickoffbet.test", "300");
+        data.transaction(user, TransactionType.DEPOSIT, TransactionStatus.COMPLETED, "300");
+        UUID txId = UUID.fromString(read(withdraw(login(user), 100).andExpect(jsonPath("$.status").value("PENDING")), "$.id"));
+        TransactionTemplate requiresNew = new TransactionTemplate(transactionManager);
+        requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        // the approving admin read the withdrawal as PENDING just before another admin rejected it
+        assertThatThrownBy(() -> data.inTx(() -> {
+            assertThat(transactionRepository.findById(txId).orElseThrow().getStatus()).isEqualTo(TransactionStatus.PENDING);
+            requiresNew.executeWithoutResult(status -> walletService.rejectTransaction(txId));
+            return walletService.approveTransaction(txId);
+        })).isInstanceOf(BusinessException.class).hasMessage("Transaction is not pending");
+
+        assertThat(transactionRepository.findById(txId).orElseThrow().getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        assertThat(data.balanceOf(user.getId())).isEqualByComparingTo("300");
+    }
+
+    @Test
+    void transactionTimestampsAreUtcWhateverTheServerZone() {
+        User user = data.user("zone@kickoffbet.test");
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati")); // UTC+14
+        try {
+            Transaction t = data.transaction(user, TransactionType.DEPOSIT, TransactionStatus.COMPLETED, "10");
+            assertThat(t.getCreatedAt()).isCloseTo(TestDataFactory.nowUtc(), within(1, ChronoUnit.MINUTES));
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     @Test

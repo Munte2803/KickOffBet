@@ -1,15 +1,18 @@
 package com.munte.KickOffBet.controllers;
 
+import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.exceptions.StorageException;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -49,6 +52,15 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(errorCode("STORAGE_ERROR"))
                 .andExpect(jsonPath("$.error").value("File storage is temporarily unavailable"));
+    }
+
+    @Test
+    void optimisticLockConflictAtCommitIsAConflict() throws Exception {
+        doThrow(new ObjectOptimisticLockingFailureException(User.class, UUID.randomUUID()))
+                .when(emailService).sendDepositConfirmation(any(), any());
+        mvc.perform(auth(withJson(post("/api/wallet/deposit"), Map.of("amount", 50)), userToken("olock@kickoffbet.test")))
+                .andExpect(status().isConflict())
+                .andExpect(errorCode("CONCURRENT_MODIFICATION"));
     }
 
     @Test
