@@ -12,11 +12,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -24,6 +26,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_BUCKETS_PER_TYPE = 10_000;
+    private static final UrlPathHelper URL_PATH_HELPER = new UrlPathHelper();
+    private static final Set<String> EMAIL_PATHS = Set.of(
+            "/api/auth/forgot-password",
+            "/api/auth/resend-verification"
+    );
+    private static final Set<String> AUTH_PATHS = Set.of(
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/logout",
+            "/api/auth/refresh-token"
+    );
 
     private final Map<String, Bucket> emailBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
@@ -119,7 +132,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getRequestURI();
+        String path = resolvePath(request);
         String method = request.getMethod();
         String ip = getClientIp(request);
 
@@ -184,16 +197,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return count;
     }
 
+    // The raw request URI is still percent-encoded ("/api/auth/%6Cogin" reaches the login endpoint),
+    // so buckets are chosen on the decoded path, the same one Spring MVC routes on, and matched exactly.
+    private static String resolvePath(HttpServletRequest request) {
+        return URL_PATH_HELPER.getPathWithinApplication(request);
+    }
+
     private boolean isEmailPath(String path) {
-        return path.contains("/api/auth/forgot-password") ||
-                path.contains("/api/auth/resend-verification");
+        return EMAIL_PATHS.contains(path);
     }
 
     private boolean isAuthPath(String path) {
-        return path.contains("/api/auth/login") ||
-                path.contains("/api/auth/register") ||
-                path.contains("/api/auth/logout") ||
-                path.contains("/api/auth/refresh-token");
+        return AUTH_PATHS.contains(path);
     }
 
     private boolean isTicketPath(String path, String method) {

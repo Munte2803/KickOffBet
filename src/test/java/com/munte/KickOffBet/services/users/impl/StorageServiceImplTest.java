@@ -66,7 +66,8 @@ class StorageServiceImplTest {
 
     @Test
     void imageIsStoredUnderUniqueKeyAndPublicUrlIsReturned() {
-        MockMultipartFile file = new MockMultipartFile("file", "id.png", "image/png", pngOfSize(1024));
+        // client file name and Content-Type are ignored: key and stored type come from the detected bytes
+        MockMultipartFile file = new MockMultipartFile("file", "../x/evil.html", "text/html", pngOfSize(1024));
 
         String url = storageService.uploadFile(file, "id-cards");
 
@@ -74,7 +75,7 @@ class StorageServiceImplTest {
         verify(s3Client).putObject(captor.capture(), any(RequestBody.class));
         PutObjectRequest put = captor.getValue();
         assertThat(put.bucket()).isEqualTo("id-cards");
-        assertThat(put.key()).matches("[0-9a-f-]{36}_id\\.png");
+        assertThat(put.key()).matches("[0-9a-f-]{36}\\.png");
         assertThat(put.contentType()).isEqualTo("image/png");
         assertThat(url).isEqualTo("http://localhost:9000/id-cards/" + put.key());
     }
@@ -93,8 +94,13 @@ class StorageServiceImplTest {
     void nonImageContentIsRejected() {
         MockMultipartFile pdf = new MockMultipartFile("file", "doc.pdf", "application/pdf",
                 "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n".getBytes(StandardCharsets.US_ASCII));
+        MockMultipartFile svg = new MockMultipartFile("file", "crest.svg", "image/svg+xml",
+                "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>".getBytes(StandardCharsets.UTF_8));
 
         assertThatThrownBy(() -> storageService.uploadFile(pdf, "id-cards"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Only images");
+        assertThatThrownBy(() -> storageService.uploadFile(svg, "teams"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Only images");
         verifyNoInteractions(s3Client);

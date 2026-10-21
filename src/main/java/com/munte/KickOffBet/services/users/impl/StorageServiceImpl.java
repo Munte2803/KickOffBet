@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,25 +31,34 @@ public class StorageServiceImpl implements StorageService {
 
     private final Tika tika;
 
+    private static final Map<String, String> ALLOWED_IMAGE_TYPES = Map.of(
+            "image/jpeg", ".jpg",
+            "image/png", ".png",
+            "image/webp", ".webp"
+    );
+
     @Override
     public String uploadFile(MultipartFile file, String bucket) {
         try {
 
+            // Only the type detected from the bytes is trusted: the client's file name and Content-Type are
+            // ignored. SVG (scriptable) and anything else is refused, as teams/leagues are public buckets.
             String detectedType = tika.detect(file.getBytes());
-            if (!detectedType.startsWith("image/")) {
-                throw new BusinessException("Only images are allowed");
+            String extension = ALLOWED_IMAGE_TYPES.get(detectedType);
+            if (extension == null) {
+                throw new BusinessException("Only images (JPEG, PNG or WebP) are allowed");
             }
 
             if (file.getSize() > 5 * 1024 * 1024) {
                 throw new BusinessException("File size must be under 5MB");
             }
 
-            String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            String filename = UUID.randomUUID() + extension;
             s3Client.putObject(
                     PutObjectRequest.builder()
                             .bucket(bucket)
                             .key(filename)
-                            .contentType(file.getContentType())
+                            .contentType(detectedType)
                             .build(),
                     RequestBody.fromBytes(file.getBytes())
             );

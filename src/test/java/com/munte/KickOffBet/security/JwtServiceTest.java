@@ -166,12 +166,30 @@ class JwtServiceTest {
     }
 
     @Test
-    void tokenOfTemporarilyLockedUserIsInvalid() {
+    void temporaryLoginLockDoesNotEndExistingSessions() {
+        // otherwise ten wrong passwords typed by anyone who knows the e-mail would log the owner out
         String token = jwtService.generateToken(user);
+        String refresh = jwtService.generateRefreshToken(user);
         user.setLockedUntil(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(30));
 
-        assertThat(jwtService.isTokenValid(token, user)).isFalse();
-        assertThat(jwtService.isRefreshTokenValid(jwtService.generateRefreshToken(user), user)).isFalse();
+        assertThat(jwtService.isTokenValid(token, user)).isTrue();
+        assertThat(jwtService.isRefreshTokenValid(refresh, user)).isTrue();
+    }
+
+    @Test
+    void accessAndRefreshTokensAreNotInterchangeable() {
+        String access = jwtService.generateToken(user);
+        String refresh = jwtService.generateRefreshToken(user);
+        String untyped = Jwts.builder()
+                .subject(user.getEmail())
+                .expiration(new Date(System.currentTimeMillis() + 60_000))
+                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
+                .compact();
+
+        assertThat(jwtService.isTokenValid(refresh, user)).isFalse();
+        assertThat(jwtService.isRefreshTokenValid(access, user)).isFalse();
+        assertThat(jwtService.isTokenValid(untyped, user)).isFalse();
+        assertThat(jwtService.isRefreshTokenValid(untyped, user)).isFalse();
     }
 
     @Test
@@ -180,13 +198,4 @@ class JwtServiceTest {
         user.setStatus(UserStatus.SUSPENDED);
 
         assertThat(jwtService.isTokenValid(token, user)).isFalse();
-    }
-
-    @Test
-    void tokenBecomesValidAgainOnceTheLockHasExpired() {
-        String token = jwtService.generateToken(user);
-        user.setLockedUntil(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
-
-        assertThat(jwtService.isTokenValid(token, user)).isTrue();
-    }
-}
+    }}

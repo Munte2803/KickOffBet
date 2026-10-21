@@ -138,6 +138,8 @@ class AuthIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.role").value("USER"));
+        String rotatedRefresh = read(refreshed, "$.refreshToken");
+        assertThat(rotatedRefresh).as("refresh rotates the refresh token").isNotEqualTo(refresh);
         mvc.perform(auth(get("/api/users/me"), read(refreshed, "$.token"))).andExpect(status().isOk());
         assertThat(data.reloadUser(created.getId()).getLastActivity()).isNotNull();
 
@@ -156,6 +158,12 @@ class AuthIntegrationTest extends IntegrationTestBase {
                         Map.of("token", resetToken, "password", "NewSecret456", "confirmPassword", "NewSecret456")))
                 .andExpect(status().isNoContent());
         verify(emailService).sendPasswordChangedNotification(any(User.class));
+
+        // the reset logs out every existing session
+        mvc.perform(auth(get("/api/users/me"), access)).andExpect(status().isForbidden());
+        mvc.perform(withJson(post("/api/auth/refresh-token"), Map.of("refreshToken", rotatedRefresh)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid refresh token"));
 
         mvc.perform(withJson(post("/api/auth/login"), Map.of("email", email, "password", "Secret123")))
                 .andExpect(status().isUnauthorized())
@@ -327,35 +335,27 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @Test
     void accountIsLockedAfterTenFailedLogins() throws Exception {
         User user = data.user("bruteforce@kickoffbet.test");
+        String existingSession = login(user);
         Map<String, String> wrong = Map.of("email", user.getEmail(), "password", "Wrong1234");
 
-        for (int i = 1; i <= 9; i++) {
+        // the lock is never announced: it would confirm that the account exists
+        for (int i = 1; i <= 10; i++) {
             mvc.perform(withJson(post("/api/auth/login"), wrong))
                     .andExpect(status().isUnauthorized())
                     .andExpect(errorCode("INVALID_CREDENTIALS"));
         }
-        mvc.perform(withJson(post("/api/auth/login"), wrong))
-                .andExpect(status().isBadRequest())
-                .andExpect(errorCode("BUSINESS_ERROR"))
-                .andExpect(jsonPath("$.error").value("Account locked for 1 hour due to too many failed attempts."));
 
         User locked = data.reloadUser(user.getId());
         assertThat(locked.getLockedUntil()).isAfter(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(55));
 
-        // even the right password is refused while locked
+        // even the right password is refused while locked, with the same answer
         mvc.perform(withJson(post("/api/auth/login"),
                         Map.of("email", user.getEmail(), "password", TestDataFactory.DEFAULT_PASSWORD)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Account is temporarily locked. Try again later."));
+                .andExpect(status().isUnauthorized())
+                .andExpect(errorCode("INVALID_CREDENTIALS"));
 
-        // and a token issued before the lock stops working (isAccountNonLocked)
-        locked.setLockedUntil(null);
-        userRepository.save(locked);
-        String token = login(user);
-        User relock = data.reloadUser(user.getId());
-        relock.setLockedUntil(LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
-        userRepository.save(relock);
-        mvc.perform(auth(get("/api/users/me"), token)).andExpect(status().isForbidden());
+        // but the lock only guards password logins: the owner's open session keeps working
+        mvc.perform(auth(get("/api/users/me"), existingSession)).andExpect(status().isOk());
     }
 
     @Test

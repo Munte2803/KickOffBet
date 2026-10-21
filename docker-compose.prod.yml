@@ -31,18 +31,20 @@ services:
       args:
         VITE_API_BASE_URL: ""
 
-  # Self-hosted, cookie-less web analytics. Reuses the existing Postgres (separate
-  # 'umami' database — create it once: see deploy notes). Served by Caddy on its own
-  # subdomain (ANALYTICS_DOMAIN), because the tracker posts to /api/send and would
-  # otherwise collide with the backend's /api/*. Default login is admin/umami —
-  # CHANGE IT on first sign-in.
+  # Self-hosted, cookie-less web analytics. Reuses the existing Postgres, but with its own
+  # role (UMAMI_DB_USER) that owns only the 'umami' database: a bug in umami can't reach the
+  # betting data. Create both once: see docs/umami-db.sql. The tracker (/kob.js) and its
+  # collector (/api/send) are proxied first-party on DOMAIN; the dashboard on ANALYTICS_DOMAIN
+  # only answers the IPs in ANALYTICS_ALLOWED_IPS (see Caddyfile). Default login is
+  # admin/umami — CHANGE IT on first sign-in. Pinned (3.4.0 = postgresql-latest as of
+  # 2026-10); bump deliberately, umami migrates its schema on start.
   umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
+    image: ghcr.io/umami-software/umami:3.4.0
     container_name: umami
     restart: unless-stopped
     environment:
       DATABASE_TYPE: postgresql
-      DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/umami
+      DATABASE_URL: postgresql://${UMAMI_DB_USER:?set UMAMI_DB_USER}:${UMAMI_DB_PASSWORD:?set UMAMI_DB_PASSWORD}@db:5432/umami
       APP_SECRET: ${UMAMI_APP_SECRET}
     depends_on:
       db:
@@ -58,6 +60,8 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       ANALYTICS_DOMAIN: ${ANALYTICS_DOMAIN}
+      # Space-separated IPs/CIDRs allowed to open the umami dashboard (default: nobody)
+      ANALYTICS_ALLOWED_IPS: ${ANALYTICS_ALLOWED_IPS:-127.0.0.1/32}
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

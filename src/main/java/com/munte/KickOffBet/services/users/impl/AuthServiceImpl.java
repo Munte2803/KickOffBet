@@ -123,7 +123,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public AuthDto registerAdmin(RegisterRequest request) {
+    public User registerAdmin(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email already in use");
         }
@@ -143,29 +143,22 @@ public class AuthServiceImpl implements AuthService {
         admin = userRepository.save(admin);
         log.info("New admin created: {}", admin.getEmail());
 
-        String token = jwtService.generateToken(admin);
-        String refreshToken = jwtService.generateRefreshToken(admin);
-
-        return AuthDto.builder()
-                .token(token)
-                .refreshToken(refreshToken)
-                .email(admin.getEmail())
-                .firstName(admin.getFirstName())
-                .lastName(admin.getLastName())
-                .role(admin.getRole())
-                .build();
+        // No tokens here: the caller is the admin creating the account, not the new admin
+        return admin;
     }
 
     @Override
-    // The failed-attempt counter and lock are saved right before throwing, so those exceptions must not roll back
-    @Transactional(noRollbackFor = {BadCredentialsException.class, BusinessException.class})
+    // The failed-attempt counter and lock are saved right before throwing, so that exception must not roll back
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public AuthDto login(LoginRequest request) {
-        // Same answer as a wrong password, so the response never reveals whether an account exists
+        // Unknown e-mail, wrong password and a temporarily locked account all get the same answer,
+        // so the response never reveals whether an account exists
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
+        // Even the right password is refused while locked; existing sessions are not affected (see JwtService)
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now(ZoneOffset.UTC))) {
-            throw new BusinessException("Account is temporarily locked. Try again later.");
+            throw new BadCredentialsException("Invalid credentials");
         }
 
         try {
@@ -181,8 +174,7 @@ public class AuthServiceImpl implements AuthService {
             if (user.getFailedLoginAttempts() >= maxLoginAttempts) {
                 user.setLockedUntil(LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
                 user.setFailedLoginAttempts(0);
-                userRepository.save(user);
-                throw new BusinessException("Account locked for 1 hour due to too many failed attempts.");
+                log.warn("Account locked for 1 hour after {} failed logins: {}", maxLoginAttempts, user.getEmail());
             }
 
             userRepository.save(user);
@@ -321,6 +313,8 @@ public class AuthServiceImpl implements AuthService {
 
         User user = verificationToken.getUser();
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // Log out every session: tokens issued with the previous version are rejected from now on
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
 
         verificationToken.setUsed(true);

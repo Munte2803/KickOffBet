@@ -5,8 +5,34 @@
 	email {$ACME_EMAIL}
 }
 
+# Security headers shared by both sites.
+(common_headers) {
+	header {
+		# HTTPS only from now on (1 year). No includeSubDomains/preload: keep it reversible.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
 {$DOMAIN} {
 	encode gzip
+	import common_headers
+
+	# The SPA must never be framed (clickjacking). CSP, checked against the built index.html:
+	# - script-src: our bundles and /kob.js are same-origin; the one inline script (theme set
+	#   before first paint, in Kickoffbet-ui/index.html) is allowed by its hash. If you edit that
+	#   script, recompute the hash, or the page only loses the no-flash theme (see README):
+	#     python3 -c "import re,hashlib,base64;s=open('Kickoffbet-ui/index.html').read();print(base64.b64encode(hashlib.sha256(re.search(r'<script>(.*?)</script>',s,re.S).group(1).encode()).digest()).decode())"
+	# - style-src/font-src: Google Fonts (@import in main.css); 'unsafe-inline' for Vue style bindings.
+	# - img-src https:: team/league crests synced from football-data.org live on their CDN.
+	# - frame-src blob:: the ID-card preview renders downloaded files from blob: URLs.
+	header {
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-pSamzJF/LP+mFqNQfA3+NFHzBhIpVom4wqQP2a+Jm8Y='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+	}
 
 	# Access log: one JSON line per request (method, path, status, remote IP, duration).
 	# View live with: docker compose ... logs -f caddy
@@ -36,31 +62,41 @@
 		reverse_proxy backend:8080
 	}
 
-	# Public assets only: team & league logos, served straight from MinIO.
+	# Public assets only: team & league logos, read-only, served straight from MinIO.
 	# id-cards are NOT routed here, so they never become publicly reachable.
-	@publicAssets path /storage/teams/* /storage/leagues/*
+	@publicAssets {
+		path /storage/teams/* /storage/leagues/*
+		method GET HEAD
+	}
 	handle @publicAssets {
 		uri strip_prefix /storage
 		reverse_proxy minio:9000
 	}
 
-	# Everything else -> the SPA (frontend nginx handles Vue history-mode fallback).
+	# Everything else -> the SPA (frontend nginx handles Vue history-mode fallback; it answers
+	# 404 for any other /storage/ path, so the rest of the MinIO S3 API is never reachable).
 	handle {
 		reverse_proxy frontend:80
 	}
 }
 
-# Self-hosted analytics (umami) on its own subdomain, with its own auto-TLS cert.
-# It needs a whole origin to itself: the tracker posts to /api/send, which would
-# collide with the backend's /api/* on the main domain. DuckDNS resolves any
-# *.<name>.duckdns.org to the same IP, so no extra DNS record is required.
+# Umami dashboard (admin UI + its API) on its own subdomain. The public site never
+# needs it: the tracker and its collector are proxied first-party above (/kob.js,
+# /api/send). So only the IPs in ANALYTICS_ALLOWED_IPS (space-separated IPs/CIDRs)
+# may open it; everyone else gets 403. Unset -> nobody (only localhost).
+# basic_auth is not used because umami's own UI sends "Authorization: Bearer ...",
+# which would clash with the Basic credentials on every API call.
 {$ANALYTICS_DOMAIN} {
 	encode gzip
+	import common_headers
 
 	log {
 		output stdout
 		format console
 	}
+
+	@outsider not remote_ip {$ANALYTICS_ALLOWED_IPS:127.0.0.1/32}
+	respond @outsider 403
 
 	reverse_proxy umami:3000
 }
