@@ -18,9 +18,14 @@ export function getFilenameFromDisposition(disposition?: string | null): string 
   return fileNameMatch?.[1] ?? null
 }
 
+// axios types a header as string | number | boolean | string[] | AxiosHeaders; these two are plain strings
+function headerText(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
 export function toRemoteFile(response: AxiosResponse<Blob>): RemoteFile {
-  const contentType = response.headers['content-type'] ?? response.data.type ?? null
-  const fileName = getFilenameFromDisposition(response.headers['content-disposition'])
+  const contentType = headerText(response.headers['content-type']) ?? (response.data.type || null)
+  const fileName = getFilenameFromDisposition(headerText(response.headers['content-disposition']))
   const blob = contentType && response.data.type !== contentType
     ? response.data.slice(0, response.data.size, contentType)
     : response.data
