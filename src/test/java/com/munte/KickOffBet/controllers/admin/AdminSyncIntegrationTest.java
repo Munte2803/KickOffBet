@@ -233,6 +233,9 @@ class AdminSyncIntegrationTest extends IntegrationTestBase {
         when(footballDataClient.fetchMatchesByLeagueAndSeason(eq("PL"), anyInt())).thenReturn(Optional.empty());
 
         mvc.perform(auth(post("/api/admin/sync/full"), admin)).andExpect(status().isAccepted());
+        // The sync runs on its own executor and may not have started yet: wait for its outcome, not for idleness
+        TestDataFactory.await(Duration.ofSeconds(15), "full sync to attach the API teams to the adopted league",
+                () -> data.inTx(() -> leagueRepository.findByCode("PL").map(l -> l.getTeams().size() == 2).orElse(false)));
         data.awaitAsyncIdle();
 
         assertThat(leagueRepository.count()).isEqualTo(1);
