@@ -4,6 +4,7 @@ import type { MatchDetail, MatchList, MarketOffer } from '@/types/match.types'
 import type { MarketType, BetOption } from '@/types/enums'
 import { MAX_TICKET_SELECTIONS, MAX_WIN } from '@/constants/betting.constants'
 import { parseUtcDate } from '@/utils/date.utils'
+import { roundMoney } from '@/utils/money.utils'
 
 type MatchSelectionContext = Pick<
   MatchList,
@@ -46,7 +47,8 @@ function loadSlip(): StoredSlip {
     const selections = Array.isArray(parsed.selections)
       ? parsed.selections.filter((selection) => parseUtcDate(selection.matchStartTime).getTime() > now)
       : []
-    const stake = typeof parsed.stake === 'number' && Number.isFinite(parsed.stake) ? parsed.stake : DEFAULT_STAKE
+    const stake =
+      typeof parsed.stake === 'number' && Number.isFinite(parsed.stake) ? roundMoney(parsed.stake) : DEFAULT_STAKE
     return { selections, stake }
   } catch {
     return { selections: [], stake: DEFAULT_STAKE }
@@ -64,7 +66,11 @@ export function clearStoredSlip() {
 
 function saveSlip(slip: StoredSlip) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(slip))
+    const serialized = JSON.stringify(slip)
+    // Unchanged (e.g. the state was just loaded from another tab's write): writing again would bounce
+    // a storage event back to that tab
+    if (localStorage.getItem(STORAGE_KEY) === serialized) return
+    localStorage.setItem(STORAGE_KEY, serialized)
   } catch {
     // storage unavailable (private mode, quota): the slip simply isn't kept across reloads
   }
@@ -76,6 +82,17 @@ export const useTicketStore = defineStore('ticket', () => {
   const stake = ref<number>(stored.stake)
 
   watch([selections, stake], () => saveSlip({ selections: selections.value, stake: stake.value }), { deep: true })
+
+  // Another tab changed the slip: adopt its version instead of overwriting it with ours on the next edit.
+  // (`key` is null when that tab cleared the whole storage.)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (event) => {
+      if (event.key !== STORAGE_KEY && event.key !== null) return
+      const next = loadSlip()
+      selections.value = next.selections
+      stake.value = next.stake
+    })
+  }
 
   const totalOdds = computed(() => {
     if (!selections.value.length) return 1

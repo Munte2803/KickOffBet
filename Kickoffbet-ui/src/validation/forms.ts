@@ -99,14 +99,16 @@ export const depositSchema = z.object({
   amount: z.coerce
     .number()
     .min(MIN_DEPOSIT, `Depunerea minima este ${MIN_DEPOSIT} RON`)
-    .max(MAX_DEPOSIT, `Depunerea maxima este ${MAX_DEPOSIT} RON`),
+    .max(MAX_DEPOSIT, `Depunerea maxima este ${MAX_DEPOSIT} RON`)
+    .multipleOf(0.01, 'Suma poate avea maxim 2 zecimale'),
 })
 
 export const withdrawSchema = z.object({
   amount: z.coerce
     .number()
     .min(MIN_WITHDRAWAL, `Retragerea minima este ${MIN_WITHDRAWAL} RON`)
-    .max(MAX_WITHDRAWAL, `Retragerea maxima este ${MAX_WITHDRAWAL} RON`),
+    .max(MAX_WITHDRAWAL, `Retragerea maxima este ${MAX_WITHDRAWAL} RON`)
+    .multipleOf(0.01, 'Suma poate avea maxim 2 zecimale'),
 })
 
 export const leagueSchema = z.object({
