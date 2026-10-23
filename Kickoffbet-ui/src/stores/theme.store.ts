@@ -8,12 +8,29 @@ type ResolvedTheme = 'light' | 'dark'
 const STORAGE_KEY = 'kob-theme'
 const media = window.matchMedia('(prefers-color-scheme: dark)')
 
+// Storage can be blocked (privacy settings, sandboxed iframes): the theme must never break startup
+function readStoredPreference(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storePreference(pref: ThemePreference) {
+  try {
+    storePreference(pref)
+  } catch {
+    // storage unavailable: the choice simply isn't remembered across reloads
+  }
+}
+
 function applyTheme(theme: ResolvedTheme) {
   document.documentElement.classList.toggle('dark', theme === 'dark')
 }
 
 export const useThemeStore = defineStore('theme', () => {
-  const stored = localStorage.getItem(STORAGE_KEY) as ThemePreference | null
+  const stored = readStoredPreference()
   const preference = ref<ThemePreference>(stored === 'light' || stored === 'dark' ? stored : 'system')
   const systemDark = ref(media.matches)
 
@@ -23,11 +40,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   function setPreference(pref: ThemePreference) {
     preference.value = pref
-    if (pref === 'system') {
-      localStorage.removeItem(STORAGE_KEY)
-    } else {
-      localStorage.setItem(STORAGE_KEY, pref)
-    }
+    storePreference(pref)
     applyTheme(resolved.value)
   }
 

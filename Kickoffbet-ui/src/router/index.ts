@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useConfirmStore } from '@/stores/confirm.store'
+import { safeInternalPath } from '@/utils/redirect.utils'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -261,8 +262,9 @@ router.beforeEach((to) => {
 router.onError((error, to) => {
   const message = error instanceof Error ? error.message : String(error)
   if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(message)) {
-    if (to?.fullPath) {
-      window.location.assign(to.fullPath)
+    const target = safeInternalPath(to?.fullPath)
+    if (target) {
+      window.location.assign(target)
     } else {
       window.location.reload()
     }

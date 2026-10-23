@@ -8,6 +8,7 @@ import { getProfile } from '@/api/profile.api'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 import { loginSchema } from '@/validation/forms'
+import { safeInternalPath } from '@/utils/redirect.utils'
 import Panel from '@/components/Panel.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -45,7 +46,8 @@ const onSubmit = handleSubmit(async (values) => {
 
     toastStore.showSuccess('Autentificare reusita.')
 
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    // Only internal paths: an attacker-supplied ?redirect=//evil.com must not leave the app
+    const redirect = safeInternalPath(route.query.redirect)
     if (redirect) {
       await router.push(redirect)
       return
