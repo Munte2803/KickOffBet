@@ -192,7 +192,14 @@ api.interceptors.response.use(
     const requestUrl = String(originalRequest?.url ?? '')
     const hasAccessToken = Boolean(getStoredAccessToken())
     const refreshToken = getStoredRefreshToken()
-    const shouldAttemptRefresh = [401, 403].includes(error.response?.status)
+    const status = error.response?.status
+    const errorBody = await readErrorBody(error.response?.data)
+    const errorCode = errorBody?.errorCode
+    const serverMessage = errorBody?.error
+    // A 403 FORBIDDEN is a business rule (e.g. an unverified account may not bet): the session is
+    // fine, so a refresh would not change the answer; only other 401/403s mean an expired token
+    const isBusinessRefusal = status === 403 && errorCode === 'FORBIDDEN'
+    const shouldAttemptRefresh = (status === 401 || status === 403) && !isBusinessRefusal
 
     if (shouldAttemptRefresh && hasAccessToken && refreshToken && !isAuthRequest(requestUrl) && !originalRequest?._retry) {
       originalRequest._retry = true
@@ -214,9 +221,6 @@ api.interceptors.response.use(
       }
     }
 
-    const errorBody = await readErrorBody(error.response?.data)
-    const errorCode = errorBody?.errorCode
-    const serverMessage = errorBody?.error
     const message = translateErrorCode(errorCode, serverMessage) ?? serverMessage ?? 'Eroare de conexiune'
     return Promise.reject(new ApiError(message, errorCode))
   }

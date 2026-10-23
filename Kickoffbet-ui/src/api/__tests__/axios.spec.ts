@@ -218,6 +218,21 @@ describe('response interceptor: 401 -> refresh -> retry', () => {
     expect(getStoredAccessToken()).toBeNull()
   })
 
+  it('passes a 403 FORBIDDEN (business rule) through without refreshing or ending the session', async () => {
+    const { oldAccess } = sessionWithRevokedAccess()
+    handler = () => ({ status: 403, data: { errorCode: 'FORBIDDEN', error: 'Verify your account!' } })
+
+    const error = await api.post('/api/wallet/deposit', { amount: 50 }).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).code).toBe('FORBIDDEN')
+    expect((error as ApiError).message).toBe('Contul tau nu este inca verificat.')
+    expect(refreshCalls()).toHaveLength(0)
+    expect(apiCalls('/api/wallet/deposit')).toHaveLength(1)
+    expect(getStoredAccessToken()).toBe(oldAccess)
+    expect(location.href).toBe('http://localhost:3000/tickets?status=PENDING')
+  })
+
   it('does not attempt a refresh when logged out', async () => {
     handler = () => ({ status: 401, data: { error: 'Unauthorized' } })
     await expect(api.get('/api/users/me')).rejects.toThrow('Unauthorized')
