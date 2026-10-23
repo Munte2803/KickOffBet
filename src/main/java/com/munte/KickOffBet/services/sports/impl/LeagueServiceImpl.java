@@ -12,6 +12,7 @@ import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
 import com.munte.KickOffBet.services.sports.LeagueService;
 import com.munte.KickOffBet.services.users.StorageService;
+import com.munte.KickOffBet.util.TransactionHooks;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -48,6 +49,7 @@ public class LeagueServiceImpl implements LeagueService {
 
         if (emblem != null && !emblem.isEmpty()) {
             String url = storageService.uploadFile(emblem, leaguesBucket);
+            TransactionHooks.afterRollback(() -> storageService.deleteFile(leaguesBucket, url));
             league.setEmblemUrl(url);
         }
 
@@ -105,10 +107,13 @@ public class LeagueServiceImpl implements LeagueService {
 
         league.setName(request.getName());
         if (emblem != null && !emblem.isEmpty()) {
-            if (league.getEmblemUrl() != null) {
-                storageService.deleteFile(leaguesBucket, league.getEmblemUrl());
-            }
+            // The old emblem goes only once the new one is committed; a rolled-back upload is removed
+            String oldUrl = league.getEmblemUrl();
             String url = storageService.uploadFile(emblem, leaguesBucket);
+            TransactionHooks.afterRollback(() -> storageService.deleteFile(leaguesBucket, url));
+            if (oldUrl != null) {
+                TransactionHooks.afterCommit(() -> storageService.deleteFile(leaguesBucket, oldUrl));
+            }
             league.setEmblemUrl(url);
         }
         league.setManualUpdate(true);

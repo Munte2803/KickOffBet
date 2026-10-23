@@ -10,6 +10,7 @@ import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
 import com.munte.KickOffBet.services.sports.TeamService;
 import com.munte.KickOffBet.services.users.StorageService;
+import com.munte.KickOffBet.util.TransactionHooks;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -43,6 +44,7 @@ public class TeamServiceImpl implements TeamService {
 
         if (emblem != null && !emblem.isEmpty()) {
             String url = storageService.uploadFile(emblem, teamsBucket);
+            TransactionHooks.afterRollback(() -> storageService.deleteFile(teamsBucket, url));
             team.setCrestUrl(url);
         }
 
@@ -68,10 +70,13 @@ public class TeamServiceImpl implements TeamService {
         team.setManualUpdate(true);
 
         if (emblem != null && !emblem.isEmpty()) {
-            if (team.getCrestUrl() != null) {
-                storageService.deleteFile(teamsBucket, team.getCrestUrl());
-            }
+            // The old crest goes only once the new one is committed; a rolled-back upload is removed
+            String oldUrl = team.getCrestUrl();
             String url = storageService.uploadFile(emblem, teamsBucket);
+            TransactionHooks.afterRollback(() -> storageService.deleteFile(teamsBucket, url));
+            if (oldUrl != null) {
+                TransactionHooks.afterCommit(() -> storageService.deleteFile(teamsBucket, oldUrl));
+            }
             team.setCrestUrl(url);
         }
 

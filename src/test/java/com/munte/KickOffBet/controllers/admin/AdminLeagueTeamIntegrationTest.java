@@ -270,6 +270,22 @@ class AdminLeagueTeamIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void failedTeamEditKeepsTheOldCrestAndRemovesTheNewUpload() throws Exception {
+        League pl = data.league("PL", "Premier League");
+        Team team = data.team("Everton", pl);
+        when(storageService.uploadFile(any(), eq("teams"))).thenReturn("http://minio.test/teams/efc2.png");
+
+        mvc.perform(auth(multipartPut("/api/admin/teams/{id}", team.getId())
+                        .file(jsonPart("data", Map.of("name", "Everton FC", "shortName", "Everton", "tla", "EVE",
+                                "leagueIds", List.of(pl.getId(), UUID.randomUUID()))))
+                        .file(filePart("emblem", "efc2.png")), admin))
+                .andExpect(status().isNotFound());
+
+        verify(storageService, never()).deleteFile("teams", "http://minio.test/teams/Everton.png");
+        verify(storageService).deleteFile("teams", "http://minio.test/teams/efc2.png");
+    }
+
+    @Test
     void updatesTeamFieldsCrestAndLeagueMembership() throws Exception {
         League pl = data.league("PL", "Premier League");
         League cup = data.league("FAC", "FA Cup");
