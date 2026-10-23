@@ -17,7 +17,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import AdminUserSearchPicker from '@/components/AdminUserSearchPicker.vue'
-import type { UserStatus } from '@/types/enums'
+import { USER_STATUSES, type UserStatus } from '@/types/enums'
 import type { UserList } from '@/types/admin-user.types'
 import { useToastStore } from '@/stores/toast.store'
 import { formatDateShort } from '@/utils/date.utils'
@@ -294,12 +294,8 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <span class="mb-1 block">Stare</span>
           <select v-model="status" class="app-select-field app-select">
             <option value="ALL">Toate</option>
-            <option value="PENDING_VERIFICATION">Verificare in asteptare</option>
-            <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-            <option :value="'ACTIVE'">{{ translateEnumLabel('ACTIVE') }}</option>
-            <option :value="'SUSPENDED'">{{ translateEnumLabel('SUSPENDED') }}</option>
-            <option :value="'DECLINED'">{{ translateEnumLabel('DECLINED') }}</option>
-            <option :value="'DEACTIVATED'">{{ translateEnumLabel('DEACTIVATED') }}</option>
+            <option value="PENDING_VERIFICATION">{{ translateEnumLabel('PENDING_VERIFICATION') }}</option>
+            <option v-for="userStatus in USER_STATUSES" :key="userStatus" :value="userStatus">{{ translateEnumLabel(userStatus) }}</option>
           </select>
         </label>
 

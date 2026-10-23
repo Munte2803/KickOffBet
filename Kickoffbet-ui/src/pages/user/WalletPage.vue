@@ -5,6 +5,8 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { deposit, getTransactions, withdraw } from '@/api/wallet.api'
 import type { TransactionTypeFilter } from '@/types/transaction.types'
+import { TRANSACTION_TYPES } from '@/types/enums'
+import { TRANSACTION_TYPE_TAB_LABELS } from '@/utils/labels.utils'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -29,6 +31,10 @@ const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const mode = ref<'deposit' | 'withdraw'>('deposit')
 const transactionType = ref<TransactionTypeFilter>('ALL')
+const transactionTabs = [
+  { key: 'ALL', label: 'Toate' },
+  ...TRANSACTION_TYPES.map((type) => ({ key: type, label: TRANSACTION_TYPE_TAB_LABELS[type] })),
+]
 const pagination = usePagination(PAGE_SIZES.COMPACT)
 const transactionPageRequest = computed(() => ({
   ...pagination.request.value,
@@ -183,14 +189,7 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
 
         <div class="mt-4">
           <TabNav
-            :tabs="[
-              { key: 'ALL', label: 'Toate' },
-              { key: 'DEPOSIT', label: 'Depuneri' },
-              { key: 'WITHDRAWAL', label: 'Retrageri' },
-              { key: 'BET', label: 'Pariuri' },
-              { key: 'PAYOUT', label: 'Castiguri platite' },
-              { key: 'REFUND', label: 'Rambursari' },
-            ]"
+            :tabs="transactionTabs"
             :active="transactionType"
             @change="transactionType = $event as TransactionTypeFilter"
           />

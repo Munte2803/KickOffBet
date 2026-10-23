@@ -24,7 +24,7 @@ import { getTicketsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
-import type { TicketStatus } from '@/types/enums'
+import { TICKET_STATUSES, type TicketStatus } from '@/types/enums'
 import { translateEnumLabel } from '@/utils/labels.utils'
 import { queryKeys } from '@/query/query-keys'
 
@@ -112,10 +112,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <span class="mb-1 block">Status</span>
           <select v-model="chartStatus" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option value="PENDING">{{ translateEnumLabel('PENDING') }}</option>
-            <option value="WON">{{ translateEnumLabel('WON') }}</option>
-            <option value="LOST">{{ translateEnumLabel('LOST') }}</option>
-            <option value="CANCELLED">{{ translateEnumLabel('CANCELLED') }}</option>
+            <option v-for="ticketStatus in TICKET_STATUSES" :key="ticketStatus" :value="ticketStatus">{{ translateEnumLabel(ticketStatus) }}</option>
           </select>
         </label>
         <label class="text-sm text-muted">
@@ -168,10 +165,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
-              <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-              <option :value="'WON'">{{ translateEnumLabel('WON') }}</option>
-              <option :value="'LOST'">{{ translateEnumLabel('LOST') }}</option>
-              <option :value="'CANCELLED'">{{ translateEnumLabel('CANCELLED') }}</option>
+              <option v-for="ticketStatus in TICKET_STATUSES" :key="ticketStatus" :value="ticketStatus">{{ translateEnumLabel(ticketStatus) }}</option>
             </select>
           </label>
           <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />

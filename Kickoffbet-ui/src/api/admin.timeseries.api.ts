@@ -1,4 +1,5 @@
 import api from '@/api/axios'
+import type { TicketStatus, TransactionType } from '@/types/enums'
 
 export interface TimeSeriesPoint {
   date: string
@@ -6,23 +7,19 @@ export interface TimeSeriesPoint {
   totalAmount: number | null
 }
 
-export type TransactionTimeSeriesType = 'DEPOSIT' | 'WITHDRAWAL' | 'BET' | 'PAYOUT' | 'REFUND'
-
 export const getTransactionsTimeSeries = (
   start: string,
   end: string,
-  type: TransactionTimeSeriesType,
+  type: TransactionType,
 ): Promise<TimeSeriesPoint[]> =>
   api
     .get('/api/admin/transactions/timeseries', { params: { start, end, type } })
     .then((res) => res.data)
 
-export type TicketTimeSeriesStatus = 'PENDING' | 'WON' | 'LOST' | 'CANCELLED'
-
 export const getTicketsTimeSeries = (
   start: string,
   end: string,
-  status?: TicketTimeSeriesStatus,
+  status?: TicketStatus,
 ): Promise<TimeSeriesPoint[]> =>
   api
     .get('/api/admin/tickets/timeseries', { params: { start, end, status } })

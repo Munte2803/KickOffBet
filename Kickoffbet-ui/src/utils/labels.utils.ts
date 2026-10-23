@@ -1,3 +1,5 @@
+import type { TicketStatus, TransactionType } from '@/types/enums'
+
 export const enumLabelMap: Record<string, string> = {
   SCHEDULED: 'Programat',
   LIVE: 'In direct',
@@ -46,4 +48,21 @@ export function translateEnumLabel(value?: string | null) {
 
 export function translateActiveLabel(active: boolean) {
   return active ? 'Activ' : 'Inactiv'
+}
+
+/** Plural labels for the tabs that filter a list by ticket status ("Castigate", not "Castigat"). */
+export const TICKET_STATUS_TAB_LABELS: Record<TicketStatus, string> = {
+  PENDING: 'In asteptare',
+  WON: 'Castigate',
+  LOST: 'Pierdute',
+  CANCELLED: 'Anulate',
+}
+
+/** Plural labels for the tabs that filter a list by transaction type. */
+export const TRANSACTION_TYPE_TAB_LABELS: Record<TransactionType, string> = {
+  DEPOSIT: 'Depuneri',
+  WITHDRAWAL: 'Retrageri',
+  BET: 'Pariuri',
+  PAYOUT: 'Castiguri platite',
+  REFUND: 'Rambursari',
 }

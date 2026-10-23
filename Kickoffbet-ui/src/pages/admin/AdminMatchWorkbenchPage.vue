@@ -11,7 +11,7 @@ import {
   updateMatchStatus,
 } from '@/api/matches.admin.api'
 import type { EditableMarketOffer, MatchDetail } from '@/types/match.types'
-import type { MatchStatus } from '@/types/enums'
+import { EDITABLE_MATCH_STATUSES, type MatchStatus } from '@/types/enums'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
 import PageHeader from '@/components/PageHeader.vue'
@@ -36,7 +36,7 @@ const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const matchId = route.params.id as string
 
-const statusOptions: MatchStatus[] = ['SCHEDULED', 'LIVE', 'FINISHED', 'POSTPONED', 'SUSPENDED', 'CANCELLED']
+const statusOptions = EDITABLE_MATCH_STATUSES
 
 const startTime = ref('')
 const status = ref<MatchStatus>('SCHEDULED')

@@ -8,7 +8,7 @@ import type { MatchSearchRequest } from '@/types/match.types'
 import { getAllTeams } from '@/api/teams.admin.api'
 import { usePagination } from '@/composables/usePagination'
 import { PAGE_SIZES } from '@/constants/pagination.constants'
-import type { MatchStatus } from '@/types/enums'
+import { EDITABLE_MATCH_STATUSES, type MatchStatus } from '@/types/enums'
 import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import AppPagination from '@/components/AppPagination.vue'
@@ -30,12 +30,7 @@ import { queryKeys } from '@/query/query-keys'
 
 const statusOptions: Array<{ label: string; value: MatchStatus | '' }> = [
   { label: 'Toate', value: '' },
-  { label: 'Programat', value: 'SCHEDULED' },
-  { label: 'In direct', value: 'LIVE' },
-  { label: 'Terminat', value: 'FINISHED' },
-  { label: 'Amanat', value: 'POSTPONED' },
-  { label: 'Suspendat', value: 'SUSPENDED' },
-  { label: 'Anulat', value: 'CANCELLED' },
+  ...EDITABLE_MATCH_STATUSES.map((value) => ({ label: translateEnumLabel(value), value })),
 ]
 
 const sortOptions = [

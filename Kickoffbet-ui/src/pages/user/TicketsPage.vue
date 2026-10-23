@@ -15,11 +15,13 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import AppErrorState from '@/components/AppErrorState.vue'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
-import type { TicketStatus } from '@/types/enums'
+import { TICKET_STATUSES, type TicketStatus } from '@/types/enums'
+import { TICKET_STATUS_TAB_LABELS } from '@/utils/labels.utils'
 import { queryKeys } from '@/query/query-keys'
 
 const status = ref<TicketStatus>('PENDING')
 const pagination = usePagination(PAGE_SIZES.COMPACT)
+const statusTabs = TICKET_STATUSES.map((ticketStatus) => ({ key: ticketStatus, label: TICKET_STATUS_TAB_LABELS[ticketStatus] }))
 
 // The key holds the status and the page: switching either fetches, no manual refetch needed
 const ticketsQuery = useQuery({
@@ -34,12 +36,7 @@ const ticketsQuery = useQuery({
 
     <Panel>
       <TabNav
-        :tabs="[
-          { key: 'PENDING', label: 'In asteptare' },
-          { key: 'WON', label: 'Castigate' },
-          { key: 'LOST', label: 'Pierdute' },
-          { key: 'CANCELLED', label: 'Anulate' },
-        ]"
+        :tabs="statusTabs"
         :active="status"
         @change="status = $event as TicketStatus; pagination.reset()"
       />

@@ -10,7 +10,7 @@ import {
   searchTransactions,
 } from '@/api/transactions.admin.api'
 import type { TransactionReport, UserDepositSummary, UserTransactionSummary } from '@/types/transaction.types'
-import type { TransactionStatus, TransactionType } from '@/types/enums'
+import { TRANSACTION_STATUSES, TRANSACTION_TYPES, type TransactionStatus, type TransactionType } from '@/types/enums'
 import { usePagination } from '@/composables/usePagination'
 import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useToastStore } from '@/stores/toast.store'
@@ -247,7 +247,7 @@ function fetchAllTransactionsForExport(onProgress?: ExportProgress): Promise<Tra
 }
 
 const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)
-const chartType = ref<'DEPOSIT' | 'WITHDRAWAL' | 'BET' | 'PAYOUT' | 'REFUND'>('DEPOSIT')
+const chartType = ref<TransactionType>('DEPOSIT')
 const chartMetric = ref<'count' | 'totalAmount'>('totalAmount')
 const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeriesChart(
   (start, end) => getTransactionsTimeSeries(start, end, chartType.value),
@@ -320,11 +320,7 @@ function resetSearchFilters() {
         <label class="text-sm text-muted">
           <span class="mb-1 block">Tip</span>
           <select v-model="chartType" class="app-select-field app-select">
-            <option value="DEPOSIT">{{ translateEnumLabel('DEPOSIT') }}</option>
-            <option value="WITHDRAWAL">{{ translateEnumLabel('WITHDRAWAL') }}</option>
-            <option value="BET">{{ translateEnumLabel('BET') }}</option>
-            <option value="PAYOUT">{{ translateEnumLabel('PAYOUT') }}</option>
-            <option value="REFUND">{{ translateEnumLabel('REFUND') }}</option>
+            <option v-for="type in TRANSACTION_TYPES" :key="type" :value="type">{{ translateEnumLabel(type) }}</option>
           </select>
         </label>
         <label class="text-sm text-muted">
@@ -500,11 +496,7 @@ function resetSearchFilters() {
           <span class="mb-1 block">Tip</span>
           <select v-model="transactionType" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option :value="'DEPOSIT'">{{ translateEnumLabel('DEPOSIT') }}</option>
-            <option :value="'WITHDRAWAL'">{{ translateEnumLabel('WITHDRAWAL') }}</option>
-            <option :value="'BET'">{{ translateEnumLabel('BET') }}</option>
-            <option :value="'PAYOUT'">{{ translateEnumLabel('PAYOUT') }}</option>
-            <option :value="'REFUND'">{{ translateEnumLabel('REFUND') }}</option>
+            <option v-for="type in TRANSACTION_TYPES" :key="type" :value="type">{{ translateEnumLabel(type) }}</option>
           </select>
         </label>
 
@@ -512,9 +504,9 @@ function resetSearchFilters() {
           <span class="mb-1 block">Stare</span>
           <select v-model="transactionStatus" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-            <option :value="'COMPLETED'">{{ translateEnumLabel('COMPLETED') }}</option>
-            <option :value="'REJECTED'">{{ translateEnumLabel('REJECTED') }}</option>
+            <option v-for="transactionStatusOption in TRANSACTION_STATUSES" :key="transactionStatusOption" :value="transactionStatusOption">
+              {{ translateEnumLabel(transactionStatusOption) }}
+            </option>
           </select>
         </label>
       </div>
