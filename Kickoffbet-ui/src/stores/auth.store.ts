@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserRole } from '@/types/enums'
-import api from '@/api/axios'
+import { logout as logoutRequest } from '@/api/auth.api'
 import type { UserProfile } from '@/types/profile.types'
 import { getProfile } from '@/api/profile.api'
 import { useTicketStore } from '@/stores/ticket.store'
@@ -123,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await api.post('/api/auth/logout')
+      await logoutRequest()
     } catch (error) {
       console.warn('Logout notification failed:', error)
     }

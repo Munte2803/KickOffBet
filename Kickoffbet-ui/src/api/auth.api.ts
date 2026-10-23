@@ -22,3 +22,7 @@ export const forgotPassword = (email: string): Promise<void> =>
 
 export const resetPassword = (data: ResetPasswordRequest): Promise<void> =>
   api.post('/api/auth/reset-password', data).then(() => {})
+
+/** Revokes the session server side (every device's refresh tokens). */
+export const logout = (): Promise<void> =>
+  api.post('/api/auth/logout').then(() => {})

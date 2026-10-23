@@ -190,6 +190,26 @@ describe('response interceptor: 401 -> refresh -> retry', () => {
     expect(location.href).toBe(`/login?redirect=${encodeURIComponent('/tickets?status=PENDING')}`)
   })
 
+  it.each([
+    ['a network error', () => { throw new AxiosError('Network Error', 'ERR_NETWORK') }],
+    ['a 503', () => ({ status: 503 })],
+  ])('keeps the session (and the bet slip) when the refresh fails with %s', async (_label, refreshReply) => {
+    const { oldAccess, refresh } = sessionWithRevokedAccess()
+    localStorage.setItem('kickoffbet.betslip', JSON.stringify({ selections: [], stake: 10 }))
+    handler = (config) => (isRefresh(config) ? refreshReply() : { status: 401 })
+
+    await expect(api.get('/api/users/me')).rejects.toThrow('Eroare de conexiune')
+
+    expect(getStoredAccessToken()).toBe(oldAccess)
+    expect(getStoredRefreshToken()).toBe(refresh)
+    expect(localStorage.getItem('kickoffbet.betslip')).not.toBeNull()
+    expect(location.href).toBe('http://localhost:3000/tickets?status=PENDING')
+    // Nothing secret reaches the console: only a message, never the request config with the token
+    for (const call of vi.mocked(console.error).mock.calls) {
+      expect(call.every((arg) => typeof arg === 'string' && !arg.includes(refresh))).toBe(true)
+    }
+  })
+
   it('treats a refresh response without an access token as a failure', async () => {
     sessionWithRevokedAccess()
     handler = (config) => (isRefresh(config) ? { status: 200, data: {} } : { status: 401 })

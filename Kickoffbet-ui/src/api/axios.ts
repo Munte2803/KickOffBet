@@ -8,25 +8,7 @@ import {
 import { isJwtExpired } from '@/utils/jwt.utils'
 import { ApiError } from '@/api/api-error'
 import { clearUserScopedState } from '@/utils/user-state.utils'
-import { readErrorBody, translateTicketPlacementError } from '@/api/error-messages'
-
-const errorCodeMessages: Record<string, string> = {
-  INSUFFICIENT_FUNDS: 'Fonduri insuficiente. Alimenteaza portofelul pentru a plasa biletul.',
-  CONCURRENT_MODIFICATION: 'Operatiunea a esuat din cauza unei modificari concurente. Incearca din nou.',
-  ACCOUNT_LOCKED: 'Contul tau este blocat. Contacteaza suportul.',
-  INVALID_CREDENTIALS: 'Email sau parola incorecta.',
-  RESOURCE_NOT_FOUND: 'Resursa solicitata nu a fost gasita.',
-  STORAGE_ERROR: 'Eroare la incarcarea fisierului. Incearca din nou.',
-  EXTERNAL_API_ERROR: 'Serviciu extern indisponibil. Incearca mai tarziu.',
-  INTERNAL_ERROR: 'Eroare interna. Incearca mai tarziu.',
-}
-
-function translateErrorCode(errorCode: string | undefined, serverMessage?: string): string | undefined {
-  if (!errorCode) return undefined
-  // The placement validator explains exactly what is wrong (changed odds, closed offer...): show that
-  if (errorCode === 'TICKET_PLACEMENT_ERROR') return translateTicketPlacementError(serverMessage)
-  return errorCodeMessages[errorCode]
-}
+import { readErrorBody, translateErrorCode } from '@/api/error-messages'
 
 function resolveApiBaseUrl() {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
@@ -50,6 +32,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 30_000,
 })
 
 const authEndpoints = [
@@ -60,6 +43,36 @@ const authEndpoints = [
   '/api/auth/confirm-email',
   '/api/auth/refresh-token',
 ]
+
+const SESSION_EXPIRED_MESSAGE = 'Sesiunea a expirat. Autentifica-te din nou.'
+
+/** Raised once the session has been ended (tokens cleared, login redirect started). */
+export class SessionExpiredError extends Error {
+  constructor() {
+    super(SESSION_EXPIRED_MESSAGE)
+    this.name = 'SessionExpiredError'
+  }
+}
+
+/** HTTP statuses with which the refresh endpoint says the refresh token itself is no longer valid. */
+const REFRESH_REJECTED_STATUSES = [400, 401, 403, 404]
+
+class MissingAccessTokenError extends Error {}
+
+/**
+ * Only a definitive answer from the refresh endpoint ends the session. A network error, a timeout or
+ * a 5xx says nothing about the token, so the session is kept and the next attempt retries.
+ */
+function isRefreshRejected(error: unknown) {
+  if (error instanceof MissingAccessTokenError) return true
+  const status = (error as { response?: { status?: number } })?.response?.status
+  return status !== undefined && REFRESH_REJECTED_STATUSES.includes(status)
+}
+
+function endSession() {
+  clearStoredAuthSession()
+  redirectToLogin()
+}
 
 let refreshInFlight: Promise<{ token: string; refreshToken: string }> | null = null
 
@@ -82,9 +95,8 @@ export async function refreshSession() {
   const refreshToken = getStoredRefreshToken()
 
   if (!refreshToken || isJwtExpired(refreshToken)) {
-    clearStoredAuthSession()
-    redirectToLogin()
-      throw new Error('Sesiunea a expirat. Autentifica-te din nou.')
+    endSession()
+    throw new SessionExpiredError()
   }
 
   if (!refreshInFlight) {
@@ -99,7 +111,7 @@ export async function refreshSession() {
         const nextRefreshToken = (response.data.refreshToken as string | undefined) ?? refreshToken
 
         if (!nextToken) {
-          throw new Error('Refresh response did not include an access token.')
+          throw new MissingAccessTokenError('Refresh response did not include an access token.')
         }
 
         storeAuthTokens(nextToken, nextRefreshToken)
@@ -109,8 +121,11 @@ export async function refreshSession() {
         }
       })
       .catch((error) => {
-        clearStoredAuthSession()
-        redirectToLogin()
+        if (isRefreshRejected(error)) {
+          endSession()
+          throw new SessionExpiredError()
+        }
+        // Transient failure: keep the session (and the bet slip) so a later attempt can retry
         throw error
       })
       .finally(() => {
@@ -187,13 +202,13 @@ api.interceptors.response.use(
 
         return api(originalRequest)
       } catch (refreshError) {
-       
-        const errorMessage = (refreshError as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Token refresh failed'
-        console.error('🔴 Token refresh failed:', errorMessage, refreshError)
-
-        clearStoredAuthSession()
-        redirectToLogin()
-    return Promise.reject(new Error('Sesiunea a expirat. Autentifica-te din nou.'))
+        if (refreshError instanceof SessionExpiredError) {
+          // Only a message: the refresh error's config carries the refresh token in its body
+          console.error('Token refresh failed: the session is no longer valid')
+          return Promise.reject(refreshError)
+        }
+        console.error('Token refresh failed: the refresh endpoint could not be reached')
+        return Promise.reject(new ApiError('Eroare de conexiune'))
       }
     }
 
@@ -206,6 +221,3 @@ api.interceptors.response.use(
 )
 
 export default api
-
-
-
