@@ -8,6 +8,7 @@ import com.munte.KickOffBet.domain.enums.UserRole;
 import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.repository.VerificationTokenRepository;
+import com.munte.KickOffBet.services.users.UserService;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -30,6 +33,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -50,6 +54,8 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
     @Autowired UserRepository userRepository;
     @Autowired VerificationTokenRepository tokenRepository;
     @Autowired JdbcTemplate jdbc;
+    @Autowired UserService userService;
+    @Autowired PlatformTransactionManager transactionManager;
 
     private String admin;
 
@@ -315,6 +321,36 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void rejectedCardIsDeletedOnlyOnceTheRejectionCommits() {
+        User user = pending("reject-rollback@kickoffbet.test", true);
+        String cardUrl = user.getIdCardUrl();
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            userService.rejectUser(user.getId());
+            status.setRollbackOnly();
+        });
+        verify(storageService, never()).deleteFile(any(), any());
+        assertThat(data.reloadUser(user.getId()).getIdCardUrl()).isEqualTo(cardUrl);
+
+        userService.rejectUser(user.getId());
+        verify(storageService).deleteFile("id-cards", cardUrl);
+    }
+
+    @Test
+    void replacingAnIdCardDeletesThePreviousFileAfterCommit() throws Exception {
+        when(storageService.uploadFile(any(), eq("id-cards"))).thenReturn("http://minio.test/id-cards/replacement.png");
+        User user = pending("replace-card@kickoffbet.test", true);
+        String oldUrl = user.getIdCardUrl();
+
+        mvc.perform(auth(multipart("/api/users/me/id-card").file(filePart("file", "replacement.png")), login(user)))
+                .andExpect(status().isNoContent());
+
+        assertThat(data.reloadUser(user.getId()).getIdCardUrl()).isEqualTo("http://minio.test/id-cards/replacement.png");
+        verify(storageService).deleteFile("id-cards", oldUrl);
+        verify(storageService, never()).deleteFile("id-cards", "http://minio.test/id-cards/replacement.png");
+    }
+
+    @Test
     void idCardReuploadAfterRejectionGoesBackToPendingReview() throws Exception {
         when(storageService.uploadFile(any(), eq("id-cards"))).thenReturn("http://minio.test/id-cards/new.png");
         User user = pending("reupload@kickoffbet.test", true);
@@ -371,7 +407,7 @@ class AdminUserIntegrationTest extends IntegrationTestBase {
         String token = login("kyc@kickoffbet.test", "Secret123");
 
         mvc.perform(auth(withJson(post("/api/wallet/deposit"), Map.of("amount", 25)), token))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Verify your account!"));
 
         mvc.perform(auth(get("/api/admin/users/pending-verification"), admin))

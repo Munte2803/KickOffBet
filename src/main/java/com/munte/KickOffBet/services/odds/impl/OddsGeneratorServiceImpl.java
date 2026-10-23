@@ -1,5 +1,6 @@
 package com.munte.KickOffBet.services.odds.impl;
 
+import com.munte.KickOffBet.config.BettingProperties;
 import com.munte.KickOffBet.domain.entity.MarketOffer;
 import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Team;
@@ -12,7 +13,6 @@ import com.munte.KickOffBet.repository.TeamMatchMetricsRepository;
 import com.munte.KickOffBet.services.odds.OddsGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -38,60 +38,17 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private final OddsCalibrator calibrator;
     private final ApplicationContext applicationContext;
 
-    @Value("${betting.poisson.max-goals:8}")
-    private int maxGoals;
+    private final BettingProperties betting;
 
-    @Value("${betting.dixon-coles.rho:-0.13}")
-    private double dixonColesRho;
-
-    @Value("${betting.lines.over-under:1.5,2.5,3.5}")
-    private double[] overUnderLines;
-
-    // League defaults: the prior each statistic is shrunk toward (see shrink)
-    @Value("${betting.default.season-home-avg-scored:1.25}")
-    private double defaultSeasonHomeAvgScored;
-    @Value("${betting.default.season-home-avg-conceded:1.10}")
-    private double defaultSeasonHomeAvgConceded;
-    @Value("${betting.default.season-away-avg-scored:1.05}")
-    private double defaultSeasonAwayAvgScored;
-    @Value("${betting.default.season-away-avg-conceded:1.30}")
-    private double defaultSeasonAwayAvgConceded;
-    @Value("${betting.default.season-win-rate:0.38}")
-    private double defaultSeasonWinRate;
-    @Value("${betting.default.season-draw-rate:0.29}")
-    private double defaultSeasonDrawRate;
-    @Value("${betting.default.season-over15-rate:0.74}")
-    private double defaultSeasonOver15Rate;
-    @Value("${betting.default.season-over25-rate:0.48}")
-    private double defaultSeasonOver25Rate;
-    @Value("${betting.default.season-btts-rate:0.45}")
-    private double defaultSeasonBttsRate;
-    @Value("${betting.default.last5-avg-scored:1.25}")
-    private double defaultLast5AvgScored;
-    @Value("${betting.default.last5-avg-conceded:1.10}")
-    private double defaultLast5AvgConceded;
-    @Value("${betting.default.last5-draw-rate:0.29}")
-    private double defaultLast5DrawRate;
-    @Value("${betting.default.last5-over15-rate:0.74}")
-    private double defaultLast5Over15Rate;
-    @Value("${betting.default.last5-over25-rate:0.48}")
-    private double defaultLast5Over25Rate;
-    @Value("${betting.default.last5-btts-rate:0.45}")
-    private double defaultLast5BttsRate;
-
-    // Prior weight k of the shrinkage, in matches: estimate = (n*observed + k*default) / (n + k)
-    @Value("${betting.shrinkage.prior-matches.season:5}")
-    private double seasonPriorMatches;
-    @Value("${betting.shrinkage.prior-matches.last5:2}")
-    private double last5PriorMatches;
-
-    private static final ReentrantLock lock = new ReentrantLock();
+    // One odds batch at a time in this instance: two batches over the same matches would conflict on every offer.
+    // Taken outside any transaction, so a waiting job holds no database connection.
+    private final ReentrantLock lock = new ReentrantLock();
 
     @Override
     public void processMatches(final Set<Long> matchIds) {
         lock.lock();
         try {
-            final OddsGeneratorServiceImpl self = applicationContext.getBean(OddsGeneratorServiceImpl.class);
+            final OddsGeneratorService self = applicationContext.getBean(OddsGeneratorService.class);
             try {
                 self.processMatchesInternal(matchIds);
             } catch (ObjectOptimisticLockingFailureException e) {
@@ -171,7 +128,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
     private void generateAndApplyOdds(final Match match, final TeamMatchMetrics h, final TeamMatchMetrics a) {
         final double lH = calibrator.calculateLambdaHome(h, a);
         final double lA = calibrator.calculateLambdaAway(h, a);
-        final PoissonMatrix pm = new PoissonMatrix(lH, lA, maxGoals, dixonColesRho);
+        final PoissonMatrix pm = new PoissonMatrix(lH, lA, betting.poisson().maxGoals(), betting.dixonColes().rho());
 
         final double rawP1 = marketProcessor.calculateWinHome(pm);
         final double rawPX = calibrator.calibrateDraw(marketProcessor.calculateDraw(pm), h, a);
@@ -191,7 +148,7 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         applyOffer(match, MarketType.DOUBLE_CHANCE, BetOption.AWAY_OR_DRAW, null, pX + p2);
         applyOffer(match, MarketType.DOUBLE_CHANCE, BetOption.HOME_OR_AWAY, null, p1 + p2);
 
-        for (final double line : overUnderLines) {
+        for (final double line : betting.lines().overUnder()) {
             final double rawOver = marketProcessor.calculateOverUnder(pm, line, true);
             final double calibratedOver = calibrator.calibrateOver(rawOver, h, a, line);
             final BigDecimal lineValue = BigDecimal.valueOf(line);
@@ -275,6 +232,10 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         final int seasonN = count(raw.getSeasonMatches());
         final int last5N = count(raw.getLast5Matches());
 
+        final BettingProperties.Defaults d = betting.defaults();
+        final double seasonPriorMatches = betting.shrinkage().priorMatches().season();
+        final double last5PriorMatches = betting.shrinkage().priorMatches().last5();
+
         final TeamMatchMetrics m = new TeamMatchMetrics();
         m.setTeamId(raw.getTeamId());
         m.setSeasonHomeMatches(homeN);
@@ -282,23 +243,23 @@ public class OddsGeneratorServiceImpl implements OddsGeneratorService {
         m.setSeasonMatches(seasonN);
         m.setLast5Matches(last5N);
 
-        m.setSeasonHomeAvgScored(shrink(raw.getSeasonHomeAvgScored(), homeN, defaultSeasonHomeAvgScored, seasonPriorMatches));
-        m.setSeasonHomeAvgConceded(shrink(raw.getSeasonHomeAvgConceded(), homeN, defaultSeasonHomeAvgConceded, seasonPriorMatches));
-        m.setSeasonAwayAvgScored(shrink(raw.getSeasonAwayAvgScored(), awayN, defaultSeasonAwayAvgScored, seasonPriorMatches));
-        m.setSeasonAwayAvgConceded(shrink(raw.getSeasonAwayAvgConceded(), awayN, defaultSeasonAwayAvgConceded, seasonPriorMatches));
-        m.setSeasonWinRate(shrink(raw.getSeasonWinRate(), seasonN, defaultSeasonWinRate, seasonPriorMatches));
-        m.setSeasonDrawRate(shrink(raw.getSeasonDrawRate(), seasonN, defaultSeasonDrawRate, seasonPriorMatches));
+        m.setSeasonHomeAvgScored(shrink(raw.getSeasonHomeAvgScored(), homeN, d.seasonHomeAvgScored(), seasonPriorMatches));
+        m.setSeasonHomeAvgConceded(shrink(raw.getSeasonHomeAvgConceded(), homeN, d.seasonHomeAvgConceded(), seasonPriorMatches));
+        m.setSeasonAwayAvgScored(shrink(raw.getSeasonAwayAvgScored(), awayN, d.seasonAwayAvgScored(), seasonPriorMatches));
+        m.setSeasonAwayAvgConceded(shrink(raw.getSeasonAwayAvgConceded(), awayN, d.seasonAwayAvgConceded(), seasonPriorMatches));
+        m.setSeasonWinRate(shrink(raw.getSeasonWinRate(), seasonN, d.seasonWinRate(), seasonPriorMatches));
+        m.setSeasonDrawRate(shrink(raw.getSeasonDrawRate(), seasonN, d.seasonDrawRate(), seasonPriorMatches));
         m.setSeasonOver05Rate(raw.getSeasonOver05Rate()); // not priced, no default
-        m.setSeasonOver15Rate(shrink(raw.getSeasonOver15Rate(), seasonN, defaultSeasonOver15Rate, seasonPriorMatches));
-        m.setSeasonOver25Rate(shrink(raw.getSeasonOver25Rate(), seasonN, defaultSeasonOver25Rate, seasonPriorMatches));
-        m.setSeasonBttsRate(shrink(raw.getSeasonBttsRate(), seasonN, defaultSeasonBttsRate, seasonPriorMatches));
+        m.setSeasonOver15Rate(shrink(raw.getSeasonOver15Rate(), seasonN, d.seasonOver15Rate(), seasonPriorMatches));
+        m.setSeasonOver25Rate(shrink(raw.getSeasonOver25Rate(), seasonN, d.seasonOver25Rate(), seasonPriorMatches));
+        m.setSeasonBttsRate(shrink(raw.getSeasonBttsRate(), seasonN, d.seasonBttsRate(), seasonPriorMatches));
 
-        m.setLast5AvgScored(shrink(raw.getLast5AvgScored(), last5N, defaultLast5AvgScored, last5PriorMatches));
-        m.setLast5AvgConceded(shrink(raw.getLast5AvgConceded(), last5N, defaultLast5AvgConceded, last5PriorMatches));
-        m.setLast5DrawRate(shrink(raw.getLast5DrawRate(), last5N, defaultLast5DrawRate, last5PriorMatches));
-        m.setLast5Over15Rate(shrink(raw.getLast5Over15Rate(), last5N, defaultLast5Over15Rate, last5PriorMatches));
-        m.setLast5Over25Rate(shrink(raw.getLast5Over25Rate(), last5N, defaultLast5Over25Rate, last5PriorMatches));
-        m.setLast5BttsRate(shrink(raw.getLast5BttsRate(), last5N, defaultLast5BttsRate, last5PriorMatches));
+        m.setLast5AvgScored(shrink(raw.getLast5AvgScored(), last5N, d.last5AvgScored(), last5PriorMatches));
+        m.setLast5AvgConceded(shrink(raw.getLast5AvgConceded(), last5N, d.last5AvgConceded(), last5PriorMatches));
+        m.setLast5DrawRate(shrink(raw.getLast5DrawRate(), last5N, d.last5DrawRate(), last5PriorMatches));
+        m.setLast5Over15Rate(shrink(raw.getLast5Over15Rate(), last5N, d.last5Over15Rate(), last5PriorMatches));
+        m.setLast5Over25Rate(shrink(raw.getLast5Over25Rate(), last5N, d.last5Over25Rate(), last5PriorMatches));
+        m.setLast5BttsRate(shrink(raw.getLast5BttsRate(), last5N, d.last5BttsRate(), last5PriorMatches));
         return m;
     }
 

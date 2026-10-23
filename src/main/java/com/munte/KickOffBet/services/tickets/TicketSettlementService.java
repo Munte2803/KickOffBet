@@ -11,4 +11,7 @@ public interface TicketSettlementService {
 
     /** Settles each ticket in its own transaction, retrying a few times on concurrent wallet updates. */
     void settleTickets(Collection<UUID> ticketIds);
+
+    /** Settles the PENDING tickets of a user whose account became active again (decided while it was not). */
+    void settlePendingTicketsOfUser(UUID userId);
 }

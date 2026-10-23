@@ -23,8 +23,10 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -135,6 +137,19 @@ class TicketSelectionSettlementServiceImplTest {
         assertThat(s.getStatus()).isEqualTo(expected);
         assertThat(affected).containsExactly(ticket);
         verify(ticketSelectionRepository).saveAll(List.of(s));
+    }
+
+    @Test
+    @DisplayName("an option that does not belong to its market fails instead of being graded LOST")
+    void marketOptionMismatchFails() {
+        Match match = finished(2, 1);
+        TicketSelection s = selection(ticket(), match, MarketType.H2H, BetOption.OVER, null);
+        givenPending(Set.of(match.getId()), s);
+
+        assertThatThrownBy(() -> service.settleSelectionsForMatches(Set.of(match.getId()), false))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(s.getStatus()).isEqualTo(TicketSelectionStatus.PENDING);
+        verify(ticketSelectionRepository, never()).saveAll(any());
     }
 
     @Test

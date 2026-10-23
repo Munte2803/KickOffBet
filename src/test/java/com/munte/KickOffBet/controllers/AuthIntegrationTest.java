@@ -1,12 +1,15 @@
 package com.munte.KickOffBet.controllers;
 
+import com.munte.KickOffBet.domain.dto.api.request.RegisterRequest;
 import com.munte.KickOffBet.domain.entity.User;
 import com.munte.KickOffBet.domain.entity.VerificationToken;
 import com.munte.KickOffBet.domain.enums.TokenType;
 import com.munte.KickOffBet.domain.enums.UserRole;
 import com.munte.KickOffBet.domain.enums.UserStatus;
+import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.repository.VerificationTokenRepository;
+import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.support.IntegrationTestBase;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,8 +28,10 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,6 +51,8 @@ class AuthIntegrationTest extends IntegrationTestBase {
 
     @Autowired UserRepository userRepository;
     @Autowired VerificationTokenRepository tokenRepository;
+    @Autowired AuthService authService;
+    @Autowired PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void storageReturnsUrl() {
@@ -244,6 +253,56 @@ class AuthIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("You must be at least 18 years old to register"));
         verify(storageService, never()).uploadFile(any(), anyString());
+    }
+
+    @Test
+    void ageIsCheckedOnTheUtcDateWhateverTheServerZone() {
+        LocalDate utcToday = LocalDate.now(ZoneOffset.UTC);
+        TimeZone original = TimeZone.getDefault();
+        // A zone whose date differs from UTC's right now: 14h ahead from 10:00 UTC, 12h behind before 12:00 UTC
+        boolean ahead = LocalDateTime.now(ZoneOffset.UTC).getHour() >= 12;
+        TimeZone.setDefault(TimeZone.getTimeZone(ahead ? "Etc/GMT-14" : "Etc/GMT+12"));
+        try {
+            if (ahead) {
+                // 18 tomorrow in UTC, already 18 by the server's local date
+                RegisterRequest request = registerRequest("utc-young@kickoffbet.test", utcToday.plusDays(1).minusYears(18));
+                assertThatThrownBy(() -> authService.register(request, filePart("idCard", "id.png")))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage("You must be at least 18 years old to register");
+            } else {
+                // 18 today in UTC, still 17 by the server's local date
+                RegisterRequest request = registerRequest("utc-adult@kickoffbet.test", utcToday.minusYears(18));
+                authService.register(request, filePart("idCard", "id.png"));
+                assertThat(userRepository.existsByEmail("utc-adult@kickoffbet.test")).isTrue();
+            }
+        } finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    @Test
+    void uploadedIdCardIsDeletedWhenTheRegistrationRollsBack() {
+        RegisterRequest request = registerRequest("rolled-back@kickoffbet.test", LocalDate.of(1990, 1, 1));
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            authService.register(request, filePart("idCard", "id.png"));
+            verify(storageService, never()).deleteFile(any(), any());
+            status.setRollbackOnly();
+        });
+
+        verify(storageService).deleteFile("id-cards", ID_CARD_URL);
+        verify(emailService, never()).sendVerificationEmail(any(), any());
+        assertThat(userRepository.existsByEmail("rolled-back@kickoffbet.test")).isFalse();
+    }
+
+    private static RegisterRequest registerRequest(String email, LocalDate birthDate) {
+        RegisterRequest request = new RegisterRequest();
+        request.setFirstName("Ana");
+        request.setLastName("Pop");
+        request.setEmail(email);
+        request.setPassword("Secret123");
+        request.setBirthDate(birthDate);
+        return request;
     }
 
     @Test

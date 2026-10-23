@@ -6,15 +6,15 @@ import com.munte.KickOffBet.domain.entity.League;
 import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
-import com.munte.KickOffBet.events.Match.*;
+import com.munte.KickOffBet.events.Match.MatchesEvent;
 import com.munte.KickOffBet.exceptions.RateLimitException;
+import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
 
 import com.munte.KickOffBet.services.sports.DataImportService;
 import com.munte.KickOffBet.services.sports.MatchService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,9 +49,6 @@ import java.util.stream.Stream;
 @Slf4j
 public class DataImportServiceImpl implements DataImportService {
 
-    /** External id of the placeholder team used while a fixture's team is not known yet (e.g. cup draws). */
-    static final long TBD_TEAM_EXTERNAL_ID = -1L;
-
     private final FootballDataClient footballDataClient;
     private final LeagueRepository leagueRepository;
     private final TeamRepository teamRepository;
@@ -59,6 +56,7 @@ public class DataImportServiceImpl implements DataImportService {
     private final ApplicationEventPublisher eventPublisher;
     private final ApplicationContext applicationContext;
     private final PlatformTransactionManager transactionManager;
+    private final MatchService matchService;
     private final AtomicReference<Team> cachedTbdTeam = new AtomicReference<>();
 
     @Value("${sync.api-delay-ms:6500}")
@@ -100,10 +98,10 @@ public class DataImportServiceImpl implements DataImportService {
             // rollback of that one would leave the cache pointing at a team that does not exist
             Team tbd;
             try {
-                tbd = inNewTransaction(() -> teamRepository.findByExternalId(TBD_TEAM_EXTERNAL_ID)
+                tbd = inNewTransaction(() -> teamRepository.findByExternalId(Team.TBD_EXTERNAL_ID)
                         .orElseGet(() -> {
                             final Team t = new Team();
-                            t.setExternalId(TBD_TEAM_EXTERNAL_ID);
+                            t.setExternalId(Team.TBD_EXTERNAL_ID);
                             t.setName("To Be Determined");
                             t.setExternalProvider(EXTERNAL_PROVIDER);
                             t.setActive(true);
@@ -111,7 +109,7 @@ public class DataImportServiceImpl implements DataImportService {
                         }));
             } catch (DataIntegrityViolationException e) {
                 // Another instance created it at the same moment
-                tbd = inNewTransaction(() -> teamRepository.findByExternalId(TBD_TEAM_EXTERNAL_ID).orElseThrow());
+                tbd = inNewTransaction(() -> teamRepository.findByExternalId(Team.TBD_EXTERNAL_ID).orElseThrow());
             }
             cachedTbdTeam.set(tbd);
             return tbd;
@@ -177,7 +175,7 @@ public class DataImportServiceImpl implements DataImportService {
     public void syncTeams(String leagueCode) {
         log.info("Syncing teams for league: {}", leagueCode);
         final League league = leagueRepository.findByCode(leagueCode)
-                .orElseThrow(() -> new EntityNotFoundException("League " + leagueCode + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("League " + leagueCode + " not found"));
 
         final List<FdTeamDto> apiTeamDtos = footballDataClient.fetchTeamsByLeague(leagueCode);
         if (apiTeamDtos.isEmpty()) {
@@ -251,7 +249,7 @@ public class DataImportServiceImpl implements DataImportService {
 
     private void requireLeague(String leagueCode) {
         if (leagueRepository.findByCode(leagueCode).isEmpty()) {
-            throw new EntityNotFoundException("League " + leagueCode + " not found");
+            throw new ResourceNotFoundException("League " + leagueCode + " not found");
         }
     }
 
@@ -451,12 +449,12 @@ public class DataImportServiceImpl implements DataImportService {
             match.setStatusOverridden(false);
             return current;
         }
-        if (current == MatchStatus.FINISHED || current == MatchStatus.CANCELLED) {
+        if (current != null && current.isFinal()) {
             log.warn("Match {} is {}; ignoring provider status {}", match.getExternalId(), current, apiStatus);
             return current;
         }
         if (match.isStatusOverridden()) {
-            if (progress(apiStatus) <= progress(current)) {
+            if (!apiStatus.isAheadOf(current)) {
                 log.debug("Match {} keeps admin status {} over provider status {}", match.getExternalId(), current, apiStatus);
                 return current;
             }
@@ -469,16 +467,6 @@ public class DataImportServiceImpl implements DataImportService {
             return current;
         }
         return apiStatus;
-    }
-
-    private static int progress(MatchStatus status) {
-        if (status == null) return -1;
-        return switch (status) {
-            case UNKNOWN -> -1;
-            case SCHEDULED, POSTPONED, SUSPENDED -> 0;
-            case LIVE -> 1;
-            case FINISHED, CANCELLED -> 2;
-        };
     }
 
     private static FdMatchDto.FdTimeScoreDto ninetyMinuteScore(FdMatchDto dto) {
@@ -497,14 +485,8 @@ public class DataImportServiceImpl implements DataImportService {
         batches.forEach((status, matches) -> {
             if (matches.isEmpty()) return;
             log.info("Publishing batch event for {} matches with status: {}", matches.size(), status);
-            switch (status) {
-                case SCHEDULED -> eventPublisher.publishEvent(new MatchesScheduledEvent(matches));
-                case LIVE -> eventPublisher.publishEvent(new MatchesStartedEvent(matches));
-                case FINISHED -> eventPublisher.publishEvent(new MatchesFinishedEvent(matches));
-                case SUSPENDED, POSTPONED -> eventPublisher.publishEvent(new MatchesDelayedEvent(matches));
-                case CANCELLED -> eventPublisher.publishEvent(new MatchesCanceledEvent(matches));
-                case UNKNOWN -> log.warn("Skipping event publishing for matches with unknown status");
-            }
+            MatchesEvent.of(status, matches).ifPresentOrElse(eventPublisher::publishEvent,
+                    () -> log.warn("Skipping event publishing for matches with unknown status"));
         });
     }
 
@@ -560,7 +542,7 @@ public class DataImportServiceImpl implements DataImportService {
         }
         // Upcoming matches may have been priced before older seasons were imported (e.g. on the first
         // population of the database): price them once more now that the whole history is in place
-        applicationContext.getBean(MatchService.class).recalculateScheduledAutomaticOdds();
+        matchService.recalculateScheduledAutomaticOdds();
         log.info("### FULL SYNC COMPLETED ###");
     }
 

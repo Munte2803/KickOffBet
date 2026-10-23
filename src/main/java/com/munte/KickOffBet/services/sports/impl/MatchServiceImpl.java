@@ -7,7 +7,8 @@ import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MarketType;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
-import com.munte.KickOffBet.events.Match.*;
+import com.munte.KickOffBet.events.Match.MatchesEvent;
+import com.munte.KickOffBet.events.Match.MatchesScheduledEvent;
 import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.exceptions.ConflictException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
@@ -60,18 +61,6 @@ public class MatchServiceImpl implements MatchService {
             MarketType.OVER_UNDER, EnumSet.of(BetOption.OVER, BetOption.UNDER),
             MarketType.BTTS, EnumSet.of(BetOption.YES, BetOption.NO));
 
-    // Status changes an admin may make. FINISHED and CANCELLED are final: tickets are already settled or
-    // refunded. Moving to FINISHED also needs the kick-off to have passed and a score; moving to SCHEDULED
-    // needs a kick-off in the future (see updateMatchStatus).
-    private static final Map<MatchStatus, Set<MatchStatus>> ALLOWED_STATUS_TRANSITIONS = Map.of(
-            SCHEDULED, EnumSet.of(LIVE, FINISHED, POSTPONED, SUSPENDED, CANCELLED),
-            LIVE, EnumSet.of(SCHEDULED, FINISHED, SUSPENDED, CANCELLED),
-            POSTPONED, EnumSet.of(SCHEDULED, CANCELLED),
-            SUSPENDED, EnumSet.of(SCHEDULED, LIVE, FINISHED, POSTPONED, CANCELLED),
-            UNKNOWN, EnumSet.of(SCHEDULED, LIVE, FINISHED, POSTPONED, SUSPENDED, CANCELLED),
-            FINISHED, EnumSet.noneOf(MatchStatus.class),
-            CANCELLED, EnumSet.noneOf(MatchStatus.class));
-
     private final MatchMapper matchMapper;
     private final MatchRepository matchRepository;
     private final LeagueRepository leagueRepository;
@@ -113,7 +102,7 @@ public class MatchServiceImpl implements MatchService {
         if (!team.isActive()) {
             throw new BusinessException("Team " + team.getName() + " is inactive");
         }
-        if (Long.valueOf(DataImportServiceImpl.TBD_TEAM_EXTERNAL_ID).equals(team.getExternalId())) {
+        if (Long.valueOf(Team.TBD_EXTERNAL_ID).equals(team.getExternalId())) {
             throw new BusinessException("A match cannot be created with an undetermined team");
         }
         return team;
@@ -181,8 +170,7 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public Match updateMatchOffers(UUID matchId, UpdateMatchRequest request) {
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Match not found"));
+        Match match = getMatchById(matchId);
 
         if (match.getStatus() != SCHEDULED) {
             throw new BusinessException("Odds can only be changed for scheduled matches");
@@ -228,8 +216,7 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public Match updateMatchStatus(UUID matchId, UpdateMatchStatusRequest request) {
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Match not found"));
+        Match match = getMatchById(matchId);
 
         MatchStatus current = match.getStatus();
         MatchStatus target = request.getStatus();
@@ -239,11 +226,11 @@ public class MatchServiceImpl implements MatchService {
             throw new BusinessException("Cannot change status to same type");
         }
 
-        if (current == FINISHED || current == CANCELLED) {
+        if (current.isFinal()) {
             throw new BusinessException("Cannot change status for " + current.name().toLowerCase() + " matches");
         }
 
-        if (!ALLOWED_STATUS_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
+        if (!current.canTransitionTo(target)) {
             throw new BusinessException("Invalid status transition");
         }
 
@@ -260,13 +247,11 @@ public class MatchServiceImpl implements MatchService {
                 if (match.getExternalId() == null) {
                     reactivateAutomaticOffers(match);
                 }
-                eventPublisher.publishEvent(new MatchesScheduledEvent(matchForEvent));
             }
             case LIVE -> {
                 if (match.getStartTime().isAfter(now)) {
                     match.setStartTime(now);
                 }
-                eventPublisher.publishEvent(new MatchesStartedEvent(matchForEvent));
             }
             case FINISHED -> {
                 if (match.getStartTime().isAfter(now)) {
@@ -277,12 +262,11 @@ public class MatchServiceImpl implements MatchService {
                 }
                 match.setFtHome(request.getFtHome());
                 match.setFtAway(request.getFtAway());
-                eventPublisher.publishEvent(new MatchesFinishedEvent(matchForEvent));
             }
-            case SUSPENDED, POSTPONED -> eventPublisher.publishEvent(new MatchesDelayedEvent(matchForEvent));
-            case CANCELLED -> eventPublisher.publishEvent(new MatchesCanceledEvent(matchForEvent));
-            default -> throw new BusinessException("Invalid status transition");
+            case SUSPENDED, POSTPONED, CANCELLED -> { }
+            case UNKNOWN -> throw new BusinessException("Invalid status transition");
         }
+        MatchesEvent.of(target, matchForEvent).ifPresent(eventPublisher::publishEvent);
 
         match.setStatus(target);
         // The sync keeps the admin's status until the provider reports one further along (see DataImportServiceImpl)
@@ -294,8 +278,7 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public Match updateMatchTime(UUID matchId, LocalDateTime startTime) {
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Match not found"));
+        Match match = getMatchById(matchId);
 
         if (match.getStatus() == LIVE || match.getStatus() == FINISHED) {
             throw new BusinessException("Cannot change start time for a match that has already started or finished");
@@ -327,8 +310,7 @@ public class MatchServiceImpl implements MatchService {
     @Override
     @Transactional
     public void switchMatchActive(UUID matchId, boolean active) {
-        Match match = matchRepository.findById(matchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Match not found"));
+        Match match = getMatchById(matchId);
         match.setActive(active);
         // Visibility only: the sync keeps updating the match. Offers follow the match, except the ones an admin
         // edited or toggled individually, which keep their own state.
@@ -397,9 +379,9 @@ public class MatchServiceImpl implements MatchService {
         return stuck;
     }
 
+    // Not transactional: processMatches waits for the odds lock, and must not hold a connection meanwhile
     @Override
     @Async("threadPoolTaskExecutor")
-    @Transactional(readOnly = true)
     public void recalculateScheduledAutomaticOdds() {
         MatchSearchRequest request = new MatchSearchRequest();
         request.setStatus(SCHEDULED);

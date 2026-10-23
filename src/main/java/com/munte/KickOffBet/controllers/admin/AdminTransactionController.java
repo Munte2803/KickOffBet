@@ -31,7 +31,7 @@ import java.util.UUID;
 public class AdminTransactionController {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "createdAt", "amount", "transactionType", "status"
+            "createdAt", "amount", "transactionType", "status", "id"
     );
 
     private final WalletService walletService;

@@ -29,7 +29,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminMatchController {
 
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("startTime", "createdAt", "status");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("startTime", "createdAt", "status", "id");
 
     private final MatchService matchService;
     private final MatchMapper matchMapper;

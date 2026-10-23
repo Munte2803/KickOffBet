@@ -95,7 +95,7 @@ class TicketServiceImplTest {
     // ---------------------------------------------------------------- settlement
 
     @Nested
-    @DisplayName("settleTickets")
+    @DisplayName("settleLockedTickets")
     class SettleTickets {
 
         @Test
@@ -104,7 +104,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.WON);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.WON);
             verify(walletService).payout(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("38.85")) == 0), eq(t.getId()));
@@ -118,7 +118,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10", "1.50");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.LOST, TicketSelectionStatus.WON);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.LOST);
             verifyNoInteractions(walletService);
@@ -130,7 +130,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10");
             grade(t, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.LOST);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.LOST);
             verifyNoInteractions(walletService);
@@ -144,7 +144,7 @@ class TicketServiceImplTest {
             Ticket lostFirst = ticketWith("10.00", "1.85", "2.10");
             grade(lostFirst, TicketSelectionStatus.LOST, TicketSelectionStatus.PENDING);
 
-            service.settleTickets(Set.of(pendingFirst, lostFirst));
+            service.settleLockedTickets(Set.of(pendingFirst, lostFirst));
 
             assertThat(pendingFirst.getStatus()).isEqualTo(TicketStatus.LOST);
             assertThat(lostFirst.getStatus()).isEqualTo(TicketStatus.LOST);
@@ -158,7 +158,7 @@ class TicketServiceImplTest {
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.WON);
             user.setStatus(UserStatus.SUSPENDED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.PENDING);
             verifyNoInteractions(walletService);
@@ -171,7 +171,7 @@ class TicketServiceImplTest {
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.LOST);
             user.setStatus(UserStatus.SUSPENDED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.LOST);
         }
@@ -182,7 +182,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.PENDING);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.PENDING);
             verifyNoInteractions(walletService);
@@ -194,7 +194,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10", "3.00");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.WON);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.WON);
             assertThat(t.getTotalOdd()).isEqualByComparingTo("5.55");
@@ -208,7 +208,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.01", "1.85", "2.10");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.CANCELLED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             // 10.01 x 1.85 = 18.5185
             assertThat(t.getPotentialPayout()).isEqualTo(new BigDecimal("18.52"));
@@ -221,7 +221,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("10.00", "1.85", "2.10");
             grade(t, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.CANCELLED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.CANCELLED);
             verify(walletService).refund(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("10.00")) == 0), eq(t.getId()));
@@ -235,7 +235,7 @@ class TicketServiceImplTest {
             grade(t, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.CANCELLED,
                     TicketSelectionStatus.CANCELLED, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.CANCELLED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.CANCELLED);
             verify(walletService).refund(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("10.00")) == 0), eq(t.getId()));
@@ -249,13 +249,13 @@ class TicketServiceImplTest {
 
             // round 1: first match cancelled, second still to play
             grade(t, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.PENDING);
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
             assertThat(t.getStatus()).isEqualTo(TicketStatus.PENDING);
             verifyNoInteractions(walletService);
 
             // round 2: second match won
             grade(t, TicketSelectionStatus.CANCELLED, TicketSelectionStatus.WON);
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getStatus()).isEqualTo(TicketStatus.WON);
             assertThat(t.getTotalOdd()).isEqualByComparingTo("3.00");
@@ -269,7 +269,7 @@ class TicketServiceImplTest {
             assertThat(t.getPotentialPayout()).isEqualByComparingTo("200000.00");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.WON, TicketSelectionStatus.CANCELLED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getPotentialPayout()).isEqualByComparingTo("200000.00");
             verify(walletService).payout(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("200000.00")) == 0), eq(t.getId()));
@@ -281,7 +281,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("50000.00", "3.00", "5.00");
             grade(t, TicketSelectionStatus.WON, TicketSelectionStatus.CANCELLED);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             assertThat(t.getPotentialPayout()).isEqualByComparingTo("150000.00");
             verify(walletService).payout(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("150000.00")) == 0), eq(t.getId()));
@@ -293,7 +293,7 @@ class TicketServiceImplTest {
             Ticket t = ticketWith("50000.00", "10.00");
             grade(t, TicketSelectionStatus.WON);
 
-            service.settleTickets(Set.of(t));
+            service.settleLockedTickets(Set.of(t));
 
             verify(walletService).payout(eq(user.getId()), argThat(a -> a.compareTo(new BigDecimal("200000.00")) == 0), eq(t.getId()));
         }
@@ -309,7 +309,7 @@ class TicketServiceImplTest {
             grade(voided, TicketSelectionStatus.CANCELLED);
             Set<Ticket> tickets = new LinkedHashSet<>(List.of(won, lost, voided));
 
-            service.settleTickets(tickets);
+            service.settleLockedTickets(tickets);
 
             assertThat(won.getStatus()).isEqualTo(TicketStatus.WON);
             assertThat(lost.getStatus()).isEqualTo(TicketStatus.LOST);

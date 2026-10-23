@@ -1,9 +1,10 @@
 package com.munte.KickOffBet.services.odds.impl;
 
+import com.munte.KickOffBet.config.BettingProperties;
 import com.munte.KickOffBet.domain.entity.TeamMatchMetrics;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -66,52 +67,27 @@ final class OddsTestFixtures {
     private OddsTestFixtures() {
     }
 
-    static OddsCalibrator productionCalibrator() {
-        OddsCalibrator c = new OddsCalibrator();
-        ReflectionTestUtils.setField(c, "margin", MARGIN);
-        ReflectionTestUtils.setField(c, "homeAdvantage", HOME_ADVANTAGE);
-        ReflectionTestUtils.setField(c, "leagueBaselineHome", LEAGUE_BASELINE_HOME);
-        ReflectionTestUtils.setField(c, "leagueBaselineAway", LEAGUE_BASELINE_AWAY);
-        ReflectionTestUtils.setField(c, "multiplicativeWeight", LAMBDA_MULTIPLICATIVE_WEIGHT);
-        ReflectionTestUtils.setField(c, "oddsFloor", ODDS_FLOOR);
-        ReflectionTestUtils.setField(c, "oddsCap", ODDS_CAP);
-        ReflectionTestUtils.setField(c, "lambdaCap", LAMBDA_CAP);
-        ReflectionTestUtils.setField(c, "drawMinProbability", DRAW_MIN_PROBABILITY);
-        ReflectionTestUtils.setField(c, "overProbabilityCap15", OVER_CAP_15);
-        ReflectionTestUtils.setField(c, "overProbabilityCap25", OVER_CAP_25);
-        ReflectionTestUtils.setField(c, "overProbabilityCap35", OVER_CAP_35);
-        ReflectionTestUtils.setField(c, "weightSeason", WEIGHT_SEASON);
-        ReflectionTestUtils.setField(c, "weightLast5", WEIGHT_LAST5);
-        ReflectionTestUtils.setField(c, "weightDrawPoisson", WEIGHT_DRAW_POISSON);
-        ReflectionTestUtils.setField(c, "weightDrawHistorical", WEIGHT_DRAW_HISTORICAL);
-        ReflectionTestUtils.setField(c, "weightOverPoisson", WEIGHT_OVER_POISSON);
-        ReflectionTestUtils.setField(c, "weightOverHistorical", WEIGHT_OVER_HISTORICAL);
-        ReflectionTestUtils.setField(c, "weightBttsPoisson", WEIGHT_BTTS_POISSON);
-        ReflectionTestUtils.setField(c, "weightBttsHistorical", WEIGHT_BTTS_HISTORICAL);
-        return c;
+    /** The betting.* section of application.properties. */
+    static BettingProperties productionProperties() {
+        return new BettingProperties(MARGIN, HOME_ADVANTAGE, LAMBDA_MULTIPLICATIVE_WEIGHT,
+                LEAGUE_BASELINE_HOME, LEAGUE_BASELINE_AWAY, ODDS_FLOOR, ODDS_CAP, LAMBDA_CAP, DRAW_MIN_PROBABILITY,
+                new BettingProperties.DixonColes(RHO),
+                OVER_CAP_15, OVER_CAP_25, OVER_CAP_35,
+                new BettingProperties.Weight(WEIGHT_SEASON, WEIGHT_LAST5, WEIGHT_DRAW_POISSON, WEIGHT_DRAW_HISTORICAL,
+                        WEIGHT_OVER_POISSON, WEIGHT_OVER_HISTORICAL, WEIGHT_BTTS_POISSON, WEIGHT_BTTS_HISTORICAL),
+                new BettingProperties.Poisson(MAX_GOALS),
+                new BettingProperties.Lines(Arrays.stream(OVER_UNDER_LINES).boxed().toList()),
+                new BettingProperties.Defaults(DEF_SEASON_HOME_AVG_SCORED, DEF_SEASON_HOME_AVG_CONCEDED,
+                        DEF_SEASON_AWAY_AVG_SCORED, DEF_SEASON_AWAY_AVG_CONCEDED, DEF_SEASON_WIN_RATE,
+                        DEF_SEASON_DRAW_RATE, DEF_SEASON_OVER15_RATE, DEF_SEASON_OVER25_RATE, DEF_SEASON_BTTS_RATE,
+                        DEF_LAST5_AVG_SCORED, DEF_LAST5_AVG_CONCEDED, DEF_LAST5_DRAW_RATE, DEF_LAST5_OVER15_RATE,
+                        DEF_LAST5_OVER25_RATE, DEF_LAST5_BTTS_RATE),
+                new BettingProperties.Shrinkage(
+                        new BettingProperties.PriorMatches(PRIOR_MATCHES_SEASON, PRIOR_MATCHES_LAST5)));
     }
 
-    static void configureGenerator(OddsGeneratorServiceImpl s) {
-        ReflectionTestUtils.setField(s, "maxGoals", MAX_GOALS);
-        ReflectionTestUtils.setField(s, "dixonColesRho", RHO);
-        ReflectionTestUtils.setField(s, "overUnderLines", OVER_UNDER_LINES.clone());
-        ReflectionTestUtils.setField(s, "defaultSeasonHomeAvgScored", DEF_SEASON_HOME_AVG_SCORED);
-        ReflectionTestUtils.setField(s, "defaultSeasonHomeAvgConceded", DEF_SEASON_HOME_AVG_CONCEDED);
-        ReflectionTestUtils.setField(s, "defaultSeasonAwayAvgScored", DEF_SEASON_AWAY_AVG_SCORED);
-        ReflectionTestUtils.setField(s, "defaultSeasonAwayAvgConceded", DEF_SEASON_AWAY_AVG_CONCEDED);
-        ReflectionTestUtils.setField(s, "defaultSeasonWinRate", DEF_SEASON_WIN_RATE);
-        ReflectionTestUtils.setField(s, "defaultSeasonDrawRate", DEF_SEASON_DRAW_RATE);
-        ReflectionTestUtils.setField(s, "defaultSeasonOver15Rate", DEF_SEASON_OVER15_RATE);
-        ReflectionTestUtils.setField(s, "defaultSeasonOver25Rate", DEF_SEASON_OVER25_RATE);
-        ReflectionTestUtils.setField(s, "defaultSeasonBttsRate", DEF_SEASON_BTTS_RATE);
-        ReflectionTestUtils.setField(s, "defaultLast5AvgScored", DEF_LAST5_AVG_SCORED);
-        ReflectionTestUtils.setField(s, "defaultLast5AvgConceded", DEF_LAST5_AVG_CONCEDED);
-        ReflectionTestUtils.setField(s, "defaultLast5DrawRate", DEF_LAST5_DRAW_RATE);
-        ReflectionTestUtils.setField(s, "defaultLast5Over15Rate", DEF_LAST5_OVER15_RATE);
-        ReflectionTestUtils.setField(s, "defaultLast5Over25Rate", DEF_LAST5_OVER25_RATE);
-        ReflectionTestUtils.setField(s, "defaultLast5BttsRate", DEF_LAST5_BTTS_RATE);
-        ReflectionTestUtils.setField(s, "seasonPriorMatches", PRIOR_MATCHES_SEASON);
-        ReflectionTestUtils.setField(s, "last5PriorMatches", PRIOR_MATCHES_LAST5);
+    static OddsCalibrator productionCalibrator() {
+        return new OddsCalibrator(productionProperties());
     }
 
     /** A team with a full season of history whose every metric has the given goal average and rate. */

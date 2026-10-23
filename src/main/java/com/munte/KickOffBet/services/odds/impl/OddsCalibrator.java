@@ -1,8 +1,8 @@
 package com.munte.KickOffBet.services.odds.impl;
 
+import com.munte.KickOffBet.config.BettingProperties;
 import com.munte.KickOffBet.domain.entity.TeamMatchMetrics;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -11,11 +11,8 @@ import java.math.RoundingMode;
 @Component
 public class OddsCalibrator {
 
-    @Value("${betting.margin:0.92}")
-    private double margin;
-
-    @Value("${betting.home-advantage:1.20}")
-    private double homeAdvantage;
+    private final double margin;
+    private final double homeAdvantage;
 
     // Lambda is a blend of a multiplicative term (attack*defense/baseline) and the old
     // additive term. The multiplicative part spreads the two lambdas apart on mismatches
@@ -23,59 +20,51 @@ public class OddsCalibrator {
     // additive part keeps the overall goal level. The baselines are calibrated from the
     // league goal means (home 1.568 / away 1.237). Weight+baselines fitted against 3572
     // finished matches (BTTS 54.8%, 1X2/Over within ~1pp).
-    @Value("${betting.league-baseline-home:1.44}")
-    private double leagueBaselineHome;
+    private final double leagueBaselineHome;
+    private final double leagueBaselineAway;
+    private final double multiplicativeWeight;
 
-    @Value("${betting.league-baseline-away:1.50}")
-    private double leagueBaselineAway;
+    private final BigDecimal oddsFloor;
+    private final BigDecimal oddsCap;
+    private final double lambdaCap;
+    private final double drawMinProbability;
 
-    @Value("${betting.lambda-multiplicative-weight:0.5}")
-    private double multiplicativeWeight;
+    private final double overProbabilityCap15;
+    private final double overProbabilityCap25;
+    private final double overProbabilityCap35;
 
-    @Value("${betting.odds-floor:1.10}")
-    private BigDecimal oddsFloor;
+    private final double weightSeason;
+    private final double weightLast5;
+    private final double weightDrawPoisson;
+    private final double weightDrawHistorical;
+    private final double weightOverPoisson;
+    private final double weightOverHistorical;
+    private final double weightBttsPoisson;
+    private final double weightBttsHistorical;
 
-    @Value("${betting.odds-cap:50.00}")
-    private BigDecimal oddsCap;
-
-    @Value("${betting.lambda-cap:4.0}")
-    private double lambdaCap;
-
-    @Value("${betting.draw-min-probability:0.15}")
-    private double drawMinProbability;
-
-    @Value("${betting.over-probability-cap-15:0.92}")
-    private double overProbabilityCap15;
-
-    @Value("${betting.over-probability-cap-25:0.78}")
-    private double overProbabilityCap25;
-
-    @Value("${betting.over-probability-cap-35:0.68}")
-    private double overProbabilityCap35;
-
-    @Value("${betting.weight.season:0.4}")
-    private double weightSeason;
-
-    @Value("${betting.weight.last5:0.6}")
-    private double weightLast5;
-
-    @Value("${betting.weight.draw-poisson:0.7}")
-    private double weightDrawPoisson;
-
-    @Value("${betting.weight.draw-historical:0.3}")
-    private double weightDrawHistorical;
-
-    @Value("${betting.weight.over-poisson:0.8}")
-    private double weightOverPoisson;
-
-    @Value("${betting.weight.over-historical:0.2}")
-    private double weightOverHistorical;
-
-    @Value("${betting.weight.btts-poisson:0.8}")
-    private double weightBttsPoisson;
-
-    @Value("${betting.weight.btts-historical:0.2}")
-    private double weightBttsHistorical;
+    public OddsCalibrator(BettingProperties betting) {
+        this.margin = betting.margin();
+        this.homeAdvantage = betting.homeAdvantage();
+        this.leagueBaselineHome = betting.leagueBaselineHome();
+        this.leagueBaselineAway = betting.leagueBaselineAway();
+        this.multiplicativeWeight = betting.lambdaMultiplicativeWeight();
+        this.oddsFloor = betting.oddsFloor();
+        this.oddsCap = betting.oddsCap();
+        this.lambdaCap = betting.lambdaCap();
+        this.drawMinProbability = betting.drawMinProbability();
+        this.overProbabilityCap15 = betting.overProbabilityCap15();
+        this.overProbabilityCap25 = betting.overProbabilityCap25();
+        this.overProbabilityCap35 = betting.overProbabilityCap35();
+        BettingProperties.Weight weight = betting.weight();
+        this.weightSeason = weight.season();
+        this.weightLast5 = weight.last5();
+        this.weightDrawPoisson = weight.drawPoisson();
+        this.weightDrawHistorical = weight.drawHistorical();
+        this.weightOverPoisson = weight.overPoisson();
+        this.weightOverHistorical = weight.overHistorical();
+        this.weightBttsPoisson = weight.bttsPoisson();
+        this.weightBttsHistorical = weight.bttsHistorical();
+    }
 
     public double calculateLambdaHome(TeamMatchMetrics h, TeamMatchMetrics a) {
         double attack = (coalesce(h.getSeasonHomeAvgScored()) * weightSeason) + (coalesce(h.getLast5AvgScored()) * weightLast5);

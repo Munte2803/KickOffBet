@@ -98,8 +98,8 @@ public class TicketServiceImpl implements TicketService {
 
     }
 
-    @Override
-    public void settleTickets(Set<Ticket> tickets) {
+    // Only ever called with tickets locked by settleTicket: unlocked, two settlements could pay a ticket twice
+    void settleLockedTickets(Set<Ticket> tickets) {
 
         for (Ticket ticket : tickets) {
 
@@ -127,7 +127,7 @@ public class TicketServiceImpl implements TicketService {
             if (hasPending) continue;
 
             // Money can't be moved for a suspended or inactive user: the ticket stays PENDING and is
-            // settled by settlePendingTicketsOfUser once the account is active again
+            // settled by TicketSettlementService#settlePendingTicketsOfUser once the account is active again
             if (ticket.getUser().getStatus() != UserStatus.ACTIVE) continue;
 
             // Voided (CANCELLED) selections count as odds 1.00. The effective odds are rebuilt
@@ -166,16 +166,7 @@ public class TicketServiceImpl implements TicketService {
     public void settleTicket(UUID ticketId) {
         ticketRepository.findByIdForUpdate(ticketId)
                 .filter(ticket -> ticket.getStatus() == TicketStatus.PENDING)
-                .ifPresent(ticket -> settleTickets(Set.of(ticket)));
-    }
-
-    @Override
-    @Transactional
-    public void settlePendingTicketsOfUser(UUID userId) {
-        List<Ticket> pending = ticketRepository.findByUserIdAndStatusWithSelections(userId, TicketStatus.PENDING);
-        if (!pending.isEmpty()) {
-            settleTickets(new LinkedHashSet<>(pending));
-        }
+                .ifPresent(ticket -> settleLockedTickets(Set.of(ticket)));
     }
 
     @Override

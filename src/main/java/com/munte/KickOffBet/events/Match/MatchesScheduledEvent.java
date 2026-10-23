@@ -4,7 +4,7 @@ import com.munte.KickOffBet.domain.entity.Match;
 
 import java.util.List;
 
-public record MatchesScheduledEvent(List<Match> matches) {
+public record MatchesScheduledEvent(List<Match> matches) implements MatchesEvent {
 }
 
 

@@ -9,6 +9,7 @@ import com.munte.KickOffBet.domain.enums.MarketType;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamMatchMetricsRepository;
+import com.munte.KickOffBet.services.odds.OddsGeneratorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,8 +50,7 @@ class OddsGeneratorServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new OddsGeneratorServiceImpl(matchRepository, metricsRepository, new MarketProcessor(),
-                productionCalibrator(), applicationContext);
-        configureGenerator(service);
+                productionCalibrator(), applicationContext, productionProperties());
     }
 
     // ---------------------------------------------------------------- helpers
@@ -551,8 +551,8 @@ class OddsGeneratorServiceImplTest {
     @Test
     @DisplayName("processMatches delegates to the transactional proxy of itself")
     void processMatchesDelegatesThroughProxy() {
-        OddsGeneratorServiceImpl proxy = mock(OddsGeneratorServiceImpl.class);
-        when(applicationContext.getBean(OddsGeneratorServiceImpl.class)).thenReturn(proxy);
+        OddsGeneratorService proxy = mock(OddsGeneratorService.class);
+        when(applicationContext.getBean(OddsGeneratorService.class)).thenReturn(proxy);
 
         service.processMatches(Set.of(5L, 6L));
 

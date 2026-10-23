@@ -26,7 +26,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminLeagueController {
 
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "code", "createdAt");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "code", "createdAt", "id");
 
     private final LeagueService leagueService;
     private final LeagueMapper leagueMapper;

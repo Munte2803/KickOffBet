@@ -180,6 +180,9 @@ class TicketIntegrationTest extends IntegrationTestBase {
         place(token, 50000.01, List.of(selection(offer)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("stake: Maximum stake is 50000 RON"));
+        place(token, new BigDecimal("10.555"), List.of(selection(offer)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("stake: Stake can have at most 2 decimals"));
         place(token, null, List.of(selection(offer)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error", startsWith("stake: ")));
@@ -305,7 +308,7 @@ class TicketIntegrationTest extends IntegrationTestBase {
     void unverifiedUserCannotBet() throws Exception {
         User pending = data.createUser("pending@kickoffbet.test", UserRole.USER, UserStatus.PENDING, new BigDecimal("100"));
         place(login(pending), 10, List.of(selection(data.offerOf(match, BetOption.HOME))))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Verify your account!"));
         assertThat(ticketRepository.count()).isZero();
     }

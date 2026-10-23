@@ -15,12 +15,14 @@ import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.exceptions.BusinessException;
 import com.munte.KickOffBet.exceptions.ConflictException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
+import com.munte.KickOffBet.exceptions.UnauthorizedException;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.repository.VerificationTokenRepository;
 import com.munte.KickOffBet.security.JwtService;
 import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.services.users.EmailService;
 import com.munte.KickOffBet.services.users.StorageService;
+import com.munte.KickOffBet.util.TransactionHooks;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ConflictException("Email already in use");
         }
 
-        if (LocalDate.now().minusYears(18).isBefore(request.getBirthDate())) {
+        if (LocalDate.now(ZoneOffset.UTC).minusYears(18).isBefore(request.getBirthDate())) {
             throw new BusinessException("You must be at least 18 years old to register");
         }
 
@@ -79,6 +81,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String idCardUrl = storageService.uploadFile(idCard, idCardsBucket);
+        // Nothing references the file if the account is not saved after all
+        TransactionHooks.afterRollback(() -> storageService.deleteFile(idCardsBucket, idCardUrl));
 
         User user = new User();
         user.setFirstName(request.getFirstName());
@@ -104,7 +108,8 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(user, token);
+        User registered = user;
+        TransactionHooks.afterCommit(() -> emailService.sendVerificationEmail(registered, token));
 
         log.info("New user registered: {}", user.getEmail());
 
@@ -203,7 +208,7 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new BusinessException("No authenticated user found");
+            throw new UnauthorizedException("No authenticated user found");
         }
 
         String email = authentication.getName();
@@ -261,7 +266,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(user, token);
+        TransactionHooks.afterCommit(() -> emailService.sendVerificationEmail(user, token));
         log.info("Verification email resent to: {}", email);
     }
 
@@ -288,7 +293,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setUsed(false);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendPasswordResetEmail(user, token);
+        TransactionHooks.afterCommit(() -> emailService.sendPasswordResetEmail(user, token));
         log.info("Password reset email sent to: {}", email);
     }
 
@@ -319,7 +324,7 @@ public class AuthServiceImpl implements AuthService {
 
         verificationToken.setUsed(true);
         verificationTokenRepository.save(verificationToken);
-        emailService.sendPasswordChangedNotification(user);
+        TransactionHooks.afterCommit(() -> emailService.sendPasswordChangedNotification(user));
 
         log.info("Password reset for user: {}", user.getEmail());
     }

@@ -108,6 +108,20 @@ public class GlobalExceptionHandler {
                 .body(new ErrorDto("EXTERNAL_API_ERROR", ex.getMessage()));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorDto> handleUnauthorized(UnauthorizedException ex) {
+        log.warn("Unauthorized: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorDto("UNAUTHORIZED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorDto> handleForbidden(ForbiddenException ex) {
+        log.warn("Forbidden: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorDto("FORBIDDEN", ex.getMessage()));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorDto> handleConflict(ConflictException ex) {
         log.warn("Conflict detected: {}", ex.getMessage());

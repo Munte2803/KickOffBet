@@ -1,6 +1,8 @@
 package com.munte.KickOffBet.services.tickets.impl;
 
 import com.munte.KickOffBet.domain.entity.Ticket;
+import com.munte.KickOffBet.domain.enums.TicketStatus;
+import com.munte.KickOffBet.repository.TicketRepository;
 import com.munte.KickOffBet.services.tickets.TicketSelectionSettlementService;
 import com.munte.KickOffBet.services.tickets.TicketService;
 import com.munte.KickOffBet.services.tickets.TicketSettlementService;
@@ -24,6 +26,7 @@ public class TicketSettlementServiceImpl implements TicketSettlementService {
 
     private final TicketSelectionSettlementService ticketSelectionSettlementService;
     private final TicketService ticketService;
+    private final TicketRepository ticketRepository;
 
     @Override
     public void settleMatches(Set<UUID> matchIds, boolean cancelled) {
@@ -42,6 +45,11 @@ public class TicketSettlementServiceImpl implements TicketSettlementService {
         for (UUID ticketId : ticketIds) {
             settleWithRetry(ticketId);
         }
+    }
+
+    @Override
+    public void settlePendingTicketsOfUser(UUID userId) {
+        settleTickets(ticketRepository.findIdsByUserIdAndStatus(userId, TicketStatus.PENDING));
     }
 
     // A payout/refund updates the versioned User, so a bet or deposit of the same bettor committed meanwhile

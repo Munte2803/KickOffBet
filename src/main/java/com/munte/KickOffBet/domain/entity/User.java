@@ -2,6 +2,7 @@ package com.munte.KickOffBet.domain.entity;
 
 import com.munte.KickOffBet.domain.enums.UserRole;
 import com.munte.KickOffBet.domain.enums.UserStatus;
+import com.munte.KickOffBet.exceptions.InsufficientFundsException;
 import jakarta.persistence.*;
 import jakarta.persistence.Version;
 import lombok.*;
@@ -93,6 +94,18 @@ public class User implements UserDetails {
     // Copied into every JWT; bumped when the password changes so all earlier tokens stop working
     @Column(name = "token_version", nullable = false, columnDefinition = "integer default 0")
     private int tokenVersion = 0;
+
+    public void credit(BigDecimal amount) {
+        balance = balance.add(amount);
+    }
+
+    /** Takes the amount off the balance; never below zero. */
+    public void debit(BigDecimal amount) {
+        if (amount.compareTo(balance) > 0) {
+            throw new InsufficientFundsException();
+        }
+        balance = balance.subtract(amount);
+    }
 
     @Override
     @NonNull

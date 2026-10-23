@@ -1,6 +1,7 @@
 package com.munte.KickOffBet.services.admin.impl;
 
 import com.munte.KickOffBet.exceptions.BusinessException;
+import com.munte.KickOffBet.exceptions.ForbiddenException;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.env.MockEnvironment;
@@ -26,7 +27,7 @@ class SeedServiceImplTest {
     @Test
     void seedIsRefusedInProductionAndWithoutAConfiguredPassword() {
         assertThatThrownBy(() -> seedService("Strong-Seed-1", "prod").runSeed())
-                .isInstanceOf(BusinessException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Seeding is disabled in production");
         assertThatThrownBy(() -> seedService("").runSeed())
                 .isInstanceOf(BusinessException.class)

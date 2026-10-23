@@ -28,9 +28,10 @@ public class OddsCalculationListener {
     private final OddsGeneratorService oddsGeneratorService;
     private final MatchRepository matchRepository;
 
+    // Not transactional: processMatches waits for the odds lock and prices in its own transaction, so a
+    // transaction opened here would hold a database connection for as long as the job waits
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesScheduled(MatchesScheduledEvent event) {
         log.info("RECEIVED: MatchesScheduledEvent for {} matches. Starting odds generation...", event.matches().size());
         oddsGeneratorService.processMatches(event.matches()
@@ -42,9 +43,9 @@ public class OddsCalculationListener {
 
     }
 
+    // Not transactional, like handleMatchesScheduled; the event's matches carry their teams
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("threadPoolTaskExecutor")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleMatchesFinished(MatchesFinishedEvent event) {
         Set<UUID> teamIds = event.matches().stream()
                 .flatMap(m -> Stream.of(m.getHomeTeam().getId(), m.getAwayTeam().getId()))

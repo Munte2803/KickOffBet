@@ -27,7 +27,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AdminTeamController {
 
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt", "id");
 
     private final TeamService teamService;
     private final TeamMapper teamMapper;

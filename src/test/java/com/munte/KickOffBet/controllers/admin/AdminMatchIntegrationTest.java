@@ -6,22 +6,34 @@ import com.munte.KickOffBet.domain.entity.Match;
 import com.munte.KickOffBet.domain.entity.Team;
 import com.munte.KickOffBet.domain.enums.BetOption;
 import com.munte.KickOffBet.domain.enums.MatchStatus;
+import com.munte.KickOffBet.events.Match.MatchesScheduledEvent;
+import com.munte.KickOffBet.listener.OddsCalculationListener;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
+import com.munte.KickOffBet.services.odds.OddsGeneratorService;
+import com.munte.KickOffBet.services.sports.MatchService;
 import com.munte.KickOffBet.support.IntegrationTestBase;
+import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import com.munte.KickOffBet.support.TestDataFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.ResultActions;
 
+import javax.sql.DataSource;
+
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.munte.KickOffBet.support.TestDataFactory.nowUtc;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +51,10 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
 
     @Autowired MatchRepository matchRepository;
     @Autowired TeamRepository teamRepository;
+    @Autowired OddsGeneratorService oddsGeneratorService;
+    @Autowired OddsCalculationListener oddsCalculationListener;
+    @Autowired MatchService matchService;
+    @Autowired DataSource dataSource;
 
     private String admin;
     private League league;
@@ -208,6 +224,46 @@ class AdminMatchIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.content", hasSize(2)));
         mvc.perform(auth(get("/api/admin/matches/search").param("sort", "league.name"), admin))
                 .andExpect(status().isBadRequest());
+        // id as a tie-breaker keeps offset pagination stable (exports)
+        mvc.perform(auth(get("/api/admin/matches/search").param("sort", "startTime,desc").param("sort", "id"), admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(5));
+    }
+
+    @Test
+    void oddsJobsWaitingForTheOddsLockHoldNoDatabaseConnection() {
+        Match match = data.scheduledMatch(league, home, away);
+        match.setExternalId(4242L);
+        match.setManualUpdate(false);
+        matchRepository.save(match);
+        Object oddsGenerator = AopTestUtils.getTargetObject(oddsGeneratorService);
+        ReentrantLock oddsLock = (ReentrantLock) ReflectionTestUtils.getField(oddsGenerator, "lock");
+        HikariPoolMXBean pool = ((HikariDataSource) dataSource).getHikariPoolMXBean();
+        data.awaitAsyncIdle();
+
+        oddsLock.lock();
+        try {
+            // both run on the async executor and queue up behind the lock
+            oddsCalculationListener.handleMatchesScheduled(new MatchesScheduledEvent(List.of(match)));
+            matchService.recalculateScheduledAutomaticOdds();
+            TestDataFactory.await(Duration.ofSeconds(10), "both odds jobs to wait for the lock",
+                    () -> oddsLock.getQueueLength() == 2);
+            assertThat(pool.getActiveConnections()).isZero();
+        } finally {
+            oddsLock.unlock();
+        }
+        data.awaitAsyncIdle();
+    }
+
+    @Test
+    void fractionalScoreIsRejectedInsteadOfTruncated() throws Exception {
+        Match live = data.match(league, home, away, nowUtc().minusMinutes(100), MatchStatus.LIVE);
+
+        mvc.perform(auth(withJson(patch("/api/admin/matches/{id}/status", live.getId()),
+                        Map.of("status", "FINISHED", "ftHome", 2.5, "ftAway", 0)), admin))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorCode("BAD_REQUEST"));
+        assertThat(data.reloadMatch(live.getId()).getStatus()).isEqualTo(MatchStatus.LIVE);
     }
 
     @Test

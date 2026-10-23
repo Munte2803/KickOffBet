@@ -36,7 +36,7 @@ import java.util.UUID;
 public class AdminUserController {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "createdAt", "email", "lastName", "status"
+            "createdAt", "email", "lastName", "status", "id"
     );
 
     private final AuthService authService;

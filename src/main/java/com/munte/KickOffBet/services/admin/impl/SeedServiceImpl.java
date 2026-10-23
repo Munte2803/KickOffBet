@@ -2,6 +2,7 @@ package com.munte.KickOffBet.services.admin.impl;
 
 import com.munte.KickOffBet.domain.dto.api.response.SeedResultDto;
 import com.munte.KickOffBet.exceptions.BusinessException;
+import com.munte.KickOffBet.exceptions.ForbiddenException;
 import com.munte.KickOffBet.services.admin.SeedService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +55,7 @@ public class SeedServiceImpl implements SeedService {
     public SeedResultDto runSeed() {
         // 510 accounts sharing one known password must never exist on the live site
         if (environment.matchesProfiles("prod")) {
-            throw new BusinessException("Seeding is disabled in production");
+            throw new ForbiddenException("Seeding is disabled in production");
         }
         if (seedUserPassword == null || seedUserPassword.isBlank()) {
             throw new BusinessException("Seeding requires seed.user-password (SEED_USER_PASSWORD) to be set");

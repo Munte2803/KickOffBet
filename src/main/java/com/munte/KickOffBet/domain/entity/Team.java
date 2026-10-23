@@ -20,6 +20,9 @@ import java.util.*;
 @NoArgsConstructor @AllArgsConstructor
 public class Team {
 
+    /** External id of the placeholder team used while a fixture's team is not known yet (e.g. cup draws). */
+    public static final long TBD_EXTERNAL_ID = -1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)

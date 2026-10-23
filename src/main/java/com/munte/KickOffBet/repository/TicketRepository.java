@@ -48,14 +48,8 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
 
-    @Query("""
-        SELECT DISTINCT t FROM Ticket t
-        JOIN FETCH t.selections
-        JOIN FETCH t.user
-        WHERE t.user.id = :userId
-          AND t.status = :status
-    """)
-    List<Ticket> findByUserIdAndStatusWithSelections(@Param("userId") UUID userId, @Param("status") TicketStatus status);
+    @Query("SELECT t.id FROM Ticket t WHERE t.user.id = :userId AND t.status = :status")
+    List<UUID> findIdsByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") TicketStatus status);
 
     /**
      * Locks the ticket row so concurrent settlements (parallel match listeners, the reconciler, a user

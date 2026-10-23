@@ -10,7 +10,6 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 public interface TicketService {
@@ -23,11 +22,8 @@ public interface TicketService {
 
     Ticket getTicketById(UUID id);
 
-    void settleTickets(Set<Ticket> tickets);
-
+    /** Settles one PENDING ticket under a row lock, in its own transaction; use TicketSettlementService to retry. */
     void settleTicket(UUID ticketId);
-
-    void settlePendingTicketsOfUser(UUID userId);
 
     Page<Ticket> getTicketsForUser(UUID userId, Pageable pageable);
 

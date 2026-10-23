@@ -9,7 +9,7 @@ import com.munte.KickOffBet.domain.enums.TransactionStatus;
 import com.munte.KickOffBet.domain.enums.TransactionType;
 import com.munte.KickOffBet.domain.enums.UserStatus;
 import com.munte.KickOffBet.exceptions.BusinessException;
-import com.munte.KickOffBet.exceptions.InsufficientFundsException;
+import com.munte.KickOffBet.exceptions.ForbiddenException;
 import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.repository.TransactionRepository;
 import com.munte.KickOffBet.repository.UserRepository;
@@ -17,6 +17,7 @@ import com.munte.KickOffBet.services.transactions.AmlService;
 import com.munte.KickOffBet.services.users.AuthService;
 import com.munte.KickOffBet.services.users.EmailService;
 import com.munte.KickOffBet.services.transactions.WalletService;
+import com.munte.KickOffBet.util.TransactionHooks;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,26 +43,18 @@ public class WalletServiceImpl implements WalletService {
     public Transaction deposit(DepositRequest request) {
 
         User user = this.getActiveCurrentUser();
+        BigDecimal amount = request.getAmount();
 
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setAmount(request.getAmount());
-        transaction.setTransactionType(TransactionType.DEPOSIT);
-
-        if (amlService.susDeposit(user, request.getAmount())) {
-            transaction.setStatus(TransactionStatus.PENDING);
-            return transactionRepository.save(transaction);
+        if (amlService.susDeposit(user, amount)) {
+            return transactionRepository.save(newTransaction(user, TransactionType.DEPOSIT, amount, TransactionStatus.PENDING));
         }
 
-        transaction.setStatus(TransactionStatus.COMPLETED);
-
-        user.setBalance(user.getBalance().add(request.getAmount()));
+        user.credit(amount);
 
         userRepository.save(user);
+        Transaction saved = transactionRepository.save(newTransaction(user, TransactionType.DEPOSIT, amount, TransactionStatus.COMPLETED));
 
-        Transaction saved = transactionRepository.save(transaction);
-
-        emailService.sendDepositConfirmation(user, request.getAmount());
+        TransactionHooks.afterCommit(() -> emailService.sendDepositConfirmation(user, amount));
 
         return saved;
     }
@@ -71,30 +64,19 @@ public class WalletServiceImpl implements WalletService {
     public Transaction withdraw(WithdrawRequest request) {
 
         User user = this.getActiveCurrentUser();
+        BigDecimal amount = request.getAmount();
 
-        if (request.getAmount().compareTo(user.getBalance()) > 0) {
-            throw new InsufficientFundsException();
-        }
-
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setAmount(request.getAmount());
-        transaction.setTransactionType(TransactionType.WITHDRAWAL);
-
-        user.setBalance(user.getBalance().subtract(request.getAmount()));
-
-        if (amlService.susWithdrawal(user, request.getAmount())) {
-            transaction.setStatus(TransactionStatus.PENDING);
-            return transactionRepository.save(transaction);
-        }
-
-        transaction.setStatus(TransactionStatus.COMPLETED);
-
+        // A withdrawal held for review reserves its amount too (see approveTransaction / rejectTransaction)
+        user.debit(amount);
         userRepository.save(user);
 
-        Transaction saved = transactionRepository.save(transaction);
+        if (amlService.susWithdrawal(user, amount)) {
+            return transactionRepository.save(newTransaction(user, TransactionType.WITHDRAWAL, amount, TransactionStatus.PENDING));
+        }
 
-        emailService.sendWithdrawalConfirmation(user, request.getAmount());
+        Transaction saved = transactionRepository.save(newTransaction(user, TransactionType.WITHDRAWAL, amount, TransactionStatus.COMPLETED));
+
+        TransactionHooks.afterCommit(() -> emailService.sendWithdrawalConfirmation(user, amount));
 
         return saved;
 
@@ -106,23 +88,11 @@ public class WalletServiceImpl implements WalletService {
 
         User user = this.getActiveCurrentUser();
 
-        if (amount.compareTo(user.getBalance()) > 0) {
-            throw new InsufficientFundsException();
-        }
-
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setAmount(amount);
-        transaction.setTransactionType(TransactionType.BET);
-        transaction.setReferenceId(ticketId);
-        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
-        transaction.setStatus(TransactionStatus.COMPLETED);
-
-        user.setBalance(user.getBalance().subtract(amount));
+        user.debit(amount);
 
         userRepository.save(user);
-
-        transactionRepository.save(transaction);
+        transactionRepository.save(newTransaction(user, TransactionType.BET, amount, TransactionStatus.COMPLETED,
+                ticketId, TransactionConstants.REFERENCE_TYPE_TICKET));
     }
 
     @Override
@@ -131,19 +101,11 @@ public class WalletServiceImpl implements WalletService {
 
         User user = this.getActiveUserById(userId);
 
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setAmount(amount);
-        transaction.setTransactionType(TransactionType.PAYOUT);
-        transaction.setReferenceId(ticketId);
-        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
-        transaction.setStatus(TransactionStatus.COMPLETED);
-
-        user.setBalance(user.getBalance().add(amount));
+        user.credit(amount);
 
         userRepository.save(user);
-
-        transactionRepository.save(transaction);
+        transactionRepository.save(newTransaction(user, TransactionType.PAYOUT, amount, TransactionStatus.COMPLETED,
+                ticketId, TransactionConstants.REFERENCE_TYPE_TICKET));
     }
 
     @Override
@@ -152,19 +114,11 @@ public class WalletServiceImpl implements WalletService {
 
         User user = this.getActiveUserById(userId);
 
-        Transaction transaction = new Transaction();
-        transaction.setUser(user);
-        transaction.setAmount(amount);
-        transaction.setTransactionType(TransactionType.REFUND);
-        transaction.setStatus(TransactionStatus.COMPLETED);
-        transaction.setReferenceId(referenceId);
-        transaction.setReferenceType(TransactionConstants.REFERENCE_TYPE_TICKET);
-
-        user.setBalance(user.getBalance().add(amount));
+        user.credit(amount);
 
         userRepository.save(user);
-
-        transactionRepository.save(transaction);
+        transactionRepository.save(newTransaction(user, TransactionType.REFUND, amount, TransactionStatus.COMPLETED,
+                referenceId, TransactionConstants.REFERENCE_TYPE_TICKET));
     }
 
     @Override
@@ -183,7 +137,7 @@ public class WalletServiceImpl implements WalletService {
         this.claimPending(transaction, TransactionStatus.COMPLETED);
 
         if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
-            user.setBalance(user.getBalance().add(transaction.getAmount()));
+            user.credit(transaction.getAmount());
         }
         // A pending WITHDRAWAL already reserved (debited) its amount when it was requested;
         // approving it only completes it, and rejecting it refunds the reservation.
@@ -193,10 +147,11 @@ public class WalletServiceImpl implements WalletService {
         userRepository.save(user);
         Transaction saved = transactionRepository.save(transaction);
 
+        BigDecimal amount = transaction.getAmount();
         if (transaction.getTransactionType() == TransactionType.DEPOSIT) {
-            emailService.sendDepositConfirmation(user, transaction.getAmount());
+            TransactionHooks.afterCommit(() -> emailService.sendDepositConfirmation(user, amount));
         } else if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
-            emailService.sendWithdrawalConfirmation(user, transaction.getAmount());
+            TransactionHooks.afterCommit(() -> emailService.sendWithdrawalConfirmation(user, amount));
         }
 
         return saved;
@@ -218,16 +173,11 @@ public class WalletServiceImpl implements WalletService {
         transaction.setStatus(TransactionStatus.REJECTED);
 
         if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
-            Transaction refund = new Transaction();
-            refund.setReferenceId(transaction.getId());
-            refund.setReferenceType(TransactionConstants.REFERENCE_TYPE_TRANSACTION);
-            refund.setTransactionType(TransactionType.REFUND);
-            refund.setStatus(TransactionStatus.COMPLETED);
-            refund.setAmount(transaction.getAmount());
-            refund.setUser(transaction.getUser());
-            transaction.getUser().setBalance(transaction.getUser().getBalance().add(transaction.getAmount()));
-            userRepository.save(transaction.getUser());
-            transactionRepository.save(refund);
+            User user = transaction.getUser();
+            user.credit(transaction.getAmount());
+            userRepository.save(user);
+            transactionRepository.save(newTransaction(user, TransactionType.REFUND, transaction.getAmount(),
+                    TransactionStatus.COMPLETED, transaction.getId(), TransactionConstants.REFERENCE_TYPE_TRANSACTION));
         }
 
         return transactionRepository.save(transaction);
@@ -245,10 +195,26 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
+    private static Transaction newTransaction(User user, TransactionType type, BigDecimal amount, TransactionStatus status) {
+        return newTransaction(user, type, amount, status, null, null);
+    }
+
+    private static Transaction newTransaction(User user, TransactionType type, BigDecimal amount, TransactionStatus status,
+                                              UUID referenceId, String referenceType) {
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setTransactionType(type);
+        transaction.setAmount(amount);
+        transaction.setStatus(status);
+        transaction.setReferenceId(referenceId);
+        transaction.setReferenceType(referenceType);
+        return transaction;
+    }
+
     private User getActiveCurrentUser() {
         User user = authService.getCurrentUser();
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException("Verify your account!");
+            throw new ForbiddenException("Verify your account!");
         }
         return user;
     }

@@ -29,7 +29,7 @@ public class AdminTicketController {
     private final TicketMapper ticketMapper;
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "createdAt", "stake", "totalOdd", "potentialPayout"
+            "createdAt", "stake", "totalOdd", "potentialPayout", "id"
     );
 
     @GetMapping

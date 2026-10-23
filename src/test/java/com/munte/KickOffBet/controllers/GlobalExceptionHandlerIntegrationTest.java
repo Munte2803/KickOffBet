@@ -12,7 +12,6 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -55,10 +54,13 @@ class GlobalExceptionHandlerIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void optimisticLockConflictAtCommitIsAConflict() throws Exception {
-        doThrow(new ObjectOptimisticLockingFailureException(User.class, UUID.randomUUID()))
-                .when(emailService).sendDepositConfirmation(any(), any());
-        mvc.perform(auth(withJson(post("/api/wallet/deposit"), Map.of("amount", 50)), userToken("olock@kickoffbet.test")))
+    void optimisticLockConflictIsAConflict() throws Exception {
+        // Thrown from inside the transaction, as Hibernate does when the version check fails
+        when(storageService.uploadFile(any(), anyString()))
+                .thenThrow(new ObjectOptimisticLockingFailureException(User.class, UUID.randomUUID()));
+        var body = Map.of("firstName", "Ion", "lastName", "Pop", "email", "olock@kickoffbet.test",
+                "password", "Secret123", "birthDate", "1990-01-01");
+        mvc.perform(multipart("/api/auth/register").file(jsonPart("data", body)).file(filePart("idCard", "a.png")))
                 .andExpect(status().isConflict())
                 .andExpect(errorCode("CONCURRENT_MODIFICATION"));
     }

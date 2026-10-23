@@ -10,11 +10,12 @@ import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
 import com.munte.KickOffBet.mapper.UserMapper;
 import com.munte.KickOffBet.repository.UserRepository;
 import com.munte.KickOffBet.services.users.AuthService;
-import com.munte.KickOffBet.services.tickets.TicketService;
+import com.munte.KickOffBet.services.tickets.TicketSettlementService;
 import com.munte.KickOffBet.services.users.StorageService;
 import com.munte.KickOffBet.domain.dto.api.response.StoredFile;
 import com.munte.KickOffBet.services.users.UserService;
 import com.munte.KickOffBet.util.DateUtils;
+import com.munte.KickOffBet.util.TransactionHooks;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +38,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final AuthService authService;
     private final StorageService storageService;
-    private final TicketService ticketService;
+    private final TicketSettlementService ticketSettlementService;
 
 
     @Value("${minio.bucket.id-cards}")
@@ -88,7 +89,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         log.info("User approved: {}", user.getEmail());
         if (user.getStatus() == UserStatus.ACTIVE) {
-            ticketService.settlePendingTicketsOfUser(user.getId());
+            settlePendingTicketsAfterCommit(user.getId());
         }
     }
 
@@ -100,7 +101,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("User is not pending");
         }
         user.setStatus(UserStatus.DECLINED);
-        storageService.deleteFile(idCardsBucket, user.getIdCardUrl());
+        String idCardUrl = user.getIdCardUrl();
+        // Only once the rejection is committed: rolled back, the user would still point at the file
+        if (idCardUrl != null) {
+            TransactionHooks.afterCommit(() -> storageService.deleteFile(idCardsBucket, idCardUrl));
+        }
         user.setIdCardUrl(null);
         userRepository.save(user);
         log.info("User rejected: {}", user.getEmail());
@@ -133,8 +138,13 @@ public class UserServiceImpl implements UserService {
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
         log.info("User activated: {}", user.getEmail());
-        // Pay out or refund tickets that were decided while the account was suspended
-        ticketService.settlePendingTicketsOfUser(user.getId());
+        settlePendingTicketsAfterCommit(user.getId());
+    }
+
+    // Pays out or refunds the tickets decided while the account was not active. After commit: the settlement
+    // moves money for an ACTIVE user only, and locks every ticket in its own transaction.
+    private void settlePendingTicketsAfterCommit(UUID userId) {
+        TransactionHooks.afterCommit(() -> ticketSettlementService.settlePendingTicketsOfUser(userId));
     }
 
     @Override
@@ -179,7 +189,12 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("ID card upload is not allowed for your account status");
         }
 
+        String previousUrl = user.getIdCardUrl();
         String idCardUrl = storageService.uploadFile(idCard, idCardsBucket);
+        TransactionHooks.afterRollback(() -> storageService.deleteFile(idCardsBucket, idCardUrl));
+        if (previousUrl != null) {
+            TransactionHooks.afterCommit(() -> storageService.deleteFile(idCardsBucket, previousUrl));
+        }
         user.setIdCardUrl(idCardUrl);
 
         if (user.getStatus() == UserStatus.DECLINED) {

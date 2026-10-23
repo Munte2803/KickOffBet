@@ -17,7 +17,8 @@ import com.munte.KickOffBet.events.Match.MatchesStartedEvent;
 import com.munte.KickOffBet.repository.LeagueRepository;
 import com.munte.KickOffBet.repository.MatchRepository;
 import com.munte.KickOffBet.repository.TeamRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.munte.KickOffBet.exceptions.ResourceNotFoundException;
+import com.munte.KickOffBet.services.sports.MatchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -77,6 +78,8 @@ class DataImportServiceImplTest {
     private ApplicationContext applicationContext;
     @Mock
     private PlatformTransactionManager transactionManager;
+    @Mock
+    private MatchService matchService;
 
     // Built by hand: ApplicationContext is itself an ApplicationEventPublisher, so @InjectMocks
     // could wire the context mock into the publisher slot.
@@ -92,7 +95,7 @@ class DataImportServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new DataImportServiceImpl(footballDataClient, leagueRepository, teamRepository,
-                matchRepository, eventPublisher, applicationContext, transactionManager);
+                matchRepository, eventPublisher, applicationContext, transactionManager, matchService);
         // Production delays (7.5s between calls, 61s on 429) shrunk so the tests stay fast.
         ReflectionTestUtils.setField(service, "apiDelayMs", 0L);
         ReflectionTestUtils.setField(service, "pastDays", 3);
@@ -525,7 +528,7 @@ class DataImportServiceImplTest {
         void unknownLeagueFails() {
             when(leagueRepository.findByCode("ZZ")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.syncTeams("ZZ")).isInstanceOf(EntityNotFoundException.class);
+            assertThatThrownBy(() -> service.syncTeams("ZZ")).isInstanceOf(ResourceNotFoundException.class);
         }
     }
 }

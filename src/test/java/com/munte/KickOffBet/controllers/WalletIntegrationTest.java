@@ -104,12 +104,42 @@ class WalletIntegrationTest extends IntegrationTestBase {
         User pending = data.createUser("pending@kickoffbet.test", UserRole.USER, UserStatus.PENDING, new BigDecimal("500"));
         String token = login(pending);
         deposit(token, 50)
-                .andExpect(status().isBadRequest())
-                .andExpect(errorCode("BUSINESS_ERROR"))
+                .andExpect(status().isForbidden())
+                .andExpect(errorCode("FORBIDDEN"))
                 .andExpect(jsonPath("$.error").value("Verify your account!"));
         withdraw(token, 50)
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Verify your account!"));
+    }
+
+    @Test
+    void amountsWithMoreThanTwoDecimalsAreRejected() throws Exception {
+        User user = data.userWithBalance("cents@kickoffbet.test", "100.00");
+        String token = login(user);
+
+        deposit(token, new BigDecimal("20.555"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorCode("VALIDATION_ERROR"));
+        withdraw(token, new BigDecimal("20.555"))
+                .andExpect(status().isBadRequest())
+                .andExpect(errorCode("VALIDATION_ERROR"));
+        assertThat(data.balanceOf(user.getId())).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void confirmationEmailIsSentOnlyOnceTheApprovalCommits() {
+        User user = data.user("mail-after-commit@kickoffbet.test");
+        Transaction pending = data.transaction(user, TransactionType.DEPOSIT, TransactionStatus.PENDING, "100.00");
+
+        // e.g. a version conflict on the user at commit: the approval is rolled back
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            walletService.approveTransaction(pending.getId());
+            status.setRollbackOnly();
+        });
+        verify(emailService, never()).sendDepositConfirmation(any(), any());
+
+        walletService.approveTransaction(pending.getId());
+        verify(emailService).sendDepositConfirmation(any(User.class), argThat(a -> a.compareTo(new BigDecimal("100")) == 0));
     }
 
     @Test

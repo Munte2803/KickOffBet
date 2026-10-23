@@ -61,30 +61,31 @@ public class TicketSelectionSettlementServiceImpl implements TicketSelectionSett
             BetOption option = selection.getSelectedOption();
 
             TicketSelectionStatus result = switch (selection.getMarketType()) {
-                case H2H-> switch (option) {
+                case H2H -> switch (option) {
                     case HOME -> ftHome > ftAway ? WON : LOST;
                     case DRAW -> ftHome == ftAway ? WON : LOST;
                     case AWAY -> ftAway > ftHome ? WON : LOST;
-                    default -> LOST;
+                    default -> throw mismatch(selection);
                 };
                 case DOUBLE_CHANCE -> switch (option) {
                     case HOME_OR_DRAW -> ftHome >= ftAway ? WON : LOST;
                     case AWAY_OR_DRAW -> ftAway >= ftHome ? WON : LOST;
                     case HOME_OR_AWAY -> ftHome != ftAway ? WON : LOST;
-                    default -> LOST;
+                    default -> throw mismatch(selection);
                 };
                 case OVER_UNDER -> {
+                    // Lines are x.5 (offers and betting.lines.over-under are validated): no push to grade
                     double line = selection.getLine().doubleValue();
-                    yield switch (selection.getSelectedOption()) {
+                    yield switch (option) {
                         case OVER -> totalGoals > line ? WON : LOST;
                         case UNDER -> totalGoals < line ? WON : LOST;
-                        default -> LOST;
+                        default -> throw mismatch(selection);
                     };
                 }
                 case BTTS -> switch (option) {
                     case YES -> ftHome > 0 && ftAway > 0 ? WON : LOST;
                     case NO -> ftHome == 0 || ftAway == 0 ? WON : LOST;
-                    default -> LOST;
+                    default -> throw mismatch(selection);
                 };
             };
 
@@ -94,10 +95,11 @@ public class TicketSelectionSettlementServiceImpl implements TicketSelectionSett
 
         ticketSelectionRepository.saveAll(selections);
         return tickets;
+    }
 
-
-
-
-
+    // Grading such a leg LOST would silently take the bettor's money for a bet the engine cannot judge
+    private static IllegalStateException mismatch(TicketSelection selection) {
+        return new IllegalStateException("Selection %s: option %s does not belong to market %s"
+                .formatted(selection.getId(), selection.getSelectedOption(), selection.getMarketType()));
     }
 }

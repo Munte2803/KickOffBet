@@ -16,6 +16,7 @@ public class PlaceTicketRequest {
     @NotNull
     @DecimalMin(value = "2.00", message = "Minimum stake is 2 RON")
     @DecimalMax(value = "50000.00", message = "Maximum stake is 50000 RON")
+    @Digits(integer = 5, fraction = 2, message = "Stake can have at most 2 decimals")
     private BigDecimal stake;
 
     @NotEmpty(message = "At least one selection is required")
