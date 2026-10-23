@@ -40,13 +40,9 @@ const transactionsQuery = useQuery({
   queryFn: () => getTransactions(transactionType.value, transactionPageRequest.value),
 })
 
+// The key holds the type and the page: changing them fetches, so only the page is reset here
 watch(transactionType, () => {
   pagination.reset()
-  transactionsQuery.refetch()
-})
-
-watch([() => pagination.page.value, () => pagination.size.value], () => {
-  transactionsQuery.refetch()
 })
 
 const depositForm = useForm({

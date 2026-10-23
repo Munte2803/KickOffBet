@@ -25,11 +25,9 @@ import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import type { TicketStatus } from '@/types/enums'
-import { useToastStore } from '@/stores/toast.store'
 import { translateEnumLabel } from '@/utils/labels.utils'
 import { queryKeys } from '@/query/query-keys'
 
-const toastStore = useToastStore()
 const statusPagination = usePagination(PAGE_SIZES.SMALL)
 const userTicketsPagination = usePagination(PAGE_SIZES.COMPACT)
 const status = ref<TicketStatus>('PENDING')
@@ -63,45 +61,18 @@ const ticketsQuery = useQuery({
 const userTicketsQuery = useQuery({
   queryKey: queryKeys.adminTicketsUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTickets(selectedHistoryUserId.value, userHistoryPageRequest.value),
-  enabled: false,
+  // Loads as soon as a user is picked; the reactive key then drives every refetch (page, sort, user)
+  enabled: computed(() => Boolean(selectedHistoryUserId.value)),
 })
 
+// The keys hold the status, sort and page: changing them refetches, so only the page is reset here
 watch([status, sortBy], () => {
   statusPagination.reset()
-  ticketsQuery.refetch()
 })
 
-watch(() => statusPagination.page.value, () => {
-  ticketsQuery.refetch()
+watch(selectedHistoryUserId, () => {
+  userTicketsPagination.reset()
 })
-
-watch(() => userTicketsPagination.page.value, () => {
-  if (selectedHistoryUserId.value) {
-    userTicketsQuery.refetch()
-  }
-})
-
-async function loadUserHistory() {
-  if (!selectedHistoryUserId.value) {
-    toastStore.showError('Selecteaza utilizatorul pentru biletele lui.')
-    return
-  }
-
-  if (userTicketsPagination.page.value !== 0) {
-    userTicketsPagination.reset()
-    return
-  }
-
-  await userTicketsQuery.refetch()
-}
-
-async function handleHistoryUserSelect() {
-  if (!selectedHistoryUserId.value) {
-    return
-  }
-
-  await loadUserHistory()
-}
 
 const exportColumns: ExportColumn<Ticket>[] = [
   { header: 'ID', accessor: (r) => r.id },
@@ -258,7 +229,6 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             title="Utilizator pentru istoricul biletelor"
             placeholder="Cauta utilizatorul dupa email"
             results-title="Rezultate utilizatori"
-            @select="handleHistoryUserSelect"
           />
         </div>
 

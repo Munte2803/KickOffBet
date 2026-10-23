@@ -134,35 +134,26 @@ const pendingPageRequest = computed(() => ({
 }))
 
 const pendingQuery = useQuery({
-  queryKey: queryKeys.adminTransactionPending(sortBy, pendingPageRequest),
+  queryKey: queryKeys.adminTransactionPending(pendingPageRequest),
   queryFn: () => getPendingTransactions(pendingPageRequest.value),
 })
 
 const userTransactionsQuery = useQuery({
   queryKey: queryKeys.adminTransactionUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTransactions(selectedHistoryUserId.value, userHistoryPageRequest.value),
-  enabled: false,
+  // Loads as soon as a user is picked; the reactive key then drives every refetch (page, sort, user)
+  enabled: computed(() => Boolean(selectedHistoryUserId.value)),
 })
 
+// The keys hold the sort and the pages: changing them refetches, so only the pages are reset here
 watch(sortBy, () => {
-  if (hasSearched.value) {
-    searchPagination.reset()
-    searchQuery.refetch()
-  }
+  searchPagination.reset()
   pendingPagination.reset()
-  pendingQuery.refetch()
+  userTransactionsPagination.reset()
 })
 
-watch(() => searchPagination.page.value, () => {
-  if (hasSearched.value) {
-    searchQuery.refetch()
-  }
-})
-
-watch(() => userTransactionsPagination.page.value, () => {
-  if (selectedHistoryUserId.value) {
-    userTransactionsQuery.refetch()
-  }
+watch(selectedHistoryUserId, () => {
+  userTransactionsPagination.reset()
 })
 
 async function loadReport() {
@@ -209,28 +200,6 @@ async function loadUserSummary() {
   }
 }
 
-async function loadUserHistory() {
-  if (!selectedHistoryUserId.value) {
-    toastStore.showError('Selecteaza utilizatorul pentru istoric.')
-    return
-  }
-
-  if (userTransactionsPagination.page.value !== 0) {
-    userTransactionsPagination.reset()
-    return
-  }
-
-  await userTransactionsQuery.refetch()
-}
-
-async function handleHistoryUserSelect() {
-  if (!selectedHistoryUserId.value) {
-    return
-  }
-
-  await loadUserHistory()
-}
-
 async function applySearchFilters() {
   const amountFilters = validateAmountFilters()
 
@@ -238,7 +207,7 @@ async function applySearchFilters() {
     return
   }
 
-  appliedSearchFilters.value = {
+  const nextFilters = {
     userId: selectedSearchUserId.value || undefined,
     transactionType: transactionType.value || undefined,
     transactionStatus: transactionStatus.value || undefined,
@@ -247,6 +216,8 @@ async function applySearchFilters() {
     minAmount: amountFilters.parsedMin,
     maxAmount: amountFilters.parsedMax,
   }
+  const sameSearch = hasSearched.value && JSON.stringify(nextFilters) === JSON.stringify(appliedSearchFilters.value)
+  appliedSearchFilters.value = nextFilters
   hasSearched.value = true
 
   if (searchPagination.page.value !== 0) {
@@ -254,7 +225,10 @@ async function applySearchFilters() {
     return
   }
 
-  await searchQuery.refetch()
+  // New filters change the query key, which fetches by itself; repeating the same search refreshes it
+  if (sameSearch) {
+    await searchQuery.refetch()
+  }
 }
 
 const exportColumns: ExportColumn<Transaction>[] = [
@@ -459,7 +433,6 @@ function resetSearchFilters() {
             title="Utilizator pentru istoric"
             placeholder="Cauta utilizatorul dupa email"
             results-title="Rezultate utilizatori"
-            @select="handleHistoryUserSelect"
           />
         </div>
 

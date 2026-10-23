@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
 import { getUserTickets } from '@/api/tickets.api'
@@ -21,13 +21,10 @@ import { queryKeys } from '@/query/query-keys'
 const status = ref<TicketStatus>('PENDING')
 const pagination = usePagination(PAGE_SIZES.COMPACT)
 
+// The key holds the status and the page: switching either fetches, no manual refetch needed
 const ticketsQuery = useQuery({
   queryKey: queryKeys.tickets(status, pagination.request),
   queryFn: () => getUserTickets(status.value, pagination.request.value),
-})
-
-watch([status, () => pagination.page.value], () => {
-  ticketsQuery.refetch()
 })
 </script>
 

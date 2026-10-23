@@ -113,10 +113,9 @@ const teamItems = computed(() =>
   })),
 )
 
-watch(() => pagination.page.value, () => {
-  if (hasSearched.value) {
-    matchesQuery.refetch()
-  }
+// The key holds the sort: changing it refetches; start again from the first page
+watch(sortBy, () => {
+  pagination.reset()
 })
 
 function buildFilters(): MatchSearchRequest {
@@ -132,10 +131,16 @@ function buildFilters(): MatchSearchRequest {
 }
 
 async function applyFilters() {
-  appliedFilters.value = buildFilters()
+  const nextFilters = buildFilters()
+  const sameSearch =
+    hasSearched.value && pagination.page.value === 0 && JSON.stringify(nextFilters) === JSON.stringify(appliedFilters.value)
+  appliedFilters.value = nextFilters
   hasSearched.value = true
   pagination.reset()
-  await matchesQuery.refetch()
+  // New filters or another page change the query key, which fetches by itself; the same search refreshes it
+  if (sameSearch) {
+    await matchesQuery.refetch()
+  }
 }
 
 const exportColumns: ExportColumn<MatchList>[] = [
