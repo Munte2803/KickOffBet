@@ -15,6 +15,7 @@ import { formatBetLabel } from '@/utils/odds.utils'
 import { translateEnumLabel } from '@/utils/labels.utils'
 import type { MarketOffer } from '@/types/match.types'
 import type { BetOption, MarketType } from '@/types/enums'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const ticketStore = useTicketStore()
@@ -23,7 +24,7 @@ const { toggleOffer } = useTicketActions()
 const matchId = route.params.id as string
 
 const matchQuery = useQuery({
-  queryKey: ['match-detail', matchId],
+  queryKey: queryKeys.matchDetail(matchId),
   queryFn: () => getMatchDetails(matchId),
 })
 

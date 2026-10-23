@@ -16,12 +16,13 @@ import AppErrorState from '@/components/AppErrorState.vue'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import type { TicketStatus } from '@/types/enums'
+import { queryKeys } from '@/query/query-keys'
 
 const status = ref<TicketStatus>('PENDING')
 const pagination = usePagination(PAGE_SIZES.COMPACT)
 
 const ticketsQuery = useQuery({
-  queryKey: ['tickets', status, pagination.request],
+  queryKey: queryKeys.tickets(status, pagination.request),
   queryFn: () => getUserTickets(status.value, pagination.request.value),
 })
 

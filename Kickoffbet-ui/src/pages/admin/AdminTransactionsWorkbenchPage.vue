@@ -35,6 +35,7 @@ import { formatMoney } from '@/utils/money.utils'
 import { inputToUtcApiDate } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const searchPagination = usePagination(PAGE_SIZES.SMALL)
@@ -120,7 +121,7 @@ function validateAmountFilters() {
 }
 
 const searchQuery = useQuery({
-  queryKey: ['admin-transaction-search', appliedSearchFilters, searchPageRequest],
+  queryKey: queryKeys.adminTransactionSearch(appliedSearchFilters, searchPageRequest),
   queryFn: async () => {
     return searchTransactions(appliedSearchFilters.value, searchPageRequest.value)
   },
@@ -133,12 +134,12 @@ const pendingPageRequest = computed(() => ({
 }))
 
 const pendingQuery = useQuery({
-  queryKey: ['admin-transaction-pending', sortBy, pendingPageRequest],
+  queryKey: queryKeys.adminTransactionPending(sortBy, pendingPageRequest),
   queryFn: () => getPendingTransactions(pendingPageRequest.value),
 })
 
 const userTransactionsQuery = useQuery({
-  queryKey: ['admin-transaction-user-history', selectedHistoryUserId, userHistoryPageRequest],
+  queryKey: queryKeys.adminTransactionUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTransactions(selectedHistoryUserId.value, userHistoryPageRequest.value),
   enabled: false,
 })

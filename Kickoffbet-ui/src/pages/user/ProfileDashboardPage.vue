@@ -17,6 +17,8 @@ import AppLinkButton from '@/components/AppLinkButton.vue'
 import { useToastStore } from '@/stores/toast.store'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
+import { queryKeys } from '@/query/query-keys'
+import { canUploadIdCard as canUploadIdCardRule } from '@/utils/user-rules'
 
 const toastStore = useToastStore()
 
@@ -31,18 +33,13 @@ const previewContentType = ref<string | null>(null)
 const previewFileName = ref<string | null>(null)
 
 const profileQuery = useQuery({
-  queryKey: ['profile'],
+  queryKey: queryKeys.profile(),
   queryFn: getProfile,
 })
 
 const profile = computed(() => profileQuery.data.value)
 
-const canUploadIdCard = computed(() => {
-  if (!profile.value) return false
-  return !profile.value.idCardVerified
-    && !profile.value.idCardUrl
-    && (profile.value.status === 'PENDING' || profile.value.status === 'DECLINED')
-})
+const canUploadIdCard = computed(() => (profile.value ? canUploadIdCardRule(profile.value) : false))
 
 const canViewIdCard = computed(() => Boolean(profile.value?.idCardUrl))
 

@@ -7,9 +7,10 @@ import SectionHeader from '@/components/SectionHeader.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const leaguePreviewsQuery = useQuery({
-  queryKey: ['public-league-previews'],
+  queryKey: queryKeys.leaguePreviews(),
   queryFn: () => getLeaguePreviews('SCHEDULED', 3),
 })
 </script>

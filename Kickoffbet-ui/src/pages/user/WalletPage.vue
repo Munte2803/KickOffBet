@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { deposit, getTransactions, withdraw } from '@/api/wallet.api'
-import { getProfile } from '@/api/profile.api'
 import type { TransactionTypeFilter } from '@/types/transaction.types'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/auth.store'
@@ -22,8 +21,8 @@ import TabNav from '@/components/TabNav.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import AppErrorState from '@/components/AppErrorState.vue'
-import { invalidateAccountQueries } from '@/query/query-client'
 import { formatMoney } from '@/utils/money.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const authStore = useAuthStore()
 const toastStore = useToastStore()
@@ -37,7 +36,7 @@ const transactionPageRequest = computed(() => ({
 }))
 
 const transactionsQuery = useQuery({
-  queryKey: ['wallet-transactions', transactionType, transactionPageRequest],
+  queryKey: queryKeys.walletTransactions(transactionType, transactionPageRequest),
   queryFn: () => getTransactions(transactionType.value, transactionPageRequest.value),
 })
 
@@ -68,14 +67,9 @@ const [withdrawAmount] = withdrawForm.defineField('amount')
  * so it is never reported as a failed money operation.
  */
 async function refreshAfterWalletChange() {
-  // Every filter tab of the history (and the profile) is cached separately
-  void invalidateAccountQueries()
-  try {
-    const profile = await getProfile()
-    authStore.hydrateProfile(profile)
-  } catch {
-    // the layout refreshes the profile again on the next navigation
-  }
+  // Every filter tab of the history (and the profile) is cached separately; on failure the layout
+  // refreshes the profile again on the next navigation
+  await authStore.refreshAccountAfterMutation()
 }
 
 const submitDeposit = depositForm.handleSubmit(async (values) => {

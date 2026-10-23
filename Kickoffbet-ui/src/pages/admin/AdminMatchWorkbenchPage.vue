@@ -26,6 +26,10 @@ import MarketOffersGrid from '@/components/MarketOffersGrid.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatDateShort, formatDateTime, formatForInput } from '@/utils/date.utils'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
+import { invalidateAdminMatchQueries } from '@/query/query-client'
+import { ApiError } from '@/api/api-error'
+import AppErrorState from '@/components/AppErrorState.vue'
 
 const route = useRoute()
 const toastStore = useToastStore()
@@ -36,16 +40,42 @@ const statusOptions: MatchStatus[] = ['SCHEDULED', 'LIVE', 'FINISHED', 'POSTPONE
 
 const startTime = ref('')
 const status = ref<MatchStatus>('SCHEDULED')
-const ftHome = ref<number | null>(null)
-const ftAway = ref<number | null>(null)
+// v-model.number keeps an emptied field as ''
+const ftHome = ref<number | string | null>(null)
+const ftAway = ref<number | string | null>(null)
 const offers = ref<EditableMarketOffer[]>([])
 
 const matchQuery = useQuery({
-  queryKey: ['admin-match-workbench', matchId],
+  queryKey: queryKeys.adminMatchWorkbench(matchId),
   queryFn: () => getMatchById(matchId),
 })
 
 const match = computed(() => matchQuery.data.value)
+// A missing match is reported as "not found"; any other failure (network, 5xx) offers a retry
+const isNotFound = computed(
+  () => matchQuery.error.value instanceof ApiError && matchQuery.error.value.code === 'RESOURCE_NOT_FOUND',
+)
+
+/** The save in flight, if any: its button shows a spinner and every other save waits. */
+const saving = ref<'time' | 'status' | 'odds' | 'active' | 'offer' | null>(null)
+
+async function runSave(section: NonNullable<typeof saving.value>, task: () => Promise<void>) {
+  // The confirm dialog is async: a second click may have started a save meanwhile
+  if (saving.value) return
+  saving.value = section
+  try {
+    await task()
+  } finally {
+    saving.value = null
+  }
+}
+
+/** A typed score: a whole number >= 0, or null when the field is empty. NaN for anything else. */
+function readScore(value: number | string | null): number | null {
+  if (value === null || value === '') return null
+  const score = Number(value)
+  return Number.isInteger(score) && score >= 0 ? score : Number.NaN
+}
 
 function resetTimeForm(value: MatchDetail) {
   startTime.value = formatForInput(value.startTime)
@@ -83,12 +113,14 @@ watch(
   { immediate: true },
 )
 
-async function refetchMatch() {
-  const result = await matchQuery.refetch()
-  return result.data
+/** After a save: this match (returned fresh), the admin lists and every public view of matches. */
+async function refreshAfterSave() {
+  await invalidateAdminMatchQueries()
+  return matchQuery.data.value
 }
 
 async function saveTime() {
+  if (saving.value) return
   const confirmed = await confirm({
     title: 'Salvare programare',
     message: 'Sunteti sigur ca vreti sa salvati noua ora a meciului?',
@@ -101,49 +133,70 @@ async function saveTime() {
     return
   }
 
-  try {
-    await rescheduleMatch(matchId, startTime.value)
-    const fresh = await refetchMatch()
-    if (fresh) resetTimeForm(fresh)
-    toastStore.showSuccess('Ora meciului a fost actualizata.')
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza ora meciului.')
-  }
+  await runSave('time', async () => {
+    try {
+      await rescheduleMatch(matchId, startTime.value)
+      const fresh = await refreshAfterSave()
+      if (fresh) resetTimeForm(fresh)
+      toastStore.showSuccess('Ora meciului a fost actualizata.')
+    } catch (error) {
+      toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza ora meciului.')
+    }
+  })
 }
 
 async function saveStatus() {
-  if (status.value === 'FINISHED' && ((ftHome.value ?? 0) < 0 || (ftAway.value ?? 0) < 0)) {
-    toastStore.showError('Scorul nu poate fi negativ.')
+  if (saving.value) return
+  // v-model.number leaves an emptied field as '' (and a decimal as a fraction): validate what was typed
+  const home = readScore(ftHome.value)
+  const away = readScore(ftAway.value)
+  if (Number.isNaN(home) || Number.isNaN(away)) {
+    toastStore.showError('Scorul trebuie sa fie un numar intreg, cel putin 0.')
     return
   }
 
+  const finishing = status.value === 'FINISHED'
+  if (finishing && (home === null || away === null)) {
+    toastStore.showError('Completeaza scorul final al ambelor echipe.')
+    return
+  }
+
+  // Finishing settles every ticket on the match and cannot be undone: show exactly what is saved
   const confirmed = await confirm({
     title: 'Salvare status meci',
-    message: 'Sunteti sigur ca vreti sa salvati statusul si scorul meciului?',
-    description: 'Modificarile vor afecta imediat afisarea meciului pentru utilizatori.',
-    confirmLabel: 'Salveaza statusul',
+    message: finishing
+      ? `Sunteti sigur ca vreti sa finalizati meciul cu scorul ${home} - ${away}?`
+      : 'Sunteti sigur ca vreti sa salvati statusul si scorul meciului?',
+    description: finishing
+      ? 'Biletele vor fi decontate pe baza acestui scor. Un meci finalizat nu mai poate fi modificat.'
+      : 'Modificarile vor afecta imediat afisarea meciului pentru utilizatori.',
+    confirmLabel: finishing ? 'Finalizeaza meciul' : 'Salveaza statusul',
     cancelLabel: 'Renunta',
+    variant: finishing ? 'danger' : 'primary',
   })
 
   if (!confirmed) {
     return
   }
 
-  try {
-    await updateMatchStatus(matchId, {
-      status: status.value,
-      ftHome: ftHome.value,
-      ftAway: ftAway.value,
-    })
-    const fresh = await refetchMatch()
-    if (fresh) resetStatusForm(fresh)
-    toastStore.showSuccess('Statusul meciului a fost actualizat.')
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza statusul meciului.')
-  }
+  await runSave('status', async () => {
+    try {
+      await updateMatchStatus(matchId, {
+        status: status.value,
+        ftHome: home,
+        ftAway: away,
+      })
+      const fresh = await refreshAfterSave()
+      if (fresh) resetStatusForm(fresh)
+      toastStore.showSuccess('Statusul meciului a fost actualizat.')
+    } catch (error) {
+      toastStore.showError(error instanceof Error ? error.message : 'Nu am putut actualiza statusul meciului.')
+    }
+  })
 }
 
 async function saveOdds() {
+  if (saving.value) return
   if (offers.value.some((offer) => !Number.isFinite(offer.odds) || offer.odds < 1.01)) {
     toastStore.showError('Cotele trebuie sa fie cel putin 1.01.')
     return
@@ -161,25 +214,27 @@ async function saveOdds() {
     return
   }
 
-  try {
-    await updateMatch(matchId, {
-      availableOffers: offers.value
-        .filter((offer): offer is EditableMarketOffer & { id: string } => Boolean(offer.id))
-        .map((offer) => ({
-          id: offer.id,
-          odds: offer.odds,
-        })),
-    })
-    const fresh = await refetchMatch()
-    if (fresh) resetOffersForm(fresh)
-    toastStore.showSuccess('Cotele au fost actualizate.')
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut salva cotele.')
-  }
+  await runSave('odds', async () => {
+    try {
+      await updateMatch(matchId, {
+        availableOffers: offers.value
+          .filter((offer): offer is EditableMarketOffer & { id: string } => Boolean(offer.id))
+          .map((offer) => ({
+            id: offer.id,
+            odds: offer.odds,
+          })),
+      })
+      const fresh = await refreshAfterSave()
+      if (fresh) resetOffersForm(fresh)
+      toastStore.showSuccess('Cotele au fost actualizate.')
+    } catch (error) {
+      toastStore.showError(error instanceof Error ? error.message : 'Nu am putut salva cotele.')
+    }
+  })
 }
 
 async function switchMatchActive() {
-  if (!match.value) return
+  if (!match.value || saving.value) return
   const nextActive = !match.value.active
 
   const confirmed = await confirm({
@@ -197,16 +252,19 @@ async function switchMatchActive() {
     return
   }
 
-  try {
-    await toggleMatchStatus(matchId, nextActive)
-    await matchQuery.refetch()
-    toastStore.showSuccess(nextActive ? 'Meciul a fost activat.' : 'Meciul a fost dezactivat.')
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut schimba starea meciului.')
-  }
+  await runSave('active', async () => {
+    try {
+      await toggleMatchStatus(matchId, nextActive)
+      await refreshAfterSave()
+      toastStore.showSuccess(nextActive ? 'Meciul a fost activat.' : 'Meciul a fost dezactivat.')
+    } catch (error) {
+      toastStore.showError(error instanceof Error ? error.message : 'Nu am putut schimba starea meciului.')
+    }
+  })
 }
 
 async function switchOfferActive(offerId: string, active: boolean) {
+  if (saving.value) return
   const confirmed = await confirm({
     title: active ? 'Activare oferta' : 'Dezactivare oferta',
     message: active
@@ -222,16 +280,18 @@ async function switchOfferActive(offerId: string, active: boolean) {
     return
   }
 
-  try {
-    await toggleOfferStatus(matchId, offerId, active)
-    // Only the toggled offer's flag changes in the form; odds still being edited are kept
-    const editedOffer = offers.value.find((offer) => offer.id === offerId)
-    if (editedOffer) editedOffer.active = active
-    await matchQuery.refetch()
-    toastStore.showSuccess('Starea ofertei a fost schimbata.')
-  } catch (error) {
-    toastStore.showError(error instanceof Error ? error.message : 'Nu am putut schimba starea ofertei.')
-  }
+  await runSave('offer', async () => {
+    try {
+      await toggleOfferStatus(matchId, offerId, active)
+      // Only the toggled offer's flag changes in the form; odds still being edited are kept
+      const editedOffer = offers.value.find((offer) => offer.id === offerId)
+      if (editedOffer) editedOffer.active = active
+      await refreshAfterSave()
+      toastStore.showSuccess('Starea ofertei a fost schimbata.')
+    } catch (error) {
+      toastStore.showError(error instanceof Error ? error.message : 'Nu am putut schimba starea ofertei.')
+    }
+  })
 }
 </script>
 
@@ -249,7 +309,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
       :subtitle="`${match.leagueName} - ${formatDateTime(match.startTime)}`"
     >
       <template #actions>
-        <AppButton variant="outline" @click="switchMatchActive">
+        <AppButton variant="outline" :loading="saving === 'active'" :disabled="saving !== null" @click="switchMatchActive">
           {{ match.active ? 'Dezactiveaza meciul' : 'Activeaza meciul' }}
         </AppButton>
       </template>
@@ -282,7 +342,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
         <SectionHeader title="Programare" />
         <div class="flex flex-col gap-3 md:flex-row md:items-end">
           <DateTimeInput v-model="startTime" label="Ora de start" />
-          <AppButton @click="saveTime">Salveaza ora</AppButton>
+          <AppButton :loading="saving === 'time'" :disabled="saving !== null" @click="saveTime">Salveaza ora</AppButton>
         </div>
 
         <div class="mt-4 flex flex-wrap gap-2">
@@ -329,7 +389,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
             </label>
           </div>
 
-          <AppButton class="w-full" @click="saveStatus">Salveaza status</AppButton>
+          <AppButton class="w-full" :loading="saving === 'status'" :disabled="saving !== null" @click="saveStatus">Salveaza status</AppButton>
         </div>
       </Panel>
     </div>
@@ -338,7 +398,7 @@ async function switchOfferActive(offerId: string, active: boolean) {
       <SectionHeader title="Cote si piete" />
       <MarketOffersGrid v-model="offers" />
       <div class="mt-4 flex flex-wrap gap-3">
-        <AppButton @click="saveOdds">Salveaza cote</AppButton>
+        <AppButton :loading="saving === 'odds'" :disabled="saving !== null" @click="saveOdds">Salveaza cote</AppButton>
       </div>
     </Panel>
 
@@ -348,7 +408,8 @@ async function switchOfferActive(offerId: string, active: boolean) {
         <button
           v-for="offer in offers"
           :key="offer.id ?? `${offer.marketType}-${offer.option}-${offer.line ?? 'null'}`"
-          class="rounded-xl border px-4 py-3 text-left text-sm transition-colors"
+          class="rounded-xl border px-4 py-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="saving !== null"
           :class="offer.active === false ? 'border-line bg-surface text-muted hover:bg-surface-2' : 'border-blue-500/20 bg-blue-500/10 text-blue-500 hover:bg-blue-500/15'"
           @click="offer.id && switchOfferActive(offer.id, !(offer.active ?? true))"
         >
@@ -360,6 +421,14 @@ async function switchOfferActive(offerId: string, active: boolean) {
       </div>
     </Panel>
   </div>
+
+  <AppErrorState
+    v-else-if="matchQuery.isError.value && !isNotFound"
+    message="Nu am putut incarca meciul."
+    :error="matchQuery.error.value"
+    :retrying="matchQuery.isFetching.value"
+    @retry="matchQuery.refetch()"
+  />
 
   <EmptyState v-else message="Nu am gasit meciul cerut in admin." />
 </template>

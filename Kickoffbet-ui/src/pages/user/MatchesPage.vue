@@ -12,6 +12,7 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import AppErrorState from '@/components/AppErrorState.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const pagination = usePagination(PAGE_SIZES.LARGE)
 const pageRequest = computed(() => ({
@@ -20,7 +21,7 @@ const pageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['matches-scheduled', pageRequest],
+  queryKey: queryKeys.matchesScheduled(pageRequest),
   queryFn: () => getMatchesByDay('SCHEDULED', pageRequest.value),
 })
 

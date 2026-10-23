@@ -11,6 +11,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const pagination = usePagination(PAGE_SIZES.LARGE)
 const pageRequest = computed(() => ({
@@ -19,7 +20,7 @@ const pageRequest = computed(() => ({
 }))
 
 const resultsQuery = useQuery({
-  queryKey: ['matches-finished', pageRequest],
+  queryKey: queryKeys.matchesFinished(pageRequest),
   queryFn: () => getMatchesByDay('FINISHED', pageRequest.value),
 })
 

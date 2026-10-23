@@ -26,6 +26,7 @@ import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import { translateEnumLabel } from '@/utils/labels.utils'
 import type { MatchList } from '@/types/match.types'
+import { queryKeys } from '@/query/query-keys'
 
 const statusOptions: Array<{ label: string; value: MatchStatus | '' }> = [
   { label: 'Toate', value: '' },
@@ -68,23 +69,23 @@ const matchesPageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['admin-matches-dashboard', appliedFilters, matchesPageRequest],
+  queryKey: queryKeys.adminMatchesDashboard(appliedFilters, matchesPageRequest),
   queryFn: () => searchMatches(appliedFilters.value, matchesPageRequest.value),
   enabled: computed(() => hasSearched.value),
 })
 
 const leaguesQuery = useQuery({
-  queryKey: ['admin-match-filter-leagues', leaguePagination.request],
+  queryKey: queryKeys.adminMatchFilterLeagues(leaguePagination.request),
   queryFn: () => getLeaguePage(leaguePagination.request.value),
 })
 
 const teamsQuery = useQuery({
-  queryKey: ['admin-match-filter-teams', teamPagination.request],
+  queryKey: queryKeys.adminMatchFilterTeams(teamPagination.request),
   queryFn: () => getAllTeams(teamPagination.request.value),
 })
 
 const stuckMatchesQuery = useQuery({
-  queryKey: ['admin-stuck-matches', showStuckMatches],
+  queryKey: queryKeys.adminStuckMatches(showStuckMatches),
   queryFn: getStuckMatches,
   enabled: computed(() => showStuckMatches.value),
 })

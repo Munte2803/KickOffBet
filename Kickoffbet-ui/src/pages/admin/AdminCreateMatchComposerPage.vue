@@ -17,6 +17,7 @@ import AppButton from '@/components/AppButton.vue'
 import DateTimeInput from '@/components/DateTimeInput.vue'
 import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import AdminOfferBuilder from '@/components/AdminOfferBuilder.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const router = useRouter()
 const toastStore = useToastStore()
@@ -27,12 +28,12 @@ const awayTeamsPagination = usePagination(PAGE_SIZES.SMALL)
 const selectedLeagueCode = ref('')
 
 const leaguesQuery = useQuery({
-  queryKey: ['admin-leagues-for-match', leaguePagination.request],
+  queryKey: queryKeys.adminLeaguesForMatch(leaguePagination.request),
   queryFn: () => getLeaguePage(leaguePagination.request.value),
 })
 
 const selectedLeagueQuery = useQuery({
-  queryKey: ['admin-selected-league-for-match', selectedLeagueCode],
+  queryKey: queryKeys.adminSelectedLeagueForMatch(selectedLeagueCode),
   queryFn: () => getLeagueByCode(selectedLeagueCode.value),
   enabled: computed(() => Boolean(selectedLeagueCode.value)),
 })

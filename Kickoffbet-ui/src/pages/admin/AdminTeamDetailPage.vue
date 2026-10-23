@@ -21,6 +21,7 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import AdminEntityPicker from '@/components/AdminEntityPicker.vue'
 import FileInputField from '@/components/FileInputField.vue'
 import { formatDateShort } from '@/utils/date.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const toastStore = useToastStore()
@@ -31,12 +32,12 @@ const editFileVersion = ref(0)
 const leaguesPagination = usePagination(PAGE_SIZES.MEDIUM)
 
 const teamQuery = useQuery({
-  queryKey: ['admin-team-detail-route', teamId],
+  queryKey: queryKeys.adminTeamDetail(teamId),
   queryFn: () => getTeamById(teamId),
 })
 
 const leaguesQuery = useQuery({
-  queryKey: ['admin-team-detail-leagues', leaguesPagination.request],
+  queryKey: queryKeys.adminTeamDetailLeagues(leaguesPagination.request),
   queryFn: () => getLeaguePage(leaguesPagination.request.value),
 })
 

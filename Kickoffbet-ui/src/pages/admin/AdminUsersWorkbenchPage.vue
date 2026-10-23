@@ -29,6 +29,7 @@ import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import { getUsersTimeSeries } from '@/api/admin.timeseries.api'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const pagination = usePagination(PAGE_SIZES.NORMAL)
@@ -55,7 +56,7 @@ const sortOptions = [
 ]
 
 const listedUsersQuery = useQuery({
-  queryKey: ['admin-users-list', status, pageRequest],
+  queryKey: queryKeys.adminUsersList(status, pageRequest),
   queryFn: async () => {
     if (status.value === 'PENDING_VERIFICATION') {
       return getPendingVerification(pageRequest.value)

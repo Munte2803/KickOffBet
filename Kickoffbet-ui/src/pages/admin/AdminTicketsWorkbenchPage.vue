@@ -27,6 +27,7 @@ import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import type { TicketStatus } from '@/types/enums'
 import { useToastStore } from '@/stores/toast.store'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const statusPagination = usePagination(PAGE_SIZES.SMALL)
@@ -55,12 +56,12 @@ const sortOptions = [
 ]
 
 const ticketsQuery = useQuery({
-  queryKey: ['admin-tickets', status, statusPageRequest],
+  queryKey: queryKeys.adminTickets(status, statusPageRequest),
   queryFn: () => getTicketsByStatus(status.value, statusPageRequest.value),
 })
 
 const userTicketsQuery = useQuery({
-  queryKey: ['admin-tickets-user-history', selectedHistoryUserId, userHistoryPageRequest],
+  queryKey: queryKeys.adminTicketsUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTickets(selectedHistoryUserId.value, userHistoryPageRequest.value),
   enabled: false,
 })

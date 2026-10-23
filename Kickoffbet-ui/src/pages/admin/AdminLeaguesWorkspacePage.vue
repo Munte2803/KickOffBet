@@ -25,6 +25,7 @@ import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import type { ExportColumn } from '@/utils/export.utils'
 import type { LeagueList } from '@/types/league.types'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const router = useRouter()
@@ -48,12 +49,12 @@ const sortOptions = [
 ]
 
 const leaguesQuery = useQuery({
-  queryKey: ['admin-leagues-paged', leaguesPageRequest],
+  queryKey: queryKeys.adminLeaguesPaged(leaguesPageRequest),
   queryFn: () => getLeaguePage(leaguesPageRequest.value),
 })
 
 const createTeamsQuery = useQuery({
-  queryKey: ['admin-league-create-teams', createTeamsPagination.request],
+  queryKey: queryKeys.adminLeagueCreateTeams(createTeamsPagination.request),
   queryFn: () => getAllTeams(createTeamsPagination.request.value),
 })
 

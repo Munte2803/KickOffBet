@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { approveTransaction, getTransactionById, rejectTransaction } from '@/api/transactions.admin.api'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
@@ -13,25 +13,17 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatMoney } from '@/utils/money.utils'
+import { queryKeys } from '@/query/query-keys'
+import { invalidateAdminTransactionQueries } from '@/query/query-client'
 
 const route = useRoute()
 const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const transactionId = route.params.id as string
-const queryClient = useQueryClient()
 const pendingAction = ref<'approve' | 'reject' | null>(null)
 
-/** Lists that show this transaction: the admin workbench tabs, the user's admin history and their wallet. */
-const TRANSACTION_LIST_KEYS = [
-  'admin-transaction-pending',
-  'admin-transaction-search',
-  'admin-transaction-user-history',
-  'admin-user-transactions',
-  'admin-user-detail',
-]
-
 const transactionQuery = useQuery({
-  queryKey: ['admin-transaction-route-detail', transactionId],
+  queryKey: queryKeys.adminTransactionDetail(transactionId),
   queryFn: () => getTransactionById(transactionId),
 })
 
@@ -60,10 +52,8 @@ async function runAction(action: (id: string) => Promise<unknown>, message: stri
   try {
     await action(transactionId)
     toastStore.showSuccess(message)
-    for (const key of TRANSACTION_LIST_KEYS) {
-      void queryClient.invalidateQueries({ queryKey: [key] })
-    }
-    await transactionQuery.refetch()
+    // The workbench lists, the user's admin views and this detail (refetched here, as it is mounted)
+    await invalidateAdminTransactionQueries()
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Actiunea a esuat.')
   } finally {

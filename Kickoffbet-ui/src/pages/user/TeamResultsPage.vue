@@ -13,12 +13,13 @@ import PageHeader from '@/components/PageHeader.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const teamId = route.params.id as string
 
 const teamQuery = useQuery({
-  queryKey: ['team-results-header', teamId],
+  queryKey: queryKeys.teamResultsHeader(teamId),
   queryFn: () => getTeamById(teamId),
 })
 
@@ -29,7 +30,7 @@ const pageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['team-results-matches', teamId, pageRequest],
+  queryKey: queryKeys.teamResultsMatches(teamId, pageRequest),
   queryFn: () => getMatchesByTeam(teamId, 'FINISHED', pageRequest.value),
 })
 
