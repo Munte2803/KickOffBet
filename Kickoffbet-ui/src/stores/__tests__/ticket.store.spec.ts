@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useTicketStore } from '@/stores/ticket.store'
@@ -209,6 +209,49 @@ describe('ticket store persistence', () => {
 
     setActivePinia(createPinia())
     expect(useTicketStore().selections.map((s) => s.offerId)).toEqual(['o1'])
+  })
+
+  it('adopts the slip written by another tab without writing it back', async () => {
+    const store = useTicketStore()
+    store.toggleSelection(makeMatch({ id: 'm1', startTime: future }), makeOffer({ id: 'o1' }))
+    await nextTick()
+
+    const otherTabSlip = JSON.stringify({
+      selections: [{ ...store.selections[0], offerId: 'o2' }],
+      stake: 42,
+    })
+    localStorage.setItem('kickoffbet.betslip', otherTabSlip)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kickoffbet.betslip', newValue: otherTabSlip }))
+    await nextTick()
+
+    expect(store.selections.map((s) => s.offerId)).toEqual(['o2'])
+    expect(store.stake).toBe(42)
+    expect(setItem).not.toHaveBeenCalled()
+    setItem.mockRestore()
+
+    // Our next edit builds on the other tab's slip instead of overwriting it
+    store.stake = 50
+    await nextTick()
+    expect(JSON.parse(localStorage.getItem('kickoffbet.betslip')!)).toMatchObject({ stake: 50, selections: [{ offerId: 'o2' }] })
+  })
+
+  it('empties the slip when another tab clears it, and ignores unrelated keys', async () => {
+    const store = useTicketStore()
+    store.toggleSelection(makeMatch({ id: 'm1', startTime: future }), makeOffer({ id: 'o1' }))
+    await nextTick()
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kob-theme', newValue: 'dark' }))
+    expect(store.selectionCount).toBe(1)
+
+    localStorage.removeItem('kickoffbet.betslip')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'kickoffbet.betslip', newValue: null }))
+    expect(store.selectionCount).toBe(0)
+  })
+
+  it('rounds a stored stake to 2 decimals', () => {
+    localStorage.setItem('kickoffbet.betslip', JSON.stringify({ selections: [], stake: 12.345 }))
+    expect(useTicketStore().stake).toBe(12.35)
   })
 
   it('starts empty when the stored slip is unreadable', () => {

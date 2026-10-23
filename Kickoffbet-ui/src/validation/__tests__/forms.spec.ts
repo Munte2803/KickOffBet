@@ -257,6 +257,15 @@ describe('depositSchema / withdrawSchema', () => {
     expect(errorsOf(withdrawSchema, { amount: 300000 })?.amount).toBe('Retragerea maxima este 200000 RON')
   })
 
+  it('accepts up to 2 decimals and rejects more, like the backend (@Digits fraction = 2)', () => {
+    for (const amount of [20.1, 20.07, 150.75, 199999.99, '33.33']) {
+      expect(errorsOf(depositSchema, { amount }), String(amount)).toBeNull()
+      expect(errorsOf(withdrawSchema, { amount }), String(amount)).toBeNull()
+    }
+    expect(errorsOf(depositSchema, { amount: 20.123 })?.amount).toBe('Suma poate avea maxim 2 zecimale')
+    expect(errorsOf(withdrawSchema, { amount: '150.755' })?.amount).toBe('Suma poate avea maxim 2 zecimale')
+  })
+
   it('rejects non-numeric input', () => {
     expect(errorsOf(depositSchema, { amount: 'abc' })).not.toBeNull()
     expect(errorsOf(withdrawSchema, { amount: 'abc' })).not.toBeNull()

@@ -9,12 +9,13 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatMoney } from '@/utils/money.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const transactionId = route.params.id as string
 
 const transactionQuery = useQuery({
-  queryKey: ['transaction-route-detail', transactionId],
+  queryKey: queryKeys.transactionDetail(transactionId),
   queryFn: () => getTransactionDetails(transactionId),
 })
 </script>

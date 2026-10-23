@@ -18,17 +18,16 @@ import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import type { Ticket } from '@/types/ticket.types'
 import { getTicketsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
-import type { TicketStatus } from '@/types/enums'
-import { useToastStore } from '@/stores/toast.store'
+import { TICKET_STATUSES, type TicketStatus } from '@/types/enums'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
-const toastStore = useToastStore()
 const statusPagination = usePagination(PAGE_SIZES.SMALL)
 const userTicketsPagination = usePagination(PAGE_SIZES.COMPACT)
 const status = ref<TicketStatus>('PENDING')
@@ -55,52 +54,25 @@ const sortOptions = [
 ]
 
 const ticketsQuery = useQuery({
-  queryKey: ['admin-tickets', status, statusPageRequest],
+  queryKey: queryKeys.adminTickets(status, statusPageRequest),
   queryFn: () => getTicketsByStatus(status.value, statusPageRequest.value),
 })
 
 const userTicketsQuery = useQuery({
-  queryKey: ['admin-tickets-user-history', selectedHistoryUserId, userHistoryPageRequest],
+  queryKey: queryKeys.adminTicketsUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTickets(selectedHistoryUserId.value, userHistoryPageRequest.value),
-  enabled: false,
+  // Loads as soon as a user is picked; the reactive key then drives every refetch (page, sort, user)
+  enabled: computed(() => Boolean(selectedHistoryUserId.value)),
 })
 
+// The keys hold the status, sort and page: changing them refetches, so only the page is reset here
 watch([status, sortBy], () => {
   statusPagination.reset()
-  ticketsQuery.refetch()
 })
 
-watch(() => statusPagination.page.value, () => {
-  ticketsQuery.refetch()
+watch(selectedHistoryUserId, () => {
+  userTicketsPagination.reset()
 })
-
-watch(() => userTicketsPagination.page.value, () => {
-  if (selectedHistoryUserId.value) {
-    userTicketsQuery.refetch()
-  }
-})
-
-async function loadUserHistory() {
-  if (!selectedHistoryUserId.value) {
-    toastStore.showError('Selecteaza utilizatorul pentru biletele lui.')
-    return
-  }
-
-  if (userTicketsPagination.page.value !== 0) {
-    userTicketsPagination.reset()
-    return
-  }
-
-  await userTicketsQuery.refetch()
-}
-
-async function handleHistoryUserSelect() {
-  if (!selectedHistoryUserId.value) {
-    return
-  }
-
-  await loadUserHistory()
-}
 
 const exportColumns: ExportColumn<Ticket>[] = [
   { header: 'ID', accessor: (r) => r.id },
@@ -110,7 +82,7 @@ const exportColumns: ExportColumn<Ticket>[] = [
   { header: 'Cota totala', accessor: (r) => r.totalOdd },
   { header: 'Castig potential', accessor: (r) => r.potentialPayout },
   { header: 'Selectii', accessor: (r) => r.selections.length },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllTicketsForExport(onProgress?: ExportProgress): Promise<Ticket[]> {
@@ -140,10 +112,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <span class="mb-1 block">Status</span>
           <select v-model="chartStatus" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option value="PENDING">{{ translateEnumLabel('PENDING') }}</option>
-            <option value="WON">{{ translateEnumLabel('WON') }}</option>
-            <option value="LOST">{{ translateEnumLabel('LOST') }}</option>
-            <option value="CANCELLED">{{ translateEnumLabel('CANCELLED') }}</option>
+            <option v-for="ticketStatus in TICKET_STATUSES" :key="ticketStatus" :value="ticketStatus">{{ translateEnumLabel(ticketStatus) }}</option>
           </select>
         </label>
         <label class="text-sm text-muted">
@@ -196,10 +165,7 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <label class="text-sm text-muted">
           <span class="mb-1 block">Status</span>
           <select v-model="status" class="app-select-field app-select">
-              <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-              <option :value="'WON'">{{ translateEnumLabel('WON') }}</option>
-              <option :value="'LOST'">{{ translateEnumLabel('LOST') }}</option>
-              <option :value="'CANCELLED'">{{ translateEnumLabel('CANCELLED') }}</option>
+              <option v-for="ticketStatus in TICKET_STATUSES" :key="ticketStatus" :value="ticketStatus">{{ translateEnumLabel(ticketStatus) }}</option>
             </select>
           </label>
           <AdminSortSelect v-model="sortBy" label="Sorteaza dupa" :options="sortOptions" />
@@ -257,7 +223,6 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
             title="Utilizator pentru istoricul biletelor"
             placeholder="Cauta utilizatorul dupa email"
             results-title="Rezultate utilizatori"
-            @select="handleHistoryUserSelect"
           />
         </div>
 

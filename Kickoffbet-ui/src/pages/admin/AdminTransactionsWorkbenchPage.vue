@@ -10,7 +10,7 @@ import {
   searchTransactions,
 } from '@/api/transactions.admin.api'
 import type { TransactionReport, UserDepositSummary, UserTransactionSummary } from '@/types/transaction.types'
-import type { TransactionStatus, TransactionType } from '@/types/enums'
+import { TRANSACTION_STATUSES, TRANSACTION_TYPES, type TransactionStatus, type TransactionType } from '@/types/enums'
 import { usePagination } from '@/composables/usePagination'
 import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { useToastStore } from '@/stores/toast.store'
@@ -28,13 +28,14 @@ import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import type { Transaction } from '@/types/transaction.types'
 import { getTransactionsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
 import { inputToUtcApiDate } from '@/utils/date.utils'
 import { useTimeSeriesChart } from '@/composables/useTimeSeriesChart'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const searchPagination = usePagination(PAGE_SIZES.SMALL)
@@ -120,7 +121,7 @@ function validateAmountFilters() {
 }
 
 const searchQuery = useQuery({
-  queryKey: ['admin-transaction-search', appliedSearchFilters, searchPageRequest],
+  queryKey: queryKeys.adminTransactionSearch(appliedSearchFilters, searchPageRequest),
   queryFn: async () => {
     return searchTransactions(appliedSearchFilters.value, searchPageRequest.value)
   },
@@ -133,35 +134,26 @@ const pendingPageRequest = computed(() => ({
 }))
 
 const pendingQuery = useQuery({
-  queryKey: ['admin-transaction-pending', sortBy, pendingPageRequest],
+  queryKey: queryKeys.adminTransactionPending(pendingPageRequest),
   queryFn: () => getPendingTransactions(pendingPageRequest.value),
 })
 
 const userTransactionsQuery = useQuery({
-  queryKey: ['admin-transaction-user-history', selectedHistoryUserId, userHistoryPageRequest],
+  queryKey: queryKeys.adminTransactionUserHistory(selectedHistoryUserId, userHistoryPageRequest),
   queryFn: () => getUserTransactions(selectedHistoryUserId.value, userHistoryPageRequest.value),
-  enabled: false,
+  // Loads as soon as a user is picked; the reactive key then drives every refetch (page, sort, user)
+  enabled: computed(() => Boolean(selectedHistoryUserId.value)),
 })
 
+// The keys hold the sort and the pages: changing them refetches, so only the pages are reset here
 watch(sortBy, () => {
-  if (hasSearched.value) {
-    searchPagination.reset()
-    searchQuery.refetch()
-  }
+  searchPagination.reset()
   pendingPagination.reset()
-  pendingQuery.refetch()
+  userTransactionsPagination.reset()
 })
 
-watch(() => searchPagination.page.value, () => {
-  if (hasSearched.value) {
-    searchQuery.refetch()
-  }
-})
-
-watch(() => userTransactionsPagination.page.value, () => {
-  if (selectedHistoryUserId.value) {
-    userTransactionsQuery.refetch()
-  }
+watch(selectedHistoryUserId, () => {
+  userTransactionsPagination.reset()
 })
 
 async function loadReport() {
@@ -208,28 +200,6 @@ async function loadUserSummary() {
   }
 }
 
-async function loadUserHistory() {
-  if (!selectedHistoryUserId.value) {
-    toastStore.showError('Selecteaza utilizatorul pentru istoric.')
-    return
-  }
-
-  if (userTransactionsPagination.page.value !== 0) {
-    userTransactionsPagination.reset()
-    return
-  }
-
-  await userTransactionsQuery.refetch()
-}
-
-async function handleHistoryUserSelect() {
-  if (!selectedHistoryUserId.value) {
-    return
-  }
-
-  await loadUserHistory()
-}
-
 async function applySearchFilters() {
   const amountFilters = validateAmountFilters()
 
@@ -237,7 +207,7 @@ async function applySearchFilters() {
     return
   }
 
-  appliedSearchFilters.value = {
+  const nextFilters = {
     userId: selectedSearchUserId.value || undefined,
     transactionType: transactionType.value || undefined,
     transactionStatus: transactionStatus.value || undefined,
@@ -246,6 +216,8 @@ async function applySearchFilters() {
     minAmount: amountFilters.parsedMin,
     maxAmount: amountFilters.parsedMax,
   }
+  const sameSearch = hasSearched.value && JSON.stringify(nextFilters) === JSON.stringify(appliedSearchFilters.value)
+  appliedSearchFilters.value = nextFilters
   hasSearched.value = true
 
   if (searchPagination.page.value !== 0) {
@@ -253,7 +225,10 @@ async function applySearchFilters() {
     return
   }
 
-  await searchQuery.refetch()
+  // New filters change the query key, which fetches by itself; repeating the same search refreshes it
+  if (sameSearch) {
+    await searchQuery.refetch()
+  }
 }
 
 const exportColumns: ExportColumn<Transaction>[] = [
@@ -263,7 +238,7 @@ const exportColumns: ExportColumn<Transaction>[] = [
   { header: 'Tip', accessor: (r) => translateEnumLabel(r.transactionType) },
   { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
   { header: 'Suma', accessor: (r) => r.amount },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllTransactionsForExport(onProgress?: ExportProgress): Promise<Transaction[]> {
@@ -272,7 +247,7 @@ function fetchAllTransactionsForExport(onProgress?: ExportProgress): Promise<Tra
 }
 
 const trendChartRef = ref<InstanceType<typeof TimeSeriesChart> | null>(null)
-const chartType = ref<'DEPOSIT' | 'WITHDRAWAL' | 'BET' | 'PAYOUT' | 'REFUND'>('DEPOSIT')
+const chartType = ref<TransactionType>('DEPOSIT')
 const chartMetric = ref<'count' | 'totalAmount'>('totalAmount')
 const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeriesChart(
   (start, end) => getTransactionsTimeSeries(start, end, chartType.value),
@@ -345,11 +320,7 @@ function resetSearchFilters() {
         <label class="text-sm text-muted">
           <span class="mb-1 block">Tip</span>
           <select v-model="chartType" class="app-select-field app-select">
-            <option value="DEPOSIT">{{ translateEnumLabel('DEPOSIT') }}</option>
-            <option value="WITHDRAWAL">{{ translateEnumLabel('WITHDRAWAL') }}</option>
-            <option value="BET">{{ translateEnumLabel('BET') }}</option>
-            <option value="PAYOUT">{{ translateEnumLabel('PAYOUT') }}</option>
-            <option value="REFUND">{{ translateEnumLabel('REFUND') }}</option>
+            <option v-for="type in TRANSACTION_TYPES" :key="type" :value="type">{{ translateEnumLabel(type) }}</option>
           </select>
         </label>
         <label class="text-sm text-muted">
@@ -458,7 +429,6 @@ function resetSearchFilters() {
             title="Utilizator pentru istoric"
             placeholder="Cauta utilizatorul dupa email"
             results-title="Rezultate utilizatori"
-            @select="handleHistoryUserSelect"
           />
         </div>
 
@@ -526,11 +496,7 @@ function resetSearchFilters() {
           <span class="mb-1 block">Tip</span>
           <select v-model="transactionType" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option :value="'DEPOSIT'">{{ translateEnumLabel('DEPOSIT') }}</option>
-            <option :value="'WITHDRAWAL'">{{ translateEnumLabel('WITHDRAWAL') }}</option>
-            <option :value="'BET'">{{ translateEnumLabel('BET') }}</option>
-            <option :value="'PAYOUT'">{{ translateEnumLabel('PAYOUT') }}</option>
-            <option :value="'REFUND'">{{ translateEnumLabel('REFUND') }}</option>
+            <option v-for="type in TRANSACTION_TYPES" :key="type" :value="type">{{ translateEnumLabel(type) }}</option>
           </select>
         </label>
 
@@ -538,9 +504,9 @@ function resetSearchFilters() {
           <span class="mb-1 block">Stare</span>
           <select v-model="transactionStatus" class="app-select-field app-select">
             <option value="">Toate</option>
-            <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-            <option :value="'COMPLETED'">{{ translateEnumLabel('COMPLETED') }}</option>
-            <option :value="'REJECTED'">{{ translateEnumLabel('REJECTED') }}</option>
+            <option v-for="transactionStatusOption in TRANSACTION_STATUSES" :key="transactionStatusOption" :value="transactionStatusOption">
+              {{ translateEnumLabel(transactionStatusOption) }}
+            </option>
           </select>
         </label>
       </div>

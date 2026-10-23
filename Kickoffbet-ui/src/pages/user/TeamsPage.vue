@@ -11,11 +11,12 @@ import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AppPagination from '@/components/AppPagination.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const pagination = usePagination(PAGE_SIZES.GRID)
 
 const teamsQuery = useQuery({
-  queryKey: ['public-teams', pagination.request],
+  queryKey: queryKeys.teams(pagination.request),
   queryFn: () => getTeams(pagination.request.value),
 })
 

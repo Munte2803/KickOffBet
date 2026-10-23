@@ -23,6 +23,9 @@ import FilePreviewModal from '@/components/FilePreviewModal.vue'
 import { downloadRemoteFile } from '@/utils/file.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatMoney } from '@/utils/money.utils'
+import { queryKeys } from '@/query/query-keys'
+import { invalidateAdminUserQueries } from '@/query/query-client'
+import * as userRules from '@/utils/user-rules'
 
 const route = useRoute()
 const toastStore = useToastStore()
@@ -36,40 +39,24 @@ const previewLoading = ref(false)
 const previewFile = ref<Awaited<ReturnType<typeof getUserIdCard>> | null>(null)
 
 const userQuery = useQuery({
-  queryKey: ['admin-user-detail', userId],
+  queryKey: queryKeys.adminUserDetail(userId),
   queryFn: () => getUserById(userId),
 })
 
 const user = computed(() => userQuery.data.value)
-const isAdminUser = computed(() => user.value?.role === 'ADMIN')
-const isSuspendedUser = computed(() => user.value?.status === 'SUSPENDED')
-const canApproveOrRejectIdCard = computed(() => {
-  if (!user.value) return false
-  if (isAdminUser.value || isSuspendedUser.value) return false
-  return Boolean(user.value.idCardUrl) && !user.value.idCardVerified
-})
-const canSuspendUser = computed(() => {
-  if (!user.value) return false
-  if (isAdminUser.value || isSuspendedUser.value) return false
-  return user.value.status === 'ACTIVE' || user.value.status === 'PENDING' || user.value.status === 'DECLINED'
-})
-const canActivateUser = computed(() => {
-  if (!user.value) return false
-  return user.value.status === 'SUSPENDED' || user.value.status === 'DEACTIVATED' || user.value.status === 'DECLINED'
-})
-const canViewIdCard = computed(() => {
-  if (!user.value) return false
-  if (isSuspendedUser.value) return false
-  return Boolean(user.value.idCardUrl)
-})
+const canApproveIdCard = computed(() => (user.value ? userRules.canApproveIdCard(user.value) : false))
+const canRejectIdCard = computed(() => (user.value ? userRules.canRejectIdCard(user.value) : false))
+const canSuspendUser = computed(() => (user.value ? userRules.canSuspendUser(user.value) : false))
+const canActivateUser = computed(() => (user.value ? userRules.canActivateUser(user.value) : false))
+const canViewIdCard = computed(() => (user.value ? userRules.canViewUserIdCard(user.value) : false))
 
 const transactionsQuery = useQuery({
-  queryKey: ['admin-user-transactions', userId],
+  queryKey: queryKeys.adminUserTransactions(userId),
   queryFn: () => getUserTransactions(userId, { page: 0, size: 5 }),
 })
 
 const ticketsQuery = useQuery({
-  queryKey: ['admin-user-tickets', userId],
+  queryKey: queryKeys.adminUserTickets(userId),
   queryFn: () => getUserTickets(userId, { page: 0, size: 5 }),
 })
 
@@ -98,7 +85,8 @@ async function runAction(
 
   try {
     await action()
-    await userQuery.refetch()
+    // This user's detail (mounted, so refetched now), the users lists and the user pickers
+    await invalidateAdminUserQueries()
     toastStore.showSuccess(message)
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Actiunea a esuat.')
@@ -187,7 +175,7 @@ onBeforeUnmount(() => {
 
         <div class="mt-4 flex flex-wrap gap-3">
           <AppButton
-            v-if="canApproveOrRejectIdCard"
+            v-if="canApproveIdCard"
             variant="outline"
             @click="runAction(
               () => approveUser(userId),
@@ -202,7 +190,7 @@ onBeforeUnmount(() => {
             Aproba actul de identitate
           </AppButton>
           <AppButton
-            v-if="canApproveOrRejectIdCard"
+            v-if="canRejectIdCard"
             variant="outline"
             @click="runAction(
               () => rejectUser(userId),

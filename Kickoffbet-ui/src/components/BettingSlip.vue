@@ -5,7 +5,7 @@ import { useToastStore } from '@/stores/toast.store'
 import { useTicketActions } from '@/composables/useTicketActions'
 import Panel from './Panel.vue'
 import AppButton from './AppButton.vue'
-import { formatMoney } from '@/utils/money.utils'
+import { formatMoney, roundMoney } from '@/utils/money.utils'
 import { formatBetLabel } from '@/utils/odds.utils'
 import { MAX_STAKE, MAX_WIN, MIN_STAKE } from '@/constants/betting.constants'
 import { translateEnumLabel } from '@/utils/labels.utils'
@@ -31,9 +31,14 @@ const isPlaceDisabled = computed(
 )
 
 function updateStake(event: Event) {
-  const value = Number((event.target as HTMLInputElement).value)
-  ticketStore.stake = value
-  
+  const input = event.target as HTMLInputElement
+  const value = Number(input.value)
+  // The backend accepts at most 2 decimals: round, and show the rounded amount instead of the extra digits
+  const stake = Number.isFinite(value) ? roundMoney(value) : value
+  ticketStore.stake = stake
+  if (/[.,]\d{3,}/.test(input.value)) {
+    input.value = String(stake)
+  }
 
   if (isStakeValid.value) {
     hasTriedInvalidStake.value = false

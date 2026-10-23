@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { deposit, getTransactions, withdraw } from '@/api/wallet.api'
-import { getProfile } from '@/api/profile.api'
 import type { TransactionTypeFilter } from '@/types/transaction.types'
+import { TRANSACTION_TYPES } from '@/types/enums'
+import { TRANSACTION_TYPE_TAB_LABELS } from '@/utils/labels.utils'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -22,14 +23,18 @@ import TabNav from '@/components/TabNav.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import AppErrorState from '@/components/AppErrorState.vue'
-import { invalidateAccountQueries } from '@/query/query-client'
 import { formatMoney } from '@/utils/money.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const authStore = useAuthStore()
 const toastStore = useToastStore()
 const { confirm } = useConfirmDialog()
 const mode = ref<'deposit' | 'withdraw'>('deposit')
 const transactionType = ref<TransactionTypeFilter>('ALL')
+const transactionTabs = [
+  { key: 'ALL', label: 'Toate' },
+  ...TRANSACTION_TYPES.map((type) => ({ key: type, label: TRANSACTION_TYPE_TAB_LABELS[type] })),
+]
 const pagination = usePagination(PAGE_SIZES.COMPACT)
 const transactionPageRequest = computed(() => ({
   ...pagination.request.value,
@@ -37,17 +42,13 @@ const transactionPageRequest = computed(() => ({
 }))
 
 const transactionsQuery = useQuery({
-  queryKey: ['wallet-transactions', transactionType, transactionPageRequest],
+  queryKey: queryKeys.walletTransactions(transactionType, transactionPageRequest),
   queryFn: () => getTransactions(transactionType.value, transactionPageRequest.value),
 })
 
+// The key holds the type and the page: changing them fetches, so only the page is reset here
 watch(transactionType, () => {
   pagination.reset()
-  transactionsQuery.refetch()
-})
-
-watch([() => pagination.page.value, () => pagination.size.value], () => {
-  transactionsQuery.refetch()
 })
 
 const depositForm = useForm({
@@ -68,14 +69,9 @@ const [withdrawAmount] = withdrawForm.defineField('amount')
  * so it is never reported as a failed money operation.
  */
 async function refreshAfterWalletChange() {
-  // Every filter tab of the history (and the profile) is cached separately
-  void invalidateAccountQueries()
-  try {
-    const profile = await getProfile()
-    authStore.hydrateProfile(profile)
-  } catch {
-    // the layout refreshes the profile again on the next navigation
-  }
+  // Every filter tab of the history (and the profile) is cached separately; on failure the layout
+  // refreshes the profile again on the next navigation
+  await authStore.refreshAccountAfterMutation()
 }
 
 const submitDeposit = depositForm.handleSubmit(async (values) => {
@@ -193,14 +189,7 @@ const submitWithdraw = withdrawForm.handleSubmit(async (values) => {
 
         <div class="mt-4">
           <TabNav
-            :tabs="[
-              { key: 'ALL', label: 'Toate' },
-              { key: 'DEPOSIT', label: 'Depuneri' },
-              { key: 'WITHDRAWAL', label: 'Retrageri' },
-              { key: 'BET', label: 'Pariuri' },
-              { key: 'PAYOUT', label: 'Castiguri platite' },
-              { key: 'REFUND', label: 'Rambursari' },
-            ]"
+            :tabs="transactionTabs"
             :active="transactionType"
             @change="transactionType = $event as TransactionTypeFilter"
           />

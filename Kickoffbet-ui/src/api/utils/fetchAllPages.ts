@@ -8,9 +8,19 @@ export const MAX_EXPORT_ROWS = 10_000
 export type ExportProgress = (loaded: number, total: number) => void
 
 export interface FetchAllPagesOptions {
-  sort?: string
+  /** The export's order ("createdAt,desc"); `id` is always added as a tie-breaker. */
+  sort: string
   onProgress?: ExportProgress
   maxRows?: number
+}
+
+/**
+ * Offset pages are only stable under a total order: with a non-unique sort (many rows sharing a
+ * `createdAt` or `startTime`) the database may order ties differently per query, so rows get
+ * duplicated or skipped between pages. `id` as a secondary sort makes the order unique.
+ */
+export function withIdTiebreaker(sort: string): string[] {
+  return sort.split(',')[0].trim() === 'id' ? [sort] : [sort, 'id,asc']
 }
 
 /**
@@ -20,14 +30,13 @@ export interface FetchAllPagesOptions {
  */
 export async function fetchAllPages<T>(
   fetchPage: (pageable: PageRequest) => Promise<PageResponse<T>>,
-  { sort, onProgress, maxRows = MAX_EXPORT_ROWS }: FetchAllPagesOptions = {},
+  { sort, onProgress, maxRows = MAX_EXPORT_ROWS }: FetchAllPagesOptions,
 ): Promise<T[]> {
   const rows: T[] = []
   const maxPages = Math.ceil(maxRows / MAX_API_PAGE_SIZE)
 
   for (let page = 0; page < maxPages; page++) {
-    const pageable: PageRequest = { page, size: MAX_API_PAGE_SIZE }
-    if (sort) pageable.sort = sort
+    const pageable: PageRequest = { page, size: MAX_API_PAGE_SIZE, sort: withIdTiebreaker(sort) }
     const response = await fetchPage(pageable)
 
     if (response.totalElements > maxRows) {

@@ -64,3 +64,36 @@ export async function readErrorBody(data: unknown): Promise<{ errorCode?: string
   }
   return data && typeof data === 'object' ? (data as { errorCode?: string; error?: string }) : undefined
 }
+
+export const errorCodeMessages: Record<string, string> = {
+  INSUFFICIENT_FUNDS: 'Fonduri insuficiente. Alimenteaza portofelul pentru a plasa biletul.',
+  CONCURRENT_MODIFICATION: 'Operatiunea a esuat din cauza unei modificari concurente. Incearca din nou.',
+  ACCOUNT_LOCKED: 'Contul tau este blocat. Contacteaza suportul.',
+  INVALID_CREDENTIALS: 'Email sau parola incorecta.',
+  RESOURCE_NOT_FOUND: 'Resursa solicitata nu a fost gasita.',
+  STORAGE_ERROR: 'Eroare la incarcarea fisierului. Incearca din nou.',
+  EXTERNAL_API_ERROR: 'Serviciu extern indisponibil. Incearca mai tarziu.',
+  INTERNAL_ERROR: 'Eroare interna. Incearca mai tarziu.',
+}
+
+/**
+ * Codes whose message depends on the backend's text (FORBIDDEN and VALIDATION_ERROR cover many
+ * cases): the known texts are translated, any other one falls back to the server message.
+ */
+const serverMessageTranslations: Record<string, Array<[RegExp, string]>> = {
+  FORBIDDEN: [[/verify your account/i, 'Contul tau nu este inca verificat.']],
+  VALIDATION_ERROR: [
+    [/stake can have at most 2 decimals/i, 'Miza poate avea maxim 2 zecimale.'],
+    [/amount can have at most 2 decimals/i, 'Suma poate avea maxim 2 zecimale.'],
+  ],
+}
+
+/** The Romanian message for a backend error code, when there is one. */
+export function translateErrorCode(errorCode: string | undefined, serverMessage?: string): string | undefined {
+  if (!errorCode) return undefined
+  // The placement validator explains exactly what is wrong (changed odds, closed offer...): show that
+  if (errorCode === 'TICKET_PLACEMENT_ERROR') return translateTicketPlacementError(serverMessage)
+  const known = serverMessageTranslations[errorCode]?.find(([pattern]) => pattern.test(serverMessage ?? ''))
+  if (known) return known[1]
+  return errorCodeMessages[errorCode]
+}

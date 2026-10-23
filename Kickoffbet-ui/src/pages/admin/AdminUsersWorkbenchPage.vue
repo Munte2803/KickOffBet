@@ -17,7 +17,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import AdminUserSearchPicker from '@/components/AdminUserSearchPicker.vue'
-import type { UserStatus } from '@/types/enums'
+import { USER_STATUSES, type UserStatus } from '@/types/enums'
 import type { UserList } from '@/types/admin-user.types'
 import { useToastStore } from '@/stores/toast.store'
 import { formatDateShort } from '@/utils/date.utils'
@@ -27,8 +27,9 @@ import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import { getUsersTimeSeries } from '@/api/admin.timeseries.api'
+import { queryKeys } from '@/query/query-keys'
 
 const toastStore = useToastStore()
 const pagination = usePagination(PAGE_SIZES.NORMAL)
@@ -55,7 +56,7 @@ const sortOptions = [
 ]
 
 const listedUsersQuery = useQuery({
-  queryKey: ['admin-users-list', status, pageRequest],
+  queryKey: queryKeys.adminUsersList(status, pageRequest),
   queryFn: async () => {
     if (status.value === 'PENDING_VERIFICATION') {
       return getPendingVerification(pageRequest.value)
@@ -160,7 +161,7 @@ const exportColumns: ExportColumn<UserList>[] = [
   { header: 'Prenume', accessor: (r) => r.firstName },
   { header: 'Nume', accessor: (r) => r.lastName },
   { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllUsersForExport(onProgress?: ExportProgress): Promise<UserList[]> {
@@ -293,12 +294,8 @@ const { chartStart, chartEnd, chartData, chartLoading, loadChart } = useTimeSeri
           <span class="mb-1 block">Stare</span>
           <select v-model="status" class="app-select-field app-select">
             <option value="ALL">Toate</option>
-            <option value="PENDING_VERIFICATION">Verificare in asteptare</option>
-            <option :value="'PENDING'">{{ translateEnumLabel('PENDING') }}</option>
-            <option :value="'ACTIVE'">{{ translateEnumLabel('ACTIVE') }}</option>
-            <option :value="'SUSPENDED'">{{ translateEnumLabel('SUSPENDED') }}</option>
-            <option :value="'DECLINED'">{{ translateEnumLabel('DECLINED') }}</option>
-            <option :value="'DEACTIVATED'">{{ translateEnumLabel('DEACTIVATED') }}</option>
+            <option value="PENDING_VERIFICATION">{{ translateEnumLabel('PENDING_VERIFICATION') }}</option>
+            <option v-for="userStatus in USER_STATUSES" :key="userStatus" :value="userStatus">{{ translateEnumLabel(userStatus) }}</option>
           </select>
         </label>
 

@@ -5,10 +5,9 @@ import { useTicketStore } from '@/stores/ticket.store'
 import { useToastStore } from '@/stores/toast.store'
 import { placeTicket } from '@/api/tickets.api'
 import { ApiError } from '@/api/api-error'
-import { getProfile } from '@/api/profile.api'
 import type { MatchList, MatchDetail, MarketOffer } from '@/types/match.types'
 import { MAX_STAKE, MAX_WIN, MIN_STAKE } from '@/constants/betting.constants'
-import { invalidateAccountQueries, invalidateMatchOfferQueries } from '@/query/query-client'
+import { invalidateMatchOfferQueries } from '@/query/query-client'
 
 export function useTicketActions() {
   const authStore = useAuthStore()
@@ -62,11 +61,7 @@ export function useTicketActions() {
 
       const capped = ticketStore.stake * ticketStore.totalOdds > MAX_WIN
       ticketStore.clearSelections()
-      void invalidateAccountQueries()
-      try {
-        const profile = await getProfile()
-        authStore.hydrateProfile(profile)
-      } catch {
+      if (!(await authStore.refreshAccountAfterMutation())) {
         authStore.updateBalance(Math.max(authStore.balance - placedStake, 0))
       }
       toastStore.showSuccess(capped ? 'Bilet plasat. Castigul potential a fost plafonat.' : 'Bilet plasat cu succes.')

@@ -7,6 +7,7 @@ import { usePagination } from '@/composables/usePagination'
 import { PAGE_SIZES } from '@/constants/pagination.constants'
 import { searchUsers } from '@/api/admin-users.api'
 import type { UserList } from '@/types/admin-user.types'
+import { queryKeys } from '@/query/query-keys'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -29,7 +30,7 @@ const emailSearch = ref('')
 const pagination = usePagination(PAGE_SIZES.NORMAL)
 
 const usersQuery = useQuery({
-  queryKey: ['admin-user-search-picker', props.title, emailSearch, pagination.request],
+  queryKey: queryKeys.adminUserSearchPicker(props.title, emailSearch, pagination.request),
   queryFn: () => searchUsers(emailSearch.value.trim(), pagination.request.value),
   enabled: computed(() => emailSearch.value.trim().length >= 2),
 })

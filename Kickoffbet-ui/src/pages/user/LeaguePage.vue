@@ -17,12 +17,13 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const leagueCode = route.params.code as string
 
 const leagueQuery = useQuery({
-  queryKey: ['league-detail', leagueCode],
+  queryKey: queryKeys.leagueDetail(leagueCode),
   queryFn: () => getLeagueByCode(leagueCode),
 })
 
@@ -33,7 +34,7 @@ const pageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['league-scheduled-matches', leagueCode, pageRequest],
+  queryKey: queryKeys.leagueScheduledMatches(leagueCode, pageRequest),
   queryFn: () => getMatchesByLeague(leagueCode, 'SCHEDULED', pageRequest.value),
 })
 

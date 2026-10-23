@@ -13,12 +13,13 @@ import PageHeader from '@/components/PageHeader.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import EmptyState from '@/components/AppEmptyState.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const leagueCode = route.params.code as string
 
 const leagueQuery = useQuery({
-  queryKey: ['league-results-header', leagueCode],
+  queryKey: queryKeys.leagueResultsHeader(leagueCode),
   queryFn: () => getLeagueByCode(leagueCode),
 })
 
@@ -29,7 +30,7 @@ const pageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['league-results-matches', leagueCode, pageRequest],
+  queryKey: queryKeys.leagueResultsMatches(leagueCode, pageRequest),
   queryFn: () => getMatchesByLeague(leagueCode, 'FINISHED', pageRequest.value),
 })
 

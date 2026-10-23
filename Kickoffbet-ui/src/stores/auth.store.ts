@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserRole } from '@/types/enums'
-import api from '@/api/axios'
+import { logout as logoutRequest } from '@/api/auth.api'
 import type { UserProfile } from '@/types/profile.types'
 import { getProfile } from '@/api/profile.api'
 import { useTicketStore } from '@/stores/ticket.store'
 import { clearUserScopedState } from '@/utils/user-state.utils'
+import { ACCOUNT_QUERY_KEYS, queryClient } from '@/query/query-client'
+import { queryKeys } from '@/query/query-keys'
 import {
   bindAuthSessionListener,
   clearStoredAuthSession,
@@ -121,9 +123,39 @@ export const useAuthStore = defineStore('auth', () => {
     return profileRefreshPromise
   }
 
+  /**
+   * After an operation that moved money (ticket placed or cancelled, deposit, withdrawal): marks the
+   * account's cached tickets, wallet history and profile as stale and reloads the profile once, through
+   * the query cache so a mounted profile query shares that single request. Resolves to false when the
+   * profile could not be reloaded (the balance shown may then lag until the next refresh).
+   */
+  async function refreshAccountAfterMutation(): Promise<boolean> {
+    for (const key of ACCOUNT_QUERY_KEYS) {
+      // The profile is not refetched by the invalidation: fetchQuery below loads it exactly once
+      void queryClient.invalidateQueries({
+        queryKey: [key],
+        refetchType: key === queryKeys.profile.root ? 'none' : 'active',
+      })
+    }
+
+    try {
+      const profile = await queryClient.fetchQuery({
+        queryKey: queryKeys.profile(),
+        queryFn: getProfile,
+        staleTime: 0,
+        retry: false,
+      })
+      hydrateProfile(profile)
+      lastProfileRefreshAt = Date.now()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async function logout() {
     try {
-      await api.post('/api/auth/logout')
+      await logoutRequest()
     } catch (error) {
       console.warn('Logout notification failed:', error)
     }
@@ -156,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
     updateBalance,
     hydrateProfile,
     refreshProfile,
+    refreshAccountAfterMutation,
     logout,
     clearAuth,
   }

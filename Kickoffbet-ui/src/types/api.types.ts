@@ -18,5 +18,6 @@ export interface PageResponse<T> {
 export interface PageRequest {
   page?: number
   size?: number
-  sort?: string  
+  /** "field,dir"; an array sends several sort params (sort=startTime,desc&sort=id,asc). */
+  sort?: string | string[]
 }

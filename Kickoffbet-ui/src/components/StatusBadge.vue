@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { translateEnumLabel } from '@/utils/labels.utils'
+import type { MatchStatus, TicketStatus, TransactionStatus, TransactionType, UserStatus } from '@/types/enums'
+
+/** Every value a badge shows: the typed map below fails to compile when a status has no color. */
+type BadgeStatus =
+  | MatchStatus
+  | TicketStatus
+  | UserStatus
+  | TransactionStatus
+  | TransactionType
+  | 'PENDING_VERIFICATION'
+  | 'INACTIVE'
 
 defineProps<{ status: string }>()
 
@@ -8,7 +19,7 @@ defineProps<{ status: string }>()
  * uses ONLY the 500 shade across bg / text / border — opacity varies the depth (60-30-10 rule):
  *   bg = /10  (light surface)  ·  text = /1 (accent)  ·  border = /30 (mid)
  */
-const colorMap: Record<string, string> = {
+const colorMap: Record<BadgeStatus, string> = {
   // green — positive / finalized
   WON: 'bg-green-500/10 text-green-500 border-green-500/30',
   ACTIVE: 'bg-green-500/10 text-green-500 border-green-500/30',
@@ -21,7 +32,8 @@ const colorMap: Record<string, string> = {
   REJECTED: 'bg-red-500/10 text-red-500 border-red-500/30',
   // yellow — pending / awaiting
   PENDING: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
-  // orange — paused / postponed
+  PENDING_VERIFICATION: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+  // orange — paused / postponed (SUSPENDED: a suspended match or user account)
   POSTPONED: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
   SUSPENDED: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
   WITHDRAWAL: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
@@ -35,6 +47,7 @@ const colorMap: Record<string, string> = {
   CANCELLED: 'bg-gray-500/10 text-subtle border-gray-500/30',
   FINISHED: 'bg-gray-500/10 text-subtle border-gray-500/30',
   DEACTIVATED: 'bg-gray-500/10 text-subtle border-gray-500/30',
+  INACTIVE: 'bg-gray-500/10 text-subtle border-gray-500/30',
   UNKNOWN: 'bg-gray-500/10 text-subtle border-gray-500/30',
 }
 </script>
@@ -43,7 +56,7 @@ const colorMap: Record<string, string> = {
   <span
     :class="[
       'inline-flex shrink-0 items-center whitespace-nowrap rounded border px-1.25 py-0.5 text-[9px] font-semibold sm:px-2 sm:text-xs',
-      colorMap[status] ?? 'bg-gray-500/10 text-subtle border-gray-500/30',
+      colorMap[status as BadgeStatus] ?? 'bg-gray-500/10 text-subtle border-gray-500/30',
     ]"
   >
     {{ translateEnumLabel(status) }}

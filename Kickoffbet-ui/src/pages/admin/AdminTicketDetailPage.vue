@@ -12,12 +12,13 @@ import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatBetLabel } from '@/utils/odds.utils'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const ticketId = route.params.id as string
 
 const ticketQuery = useQuery({
-  queryKey: ['admin-ticket-route-detail', ticketId],
+  queryKey: queryKeys.adminTicketDetail(ticketId),
   queryFn: () => getTicketById(ticketId),
 })
 </script>

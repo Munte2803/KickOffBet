@@ -3,7 +3,6 @@ import { watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 import { cancelTicket, getTicket } from '@/api/tickets.api'
-import { getProfile } from '@/api/profile.api'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToastStore } from '@/stores/toast.store'
 import { useAuthStore } from '@/stores/auth.store'
@@ -13,11 +12,11 @@ import AppButton from '@/components/AppButton.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import LoadingState from '@/components/AppLoadingState.vue'
 import AppErrorState from '@/components/AppErrorState.vue'
-import { invalidateAccountQueries } from '@/query/query-client'
 import { formatMoney } from '@/utils/money.utils'
 import { formatDateShort } from '@/utils/date.utils'
 import { formatBetLabel } from '@/utils/odds.utils'
 import { translateEnumLabel } from '@/utils/labels.utils'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const toastStore = useToastStore()
@@ -26,13 +25,14 @@ const { confirm } = useConfirmDialog()
 const ticketId = route.params.id as string
 
 const ticketQuery = useQuery({
-  queryKey: ['ticket-detail', ticketId],
+  queryKey: queryKeys.ticketDetail(ticketId),
   queryFn: () => getTicket(ticketId),
 })
 
 watch(() => ticketQuery.data.value, (ticket) => {
   if (ticket && ticket.status === 'WON') {
-    getProfile().then(profile => authStore.hydrateProfile(profile)).catch(() => {})
+    // A won ticket was paid out: show the new balance (rate-limited and shared with other refreshes)
+    authStore.refreshProfile().catch(() => {})
   }
 }, { immediate: true })
 
@@ -53,14 +53,9 @@ async function handleCancel() {
   try {
     await cancelTicket(ticketId)
     toastStore.showSuccess('Biletul a fost anulat.')
-    // The refund changes the ticket lists, the wallet history and the balance
-    void invalidateAccountQueries()
-    try {
-      const profile = await getProfile()
-      authStore.hydrateProfile(profile)
-    } catch {
-      // the balance is refreshed again by the profile query / layout
-    }
+    // The refund changes the ticket lists, the wallet history and the balance (on failure the
+    // balance is refreshed again by the profile query / layout)
+    await authStore.refreshAccountAfterMutation()
   } catch (error) {
     toastStore.showError(error instanceof Error ? error.message : 'Nu am putut anula biletul.')
   }

@@ -17,17 +17,18 @@ import EmptyState from '@/components/AppEmptyState.vue'
 import LogoFrame from '@/components/LogoFrame.vue'
 import AppLinkButton from '@/components/AppLinkButton.vue'
 import AppPagination from '@/components/AppPagination.vue'
+import { queryKeys } from '@/query/query-keys'
 
 const route = useRoute()
 const teamId = route.params.id as string
 
 const teamQuery = useQuery({
-  queryKey: ['team-detail', teamId],
+  queryKey: queryKeys.teamDetail(teamId),
   queryFn: () => getTeamById(teamId),
 })
 
 const recentResultsQuery = useQuery({
-  queryKey: ['team-form', teamId],
+  queryKey: queryKeys.teamForm(teamId),
   queryFn: () => getMatchesByTeam(teamId, 'FINISHED', { page: 0, size: 5 }),
 })
 
@@ -38,7 +39,7 @@ const pageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['team-scheduled-matches', teamId, pageRequest],
+  queryKey: queryKeys.teamScheduledMatches(teamId, pageRequest),
   queryFn: () => getMatchesByTeam(teamId, 'SCHEDULED', pageRequest.value),
 })
 

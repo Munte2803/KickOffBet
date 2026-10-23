@@ -8,7 +8,7 @@ import type { MatchSearchRequest } from '@/types/match.types'
 import { getAllTeams } from '@/api/teams.admin.api'
 import { usePagination } from '@/composables/usePagination'
 import { PAGE_SIZES } from '@/constants/pagination.constants'
-import type { MatchStatus } from '@/types/enums'
+import { EDITABLE_MATCH_STATUSES, type MatchStatus } from '@/types/enums'
 import PageHeader from '@/components/PageHeader.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import AppPagination from '@/components/AppPagination.vue'
@@ -23,17 +23,14 @@ import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
+import { translateEnumLabel } from '@/utils/labels.utils'
 import type { MatchList } from '@/types/match.types'
+import { queryKeys } from '@/query/query-keys'
 
 const statusOptions: Array<{ label: string; value: MatchStatus | '' }> = [
   { label: 'Toate', value: '' },
-  { label: 'Programat', value: 'SCHEDULED' },
-  { label: 'In direct', value: 'LIVE' },
-  { label: 'Terminat', value: 'FINISHED' },
-  { label: 'Amanat', value: 'POSTPONED' },
-  { label: 'Suspendat', value: 'SUSPENDED' },
-  { label: 'Anulat', value: 'CANCELLED' },
+  ...EDITABLE_MATCH_STATUSES.map((value) => ({ label: translateEnumLabel(value), value })),
 ]
 
 const sortOptions = [
@@ -67,23 +64,23 @@ const matchesPageRequest = computed(() => ({
 }))
 
 const matchesQuery = useQuery({
-  queryKey: ['admin-matches-dashboard', appliedFilters, matchesPageRequest],
+  queryKey: queryKeys.adminMatchesDashboard(appliedFilters, matchesPageRequest),
   queryFn: () => searchMatches(appliedFilters.value, matchesPageRequest.value),
   enabled: computed(() => hasSearched.value),
 })
 
 const leaguesQuery = useQuery({
-  queryKey: ['admin-match-filter-leagues', leaguePagination.request],
+  queryKey: queryKeys.adminMatchFilterLeagues(leaguePagination.request),
   queryFn: () => getLeaguePage(leaguePagination.request.value),
 })
 
 const teamsQuery = useQuery({
-  queryKey: ['admin-match-filter-teams', teamPagination.request],
+  queryKey: queryKeys.adminMatchFilterTeams(teamPagination.request),
   queryFn: () => getAllTeams(teamPagination.request.value),
 })
 
 const stuckMatchesQuery = useQuery({
-  queryKey: ['admin-stuck-matches', showStuckMatches],
+  queryKey: queryKeys.adminStuckMatches(showStuckMatches),
   queryFn: getStuckMatches,
   enabled: computed(() => showStuckMatches.value),
 })
@@ -111,10 +108,9 @@ const teamItems = computed(() =>
   })),
 )
 
-watch(() => pagination.page.value, () => {
-  if (hasSearched.value) {
-    matchesQuery.refetch()
-  }
+// The key holds the sort: changing it refetches; start again from the first page
+watch(sortBy, () => {
+  pagination.reset()
 })
 
 function buildFilters(): MatchSearchRequest {
@@ -130,10 +126,16 @@ function buildFilters(): MatchSearchRequest {
 }
 
 async function applyFilters() {
-  appliedFilters.value = buildFilters()
+  const nextFilters = buildFilters()
+  const sameSearch =
+    hasSearched.value && pagination.page.value === 0 && JSON.stringify(nextFilters) === JSON.stringify(appliedFilters.value)
+  appliedFilters.value = nextFilters
   hasSearched.value = true
   pagination.reset()
-  await matchesQuery.refetch()
+  // New filters or another page change the query key, which fetches by itself; the same search refreshes it
+  if (sameSearch) {
+    await matchesQuery.refetch()
+  }
 }
 
 const exportColumns: ExportColumn<MatchList>[] = [
@@ -141,13 +143,15 @@ const exportColumns: ExportColumn<MatchList>[] = [
   { header: 'Liga', accessor: (r) => r.leagueName },
   { header: 'Echipa gazda', accessor: (r) => r.homeTeamName },
   { header: 'Echipa oaspete', accessor: (r) => r.awayTeamName },
-  { header: 'Status', accessor: (r) => r.status },
-  { header: 'Ora start', accessor: (r) => r.startTime },
+  { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
+  { header: 'Ora start', accessor: (r) => formatExportDate(r.startTime) },
 ]
 
 function fetchAllMatchesForExport(onProgress?: ExportProgress): Promise<MatchList[]> {
   const filters = appliedFilters.value
-  return fetchAllPages((pageable) => searchMatches(filters, pageable), { sort: sortBy.value || undefined, onProgress })
+  // Same default order as searchMatches, spelled out so the export can add its id tie-breaker
+  const sort = sortBy.value || `startTime,${filters.status === 'SCHEDULED' ? 'asc' : 'desc'}`
+  return fetchAllPages((pageable) => searchMatches(filters, pageable), { sort, onProgress })
 }
 
 function resetFilters() {
