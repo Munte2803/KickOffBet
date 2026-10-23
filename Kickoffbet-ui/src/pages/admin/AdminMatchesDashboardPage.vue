@@ -23,7 +23,8 @@ import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
 import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
+import { translateEnumLabel } from '@/utils/labels.utils'
 import type { MatchList } from '@/types/match.types'
 
 const statusOptions: Array<{ label: string; value: MatchStatus | '' }> = [
@@ -141,13 +142,15 @@ const exportColumns: ExportColumn<MatchList>[] = [
   { header: 'Liga', accessor: (r) => r.leagueName },
   { header: 'Echipa gazda', accessor: (r) => r.homeTeamName },
   { header: 'Echipa oaspete', accessor: (r) => r.awayTeamName },
-  { header: 'Status', accessor: (r) => r.status },
-  { header: 'Ora start', accessor: (r) => r.startTime },
+  { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
+  { header: 'Ora start', accessor: (r) => formatExportDate(r.startTime) },
 ]
 
 function fetchAllMatchesForExport(onProgress?: ExportProgress): Promise<MatchList[]> {
   const filters = appliedFilters.value
-  return fetchAllPages((pageable) => searchMatches(filters, pageable), { sort: sortBy.value || undefined, onProgress })
+  // Same default order as searchMatches, spelled out so the export can add its id tie-breaker
+  const sort = sortBy.value || `startTime,${filters.status === 'SCHEDULED' ? 'asc' : 'desc'}`
+  return fetchAllPages((pageable) => searchMatches(filters, pageable), { sort, onProgress })
 }
 
 function resetFilters() {

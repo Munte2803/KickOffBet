@@ -33,6 +33,8 @@ const api = axios.create({
   },
   withCredentials: true,
   timeout: 30_000,
+  // Arrays as repeated params (sort=a,desc&sort=id,asc), the form Spring binds; not sort[]=...
+  paramsSerializer: { indexes: null },
 })
 
 const authEndpoints = [

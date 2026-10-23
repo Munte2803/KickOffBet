@@ -27,7 +27,7 @@ import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import { getUsersTimeSeries } from '@/api/admin.timeseries.api'
 
 const toastStore = useToastStore()
@@ -160,7 +160,7 @@ const exportColumns: ExportColumn<UserList>[] = [
   { header: 'Prenume', accessor: (r) => r.firstName },
   { header: 'Nume', accessor: (r) => r.lastName },
   { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllUsersForExport(onProgress?: ExportProgress): Promise<UserList[]> {

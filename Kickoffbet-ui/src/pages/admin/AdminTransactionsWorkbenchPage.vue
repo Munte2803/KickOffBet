@@ -28,7 +28,7 @@ import AdminSortSelect from '@/components/AdminSortSelect.vue'
 import ExportButton from '@/components/ExportButton.vue'
 import { fetchAllPages, type ExportProgress } from '@/api/utils/fetchAllPages'
 import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import type { Transaction } from '@/types/transaction.types'
 import { getTransactionsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
@@ -263,7 +263,7 @@ const exportColumns: ExportColumn<Transaction>[] = [
   { header: 'Tip', accessor: (r) => translateEnumLabel(r.transactionType) },
   { header: 'Status', accessor: (r) => translateEnumLabel(r.status) },
   { header: 'Suma', accessor: (r) => r.amount },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllTransactionsForExport(onProgress?: ExportProgress): Promise<Transaction[]> {

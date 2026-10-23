@@ -18,7 +18,7 @@ import TimeSeriesChart from '@/components/TimeSeriesChart.vue'
 import FormInput from '@/components/FormInput.vue'
 import AppButton from '@/components/AppButton.vue'
 import DatePresetButtons from '@/components/DatePresetButtons.vue'
-import type { ExportColumn } from '@/utils/export.utils'
+import { formatExportDate, type ExportColumn } from '@/utils/export.utils'
 import type { Ticket } from '@/types/ticket.types'
 import { getTicketsTimeSeries } from '@/api/admin.timeseries.api'
 import { formatMoney } from '@/utils/money.utils'
@@ -110,7 +110,7 @@ const exportColumns: ExportColumn<Ticket>[] = [
   { header: 'Cota totala', accessor: (r) => r.totalOdd },
   { header: 'Castig potential', accessor: (r) => r.potentialPayout },
   { header: 'Selectii', accessor: (r) => r.selections.length },
-  { header: 'Creat la', accessor: (r) => r.createdAt },
+  { header: 'Creat la', accessor: (r) => formatExportDate(r.createdAt) },
 ]
 
 function fetchAllTicketsForExport(onProgress?: ExportProgress): Promise<Ticket[]> {

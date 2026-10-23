@@ -38,7 +38,7 @@ async function doExport(format: 'csv' | 'pdf') {
     if (format === 'csv') {
       exportToCsv(rows, props.columns, props.filename)
     } else {
-      exportToPdf(rows, props.columns, props.filename, props.title)
+      await exportToPdf(rows,props.columns, props.filename, props.title)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Exportul a esuat.'
